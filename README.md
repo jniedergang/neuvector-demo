@@ -48,8 +48,8 @@ Application web interactive pour executer des demonstrations NeuVector sur un cl
         ▼                  ▼                  ▼
 ┌───────────────┐  ┌───────────────┐  ┌───────────────┐
 │ Demo Pods     │  │ NeuVector     │  │ Kubernetes    │
-│ opensuse-test │  │ Controller    │  │ API Server    │
-│ nginx-test    │  │ REST API      │  │               │
+│ production1   │  │ Controller    │  │ API Server    │
+│ web1          │  │ REST API      │  │               │
 └───────────────┘  └───────────────┘  └───────────────┘
 ```
 
@@ -417,7 +417,7 @@ class MaDemo(DemoModule):
         yield "[INFO] Execution de la demo..."
 
         async for line in kubectl.exec_in_pod(
-            pod_name="opensuse-test",
+            pod_name="production1",
             command=["echo", "Hello"],
             namespace=NAMESPACE,
         ):

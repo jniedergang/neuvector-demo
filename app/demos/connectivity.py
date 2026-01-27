@@ -25,11 +25,11 @@ class ConnectivityDemo(DemoModule):
                 name="pod_name",
                 label="Source Pod",
                 type="select",
-                default="opensuse-test",
+                default="production1",
                 required=True,
                 options=[
-                    {"value": "opensuse-test", "label": "OpenSUSE Test Pod"},
-                    {"value": "nginx-test", "label": "Nginx Test Pod"},
+                    {"value": "production1", "label": "Production1"},
+                    {"value": "web1", "label": "Web1"},
                 ],
                 help_text="Pod from which to run the connectivity test",
             ),
@@ -49,7 +49,7 @@ class ConnectivityDemo(DemoModule):
         kubectl: Kubectl,
         params: dict[str, Any],
     ) -> AsyncGenerator[str, None]:
-        pod_name = params.get("pod_name", "opensuse-test")
+        pod_name = params.get("pod_name", "production1")
         target_url = params.get("target_url", "https://www.google.com")
 
         yield f"[INFO] Starting connectivity test from pod '{pod_name}'"

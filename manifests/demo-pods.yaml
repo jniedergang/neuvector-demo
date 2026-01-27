@@ -1,13 +1,13 @@
 ---
-# OpenSUSE test pod - for running curl, zypper, and other network tests
+# Production1 pod - OpenSUSE for running curl and network tests
 apiVersion: v1
 kind: Pod
 metadata:
-  name: opensuse-test
+  name: production1
   namespace: neuvector-demo
   labels:
     app: demo-test
-    component: opensuse
+    component: production
 spec:
   containers:
   - name: opensuse
@@ -21,15 +21,15 @@ spec:
         memory: "128Mi"
         cpu: "200m"
 ---
-# Nginx test pod - for receiving HTTP requests
+# Web1 pod - Nginx for receiving HTTP requests
 apiVersion: v1
 kind: Pod
 metadata:
-  name: nginx-test
+  name: web1
   namespace: neuvector-demo
   labels:
     app: demo-test
-    component: nginx
+    component: web
 spec:
   containers:
   - name: nginx
@@ -45,19 +45,19 @@ spec:
         memory: "64Mi"
         cpu: "100m"
 ---
-# Service for nginx pod (for internal cluster access)
+# Service for web1 pod (for internal cluster access)
 apiVersion: v1
 kind: Service
 metadata:
-  name: nginx-test
+  name: web1
   namespace: neuvector-demo
   labels:
     app: demo-test
-    component: nginx
+    component: web
 spec:
   selector:
     app: demo-test
-    component: nginx
+    component: web
   ports:
   - port: 80
     targetPort: 80
