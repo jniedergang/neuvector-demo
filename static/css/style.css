@@ -189,12 +189,12 @@ body {
 }
 
 .btn-success {
-    background-color: var(--success-color);
+    background-color: var(--primary-color);
     color: white;
 }
 
 .btn-success:hover {
-    background-color: #2d8e47;
+    background-color: var(--primary-dark);
 }
 
 .btn-warning {

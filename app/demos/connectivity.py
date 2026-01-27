@@ -42,18 +42,6 @@ class ConnectivityDemo(DemoModule):
                 placeholder="https://example.com",
                 help_text="URL to test connectivity against",
             ),
-            DemoParameter(
-                name="method",
-                label="HTTP Method",
-                type="select",
-                default="GET",
-                options=[
-                    {"value": "GET", "label": "GET"},
-                    {"value": "HEAD", "label": "HEAD"},
-                    {"value": "POST", "label": "POST"},
-                ],
-                help_text="HTTP method to use",
-            ),
         ]
 
     async def execute(
@@ -63,18 +51,13 @@ class ConnectivityDemo(DemoModule):
     ) -> AsyncGenerator[str, None]:
         pod_name = params.get("pod_name", "opensuse-test")
         target_url = params.get("target_url", "https://www.google.com")
-        method = params.get("method", "GET")
 
         yield f"[INFO] Starting connectivity test from pod '{pod_name}'"
         yield f"[INFO] Target URL: {target_url}"
-        yield f"[INFO] HTTP Method: {method}"
         yield ""
 
         # Build curl command
-        curl_args = ["curl", "-v", "-X", method, "-m", "10"]
-        if method == "HEAD":
-            curl_args.append("-I")
-        curl_args.append(target_url)
+        curl_args = ["curl", "-v", "-m", "10", target_url]
 
         yield f"[CMD] kubectl exec {pod_name} -n {NAMESPACE} -- {' '.join(curl_args)}"
         yield ""
