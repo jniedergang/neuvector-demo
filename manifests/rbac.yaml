@@ -1,0 +1,75 @@
+---
+# ServiceAccount for the demo web application
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: demo-web-sa
+  namespace: neuvector-demo
+---
+# Role with permissions to manage demo resources
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: demo-web-role
+  namespace: neuvector-demo
+rules:
+# Pod management
+- apiGroups: [""]
+  resources: ["pods", "pods/exec", "pods/log"]
+  verbs: ["get", "list", "watch", "create", "delete"]
+# Service management
+- apiGroups: [""]
+  resources: ["services"]
+  verbs: ["get", "list", "watch", "create", "delete"]
+# ConfigMaps and Secrets (read-only)
+- apiGroups: [""]
+  resources: ["configmaps", "secrets"]
+  verbs: ["get", "list"]
+---
+# ClusterRole for namespace and node operations
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: demo-web-clusterrole
+rules:
+# Namespace management
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["get", "list", "watch", "create", "delete"]
+# Node information (read-only)
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get", "list"]
+# NeuVector namespace read access
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list"]
+---
+# RoleBinding for namespace-scoped permissions
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: demo-web-rolebinding
+  namespace: neuvector-demo
+subjects:
+- kind: ServiceAccount
+  name: demo-web-sa
+  namespace: neuvector-demo
+roleRef:
+  kind: Role
+  name: demo-web-role
+  apiGroup: rbac.authorization.k8s.io
+---
+# ClusterRoleBinding for cluster-scoped permissions
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: demo-web-clusterrolebinding
+subjects:
+- kind: ServiceAccount
+  name: demo-web-sa
+  namespace: neuvector-demo
+roleRef:
+  kind: ClusterRole
+  name: demo-web-clusterrole
+  apiGroup: rbac.authorization.k8s.io

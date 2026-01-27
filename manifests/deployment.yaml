@@ -1,0 +1,74 @@
+---
+# Deployment for the NeuVector Demo Web Application
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: neuvector-demo-web
+  namespace: neuvector-demo
+  labels:
+    app: neuvector-demo-web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: neuvector-demo-web
+  template:
+    metadata:
+      labels:
+        app: neuvector-demo-web
+    spec:
+      serviceAccountName: demo-web-sa
+      containers:
+      - name: web
+        image: localhost/neuvector-demo-web:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8080
+          name: http
+        env:
+        - name: HOST
+          value: "0.0.0.0"
+        - name: PORT
+          value: "8080"
+        - name: DEMO_NAMESPACE
+          value: "neuvector-demo"
+        - name: NEUVECTOR_NAMESPACE
+          value: "neuvector"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 30
+---
+# Service to expose the web application
+apiVersion: v1
+kind: Service
+metadata:
+  name: neuvector-demo-web
+  namespace: neuvector-demo
+  labels:
+    app: neuvector-demo-web
+spec:
+  type: NodePort
+  selector:
+    app: neuvector-demo-web
+  ports:
+  - port: 8080
+    targetPort: 8080
+    nodePort: 30080
+    protocol: TCP
+    name: http

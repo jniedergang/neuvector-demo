@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuVector Demo Platform</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <h1>NeuVector Demo Platform</h1>
+        <div class="header-actions">
+            <button class="btn btn-icon" id="btn-settings" title="NeuVector API Settings">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+            </button>
+            <div class="status-indicator">
+                <span class="status-dot" id="status-dot"></span>
+                <span class="status" id="status-text">Connecting...</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <!-- Lifecycle Actions -->
+            <div class="sidebar-section">
+                <h3>Platform Actions</h3>
+                <div class="lifecycle-actions">
+                    <button class="btn btn-success" id="btn-prepare" title="Deploy demo namespace and pods">
+                        Prepare
+                    </button>
+                    <button class="btn btn-outline" id="btn-status" title="Check platform status">
+                        Status
+                    </button>
+                    <button class="btn btn-danger" id="btn-reset" title="Remove all demo resources">
+                        Reset
+                    </button>
+                </div>
+                <!-- NeuVector API Status -->
+                <div class="api-status-box" id="api-status-box">
+                    <span class="api-status-label">NeuVector API:</span>
+                    <span class="api-status-value" id="api-status-value">Not configured</span>
+                </div>
+                <!-- Cluster Status -->
+                <div class="api-status-box" id="cluster-status-box">
+                    <span class="api-status-label">K8s Cluster:</span>
+                    <span class="api-status-value" id="cluster-status-value">Checking...</span>
+                </div>
+            </div>
+
+            <!-- Demo List -->
+            {% for category, demo_list in categories.items() %}
+            <div class="sidebar-section">
+                <h3>{{ category }}</h3>
+                <div class="demo-list">
+                    {% for demo in demo_list %}
+                    <div class="demo-item" data-demo-id="{{ demo.id }}">
+                        <span class="icon">{{ demo.icon }}</span>
+                        <div class="info">
+                            <div class="name">{{ demo.name }}</div>
+                            <div class="category">{{ demo.category }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </aside>
+
+        <!-- Content Area -->
+        <main class="content">
+            <!-- Demo Configuration Card -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 id="demo-title">Select a Demo</h2>
+                </div>
+                <div class="card-body">
+                    <div id="demo-description" class="demo-description">
+                        <p>Select a demo from the sidebar to configure and run it. Use the Platform Actions to prepare or reset the demo environment.</p>
+                    </div>
+
+                    <form id="demo-form">
+                        <div id="demo-params" class="demo-params">
+                            <!-- Parameters will be rendered here -->
+                        </div>
+
+                        <button type="button" class="btn btn-primary" id="run-demo-btn" style="display: none;">
+                            Run Demo
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Console Output Card -->
+            <div class="card">
+                <div class="console" id="output-console">
+                    <div class="console-header">
+                        <span class="title">Output Console</span>
+                        <button class="btn btn-outline" id="btn-clear" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">
+                            Clear
+                        </button>
+                    </div>
+                    <div class="console-body" id="console-body">
+                        <div class="console-line info">[INFO] Welcome to NeuVector Demo Platform</div>
+                        <div class="console-line info">[INFO] Click "Status" to check the platform state</div>
+                        <div class="console-line info">[INFO] Click "Prepare" to set up the demo environment</div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settings-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>NeuVector API Settings</h3>
+                <button class="btn-close" id="btn-close-settings">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="settings-username">Username</label>
+                    <input type="text" class="form-control" id="settings-username" placeholder="admin" value="admin">
+                </div>
+                <div class="form-group">
+                    <label for="settings-password">Password</label>
+                    <input type="password" class="form-control" id="settings-password" placeholder="Enter password">
+                </div>
+                <div class="form-group">
+                    <label>API URL</label>
+                    <div class="api-url-display" id="settings-api-url">Loading...</div>
+                </div>
+                <div class="settings-status" id="settings-status"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" id="btn-test-connection">Test Connection</button>
+                <button class="btn btn-primary" id="btn-save-settings">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/static/js/websocket.js"></script>
+    <script src="/static/js/main.js"></script>
+</body>
+</html>
