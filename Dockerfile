@@ -20,7 +20,9 @@ RUN pip3.11 install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Create non-root user
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+RUN groupadd -g 1000 appuser && \
+    useradd -m -u 1000 -g appuser appuser && \
+    chown -R appuser:appuser /app
 USER appuser
 
 # Expose port
