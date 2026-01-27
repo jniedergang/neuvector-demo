@@ -1,0 +1,490 @@
+"""REST API routes."""
+
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+from typing import Any, Optional
+
+from app.demos import DemoRegistry
+from app.config import NAMESPACE, NEUVECTOR_NAMESPACE, NEUVECTOR_API_URL
+from app.core.neuvector_api import NeuVectorAPI, NeuVectorAPIError
+from app.core.kubectl import Kubectl
+
+
+router = APIRouter(prefix="/api", tags=["api"])
+
+
+class DemoInfo(BaseModel):
+    """Demo information response model."""
+    id: str
+    name: str
+    description: str
+    category: str
+    icon: str
+    parameters: list[dict[str, Any]]
+
+
+class DemoListResponse(BaseModel):
+    """Response model for demo list."""
+    demos: list[DemoInfo]
+    categories: dict[str, list[str]]
+
+
+class ConfigResponse(BaseModel):
+    """Response model for configuration."""
+    demo_namespace: str
+    neuvector_namespace: str
+
+
+@router.get("/demos", response_model=DemoListResponse)
+async def list_demos():
+    """List all available demos."""
+    demos = DemoRegistry.get_all()
+    demo_list = [DemoInfo(**demo.to_dict()) for demo in demos]
+
+    # Group by category
+    categories = {}
+    for demo in demos:
+        if demo.category not in categories:
+            categories[demo.category] = []
+        categories[demo.category].append(demo.id)
+
+    return DemoListResponse(demos=demo_list, categories=categories)
+
+
+@router.get("/demos/{demo_id}", response_model=DemoInfo)
+async def get_demo(demo_id: str):
+    """Get details of a specific demo."""
+    demo = DemoRegistry.get(demo_id)
+    if not demo:
+        raise HTTPException(status_code=404, detail=f"Demo '{demo_id}' not found")
+    return DemoInfo(**demo.to_dict())
+
+
+@router.get("/config", response_model=ConfigResponse)
+async def get_config():
+    """Get current configuration."""
+    return ConfigResponse(
+        demo_namespace=NAMESPACE,
+        neuvector_namespace=NEUVECTOR_NAMESPACE,
+    )
+
+
+@router.get("/health")
+async def health_check():
+    """Health check endpoint."""
+    return {"status": "healthy"}
+
+
+class ClusterInfoResponse(BaseModel):
+    """Response model for cluster info."""
+    context: str
+    connected: bool
+    node_count: int
+    error: Optional[str] = None
+
+
+@router.get("/cluster-info", response_model=ClusterInfoResponse)
+async def get_cluster_info():
+    """Get Kubernetes cluster info and connection status."""
+    kubectl = Kubectl()
+    info = await kubectl.get_cluster_info()
+    return ClusterInfoResponse(**info)
+
+
+class NeuVectorTestRequest(BaseModel):
+    """Request model for testing NeuVector connection."""
+    username: str
+    password: str
+
+
+class NeuVectorTestResponse(BaseModel):
+    """Response model for NeuVector connection test."""
+    success: bool
+    message: str
+    api_url: str
+
+
+class GroupStatusRequest(BaseModel):
+    """Request model for getting group status."""
+    username: str
+    password: str
+    group_name: str
+
+
+class GroupStatusResponse(BaseModel):
+    """Response model for group status."""
+    success: bool
+    group_name: str
+    policy_mode: Optional[str] = None
+    profile_mode: Optional[str] = None
+    baseline_profile: Optional[str] = None
+    message: str = ""
+
+
+@router.post("/neuvector/group-status", response_model=GroupStatusResponse)
+async def get_group_status(request: GroupStatusRequest):
+    """Get NeuVector group policy status."""
+    api = NeuVectorAPI(
+        base_url=NEUVECTOR_API_URL,
+        username=request.username,
+        password=request.password,
+    )
+
+    try:
+        await api.authenticate()
+        group = await api.get_group(request.group_name)
+        await api.logout()
+        await api.close()
+
+        return GroupStatusResponse(
+            success=True,
+            group_name=request.group_name,
+            policy_mode=group.get("policy_mode"),
+            profile_mode=group.get("profile_mode"),
+            baseline_profile=group.get("baseline_profile"),
+        )
+    except NeuVectorAPIError as e:
+        await api.close()
+        return GroupStatusResponse(
+            success=False,
+            group_name=request.group_name,
+            message=str(e),
+        )
+    except Exception as e:
+        await api.close()
+        return GroupStatusResponse(
+            success=False,
+            group_name=request.group_name,
+            message=f"Unexpected error: {str(e)}",
+        )
+
+
+class ProcessProfileRequest(BaseModel):
+    """Request model for getting process profile rules."""
+    username: str
+    password: str
+    group_name: str
+
+
+class ProcessRule(BaseModel):
+    """Process rule model."""
+    name: str
+    path: str
+    action: str
+    cfg_type: str  # learned, user_created, ground
+
+
+class ProcessProfileResponse(BaseModel):
+    """Response model for process profile."""
+    success: bool
+    group_name: str
+    mode: Optional[str] = None
+    baseline: Optional[str] = None
+    process_list: list[ProcessRule] = []
+    message: str = ""
+
+
+@router.post("/neuvector/process-profile", response_model=ProcessProfileResponse)
+async def get_process_profile(request: ProcessProfileRequest):
+    """Get NeuVector process profile rules for a group."""
+    api = NeuVectorAPI(
+        base_url=NEUVECTOR_API_URL,
+        username=request.username,
+        password=request.password,
+    )
+
+    try:
+        await api.authenticate()
+        profile = await api.get_process_profile(request.group_name)
+        await api.logout()
+        await api.close()
+
+        process_list = [
+            ProcessRule(
+                name=p.get("name", ""),
+                path=p.get("path", ""),
+                action=p.get("action", "allow"),
+                cfg_type=p.get("cfg_type", "learned"),
+            )
+            for p in profile.get("process_list", [])
+        ]
+
+        return ProcessProfileResponse(
+            success=True,
+            group_name=request.group_name,
+            mode=profile.get("mode"),
+            baseline=profile.get("baseline"),
+            process_list=process_list,
+        )
+    except NeuVectorAPIError as e:
+        await api.close()
+        return ProcessProfileResponse(
+            success=False,
+            group_name=request.group_name,
+            message=str(e),
+        )
+    except Exception as e:
+        await api.close()
+        return ProcessProfileResponse(
+            success=False,
+            group_name=request.group_name,
+            message=f"Unexpected error: {str(e)}",
+        )
+
+
+class DeleteProcessRuleRequest(BaseModel):
+    """Request model for deleting a process rule."""
+    username: str
+    password: str
+    group_name: str
+    process_name: str
+    process_path: str
+
+
+class DeleteProcessRuleResponse(BaseModel):
+    """Response model for process rule deletion."""
+    success: bool
+    message: str = ""
+
+
+@router.post("/neuvector/delete-process-rule", response_model=DeleteProcessRuleResponse)
+async def delete_process_rule(request: DeleteProcessRuleRequest):
+    """Delete a process rule from NeuVector process profile."""
+    api = NeuVectorAPI(
+        base_url=NEUVECTOR_API_URL,
+        username=request.username,
+        password=request.password,
+    )
+
+    try:
+        await api.authenticate()
+        await api.delete_process_rule(
+            group_name=request.group_name,
+            process_name=request.process_name,
+            process_path=request.process_path,
+        )
+        await api.logout()
+        await api.close()
+
+        return DeleteProcessRuleResponse(
+            success=True,
+            message=f"Process rule '{request.process_name}' deleted",
+        )
+    except NeuVectorAPIError as e:
+        await api.close()
+        return DeleteProcessRuleResponse(
+            success=False,
+            message=str(e),
+        )
+    except Exception as e:
+        await api.close()
+        return DeleteProcessRuleResponse(
+            success=False,
+            message=f"Unexpected error: {str(e)}",
+        )
+
+
+class UpdateGroupRequest(BaseModel):
+    """Request model for updating group settings."""
+    username: str
+    password: str
+    service_name: str  # e.g., "opensuse.neuvector-demo"
+    policy_mode: Optional[str] = None
+    profile_mode: Optional[str] = None
+    baseline_profile: Optional[str] = None
+
+
+class UpdateGroupResponse(BaseModel):
+    """Response model for group update."""
+    success: bool
+    message: str = ""
+
+
+@router.post("/neuvector/update-group", response_model=UpdateGroupResponse)
+async def update_group_settings(request: UpdateGroupRequest):
+    """Update NeuVector group settings (policy mode, profile mode, baseline)."""
+    api = NeuVectorAPI(
+        base_url=NEUVECTOR_API_URL,
+        username=request.username,
+        password=request.password,
+    )
+
+    try:
+        await api.authenticate()
+
+        client = await api._get_client()
+        config = {"services": [request.service_name]}
+
+        if request.policy_mode:
+            config["policy_mode"] = request.policy_mode
+        if request.profile_mode:
+            config["profile_mode"] = request.profile_mode
+        if request.baseline_profile:
+            config["baseline_profile"] = request.baseline_profile
+
+        response = await client.patch(
+            "/v1/service/config",
+            json={"config": config},
+            headers=api._auth_headers(),
+        )
+
+        await api.logout()
+        await api.close()
+
+        if response.status_code in (200, 204):
+            return UpdateGroupResponse(success=True, message="Settings updated")
+        else:
+            return UpdateGroupResponse(
+                success=False,
+                message=f"Failed: {response.status_code}"
+            )
+
+    except NeuVectorAPIError as e:
+        await api.close()
+        return UpdateGroupResponse(success=False, message=str(e))
+    except Exception as e:
+        await api.close()
+        return UpdateGroupResponse(success=False, message=str(e))
+
+
+@router.post("/neuvector/test", response_model=NeuVectorTestResponse)
+async def test_neuvector_connection(request: NeuVectorTestRequest):
+    """Test NeuVector API connection with provided credentials."""
+    api = NeuVectorAPI(
+        base_url=NEUVECTOR_API_URL,
+        username=request.username,
+        password=request.password,
+    )
+
+    try:
+        await api.authenticate()
+        await api.logout()
+        await api.close()
+        return NeuVectorTestResponse(
+            success=True,
+            message="Connection successful",
+            api_url=NEUVECTOR_API_URL,
+        )
+    except NeuVectorAPIError as e:
+        await api.close()
+        return NeuVectorTestResponse(
+            success=False,
+            message=str(e),
+            api_url=NEUVECTOR_API_URL,
+        )
+    except Exception as e:
+        await api.close()
+        return NeuVectorTestResponse(
+            success=False,
+            message=f"Unexpected error: {str(e)}",
+            api_url=NEUVECTOR_API_URL,
+        )
+
+
+class RecentEventsRequest(BaseModel):
+    """Request model for getting recent NeuVector events."""
+    username: str
+    password: str
+    group_name: Optional[str] = None
+    limit: int = 10
+
+
+class NeuVectorEvent(BaseModel):
+    """NeuVector event model."""
+    event_type: str  # "incident" or "violation"
+    name: str
+    message: str
+    details: str
+    reported_at: str
+    level: str  # "Warning", "Error", etc.
+
+
+class RecentEventsResponse(BaseModel):
+    """Response model for recent events."""
+    success: bool
+    events: list[NeuVectorEvent] = []
+    message: str = ""
+
+
+@router.post("/neuvector/recent-events", response_model=RecentEventsResponse)
+async def get_recent_events(request: RecentEventsRequest):
+    """Get recent NeuVector incidents and violations for a workload."""
+    api = NeuVectorAPI(
+        base_url=NEUVECTOR_API_URL,
+        username=request.username,
+        password=request.password,
+    )
+
+    try:
+        await api.authenticate()
+
+        # Get both incidents and violations
+        incidents = await api.get_recent_incidents(
+            group_name=request.group_name,
+            limit=request.limit,
+        )
+        violations = await api.get_recent_violations(
+            group_name=request.group_name,
+            limit=request.limit,
+        )
+
+        await api.logout()
+        await api.close()
+
+        # Convert to unified event format
+        events = []
+
+        for inc in incidents:
+            events.append(NeuVectorEvent(
+                event_type="incident",
+                name=inc.get("name", "Unknown"),
+                message=inc.get("message", inc.get("name", "")),
+                details=f"{inc.get('workload_name', 'Unknown')} - {inc.get('proc_cmd', inc.get('file_path', ''))}",
+                reported_at=inc.get("reported_at", ""),
+                level=inc.get("level", "Warning"),
+            ))
+
+        for vio in violations:
+            # Build details from client/server info
+            client = vio.get("client_name", "Unknown")
+            server = vio.get("server_name", "Unknown")
+            port = vio.get("server_port", "")
+            ip = vio.get("server_ip", "")
+            details = f"{client} -> {server}"
+            if port:
+                details += f":{port}"
+            if ip:
+                details += f" ({ip})"
+
+            events.append(NeuVectorEvent(
+                event_type="violation",
+                name=vio.get("policy_action", "Violation"),
+                message=f"Network violation: {client} to {server}",
+                details=details,
+                reported_at=vio.get("reported_at", ""),
+                level=vio.get("level", "Warning"),
+            ))
+
+        # Sort all events by time (most recent first)
+        events = sorted(events, key=lambda x: x.reported_at, reverse=True)
+
+        # Limit total events
+        events = events[:request.limit]
+
+        return RecentEventsResponse(
+            success=True,
+            events=events,
+        )
+
+    except NeuVectorAPIError as e:
+        await api.close()
+        return RecentEventsResponse(
+            success=False,
+            message=str(e),
+        )
+    except Exception as e:
+        await api.close()
+        return RecentEventsResponse(
+            success=False,
+            message=f"Unexpected error: {str(e)}",
+        )

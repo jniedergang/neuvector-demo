@@ -1,0 +1,66 @@
+---
+# OpenSUSE test pod - for running curl, zypper, and other network tests
+apiVersion: v1
+kind: Pod
+metadata:
+  name: opensuse-test
+  namespace: neuvector-demo
+  labels:
+    app: demo-test
+    component: opensuse
+spec:
+  containers:
+  - name: opensuse
+    image: opensuse/tumbleweed
+    command: ["sleep", "infinity"]
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "50m"
+      limits:
+        memory: "128Mi"
+        cpu: "200m"
+---
+# Nginx test pod - for receiving HTTP requests
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-test
+  namespace: neuvector-demo
+  labels:
+    app: demo-test
+    component: nginx
+spec:
+  containers:
+  - name: nginx
+    image: nginx:alpine
+    ports:
+    - containerPort: 80
+      name: http
+    resources:
+      requests:
+        memory: "32Mi"
+        cpu: "25m"
+      limits:
+        memory: "64Mi"
+        cpu: "100m"
+---
+# Service for nginx pod (for internal cluster access)
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-test
+  namespace: neuvector-demo
+  labels:
+    app: demo-test
+    component: nginx
+spec:
+  selector:
+    app: demo-test
+    component: nginx
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: http
+  type: ClusterIP
