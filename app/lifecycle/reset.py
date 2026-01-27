@@ -6,8 +6,8 @@ from app.core.kubectl import Kubectl
 from app.config import NAMESPACE
 
 # Demo pods to delete (not the demo-web itself)
-DEMO_PODS = ["opensuse-test", "nginx-test"]
-DEMO_SERVICES = ["nginx-test"]
+DEMO_PODS = ["production1", "web1"]
+DEMO_SERVICES = ["web1"]
 
 
 async def reset_platform(kubectl: Kubectl) -> AsyncGenerator[str, None]:
