@@ -864,7 +864,8 @@ class DemoApp {
         const paramNames = demo.parameters.map(p => p.name);
         const isConnectivityDemo = paramNames.includes('pod_name') && paramNames.includes('target_type');
         const isDLPDemo = paramNames.includes('pod_name') && paramNames.includes('data_type') && paramNames.includes('target');
-        const hasVisualization = isConnectivityDemo || isDLPDemo;
+        const isAdmissionDemo = paramNames.includes('action') && paramNames.includes('namespace') && paramNames.includes('pod_name');
+        const hasVisualization = isConnectivityDemo || isDLPDemo || isAdmissionDemo;
 
         if (this.demoParams) {
             if (isConnectivityDemo) {
@@ -873,6 +874,9 @@ class DemoApp {
             } else if (isDLPDemo) {
                 // Render compact layout for DLP demos
                 this.demoParams.innerHTML = this.renderDLPDemoParams(demo);
+            } else if (isAdmissionDemo) {
+                // Render compact layout for admission demos
+                this.demoParams.innerHTML = this.renderAdmissionDemoParams(demo);
             } else {
                 // Standard layout for other demos
                 this.demoParams.innerHTML = demo.parameters.map(param => this.renderParameter(param)).join('');
@@ -930,6 +934,23 @@ class DemoApp {
             <input type="hidden" name="target" id="param-target" value="${targetParam?.default || 'nginx'}">
             <input type="hidden" name="data_type" id="param-data_type" value="${dataTypeParam?.default || 'credit_card'}">
             <input type="hidden" name="custom_data" id="param-custom_data" value="">
+        `;
+    }
+
+    /**
+     * Render compact demo parameters for admission control demos
+     */
+    renderAdmissionDemoParams(demo) {
+        const actionParam = demo.parameters.find(p => p.name === 'action');
+        const namespaceParam = demo.parameters.find(p => p.name === 'namespace');
+        const podNameParam = demo.parameters.find(p => p.name === 'pod_name');
+
+        // Hidden form fields only - synced from visualization
+        return `
+            <!-- Hidden form fields synced from visualization -->
+            <input type="hidden" name="action" id="param-action" value="${actionParam?.default || 'create'}">
+            <input type="hidden" name="namespace" id="param-namespace" value="${namespaceParam?.default || 'neuvector-demo'}">
+            <input type="hidden" name="pod_name" id="param-pod_name" value="${podNameParam?.default || 'test-admission-pod'}">
         `;
     }
 
@@ -1261,14 +1282,21 @@ class DemoApp {
         const paramNames = demo.parameters.map(p => p.name);
         const isConnectivityDemo = paramNames.includes('pod_name') && paramNames.includes('target_type');
         const isDLPDemo = paramNames.includes('pod_name') && paramNames.includes('data_type') && paramNames.includes('target');
+        const isAdmissionDemo = paramNames.includes('action') && paramNames.includes('namespace') && paramNames.includes('pod_name');
 
-        if (!isConnectivityDemo && !isDLPDemo) {
+        if (!isConnectivityDemo && !isDLPDemo && !isAdmissionDemo) {
             this.removeVisualization();
             return;
         }
 
         // Store demo type for later use
-        this.currentDemoType = isDLPDemo ? 'dlp' : 'connectivity';
+        this.currentDemoType = isAdmissionDemo ? 'admission' : (isDLPDemo ? 'dlp' : 'connectivity');
+
+        // Handle admission demo separately
+        if (isAdmissionDemo) {
+            this.createAdmissionVisualization(demo);
+            return;
+        }
 
         // Get parameters for dropdowns
         const podParam = demo.parameters.find(p => p.name === 'pod_name');
@@ -2324,6 +2352,367 @@ class DemoApp {
             } catch (e) {
                 return custom.substring(0, 20);
             }
+        }
+    }
+
+    /**
+     * Create visualization for Admission Control demo
+     */
+    createAdmissionVisualization(demo) {
+        const namespaceParam = demo.parameters.find(p => p.name === 'namespace');
+        const podNameParam = demo.parameters.find(p => p.name === 'pod_name');
+
+        // Build namespace options
+        const namespaceOptions = namespaceParam.options.map(opt =>
+            `<option value="${opt.value}" ${opt.value === namespaceParam.default ? 'selected' : ''}>${opt.label}</option>`
+        ).join('');
+
+        const vizHtml = `
+            <div class="demo-viz-row">
+                <div class="demo-visualization admission-viz" id="demo-visualization">
+                    <div class="viz-content admission-content">
+                        <div class="admission-panel">
+                            <div class="admission-section">
+                                <div class="admission-header">
+                                    <span class="admission-icon">🚫</span>
+                                    <span>Admission Control Test</span>
+                                </div>
+                                <div class="admission-controls">
+                                    <div class="admission-row">
+                                        <label class="admission-label">Target Namespace</label>
+                                        <select class="viz-select" id="viz-admission-namespace" name="namespace">${namespaceOptions}</select>
+                                    </div>
+                                    <div class="admission-row">
+                                        <label class="admission-label">Pod Name</label>
+                                        <input type="text" class="viz-select" id="viz-admission-pod" name="pod_name" value="${podNameParam?.default || 'test-admission-pod'}">
+                                    </div>
+                                </div>
+                                <div class="admission-actions">
+                                    <button type="button" class="btn btn-primary btn-admission" data-action="create" title="Create a test pod in the selected namespace">
+                                        <span class="btn-icon">➕</span> Create Pod
+                                    </button>
+                                    <button type="button" class="btn btn-outline btn-admission" data-action="delete" title="Delete the test pod">
+                                        <span class="btn-icon">🗑️</span> Delete Pod
+                                    </button>
+                                    <button type="button" class="btn btn-outline btn-admission" data-action="status" title="Check pod status">
+                                        <span class="btn-icon">🔍</span> Check Status
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="admission-section admission-state">
+                                <div class="admission-header">
+                                    <span class="admission-icon">🛡️</span>
+                                    <span>Admission Control State</span>
+                                    <button type="button" class="btn-refresh" id="btn-refresh-admission" title="Refresh state">↻</button>
+                                </div>
+                                <div class="admission-state-content" id="admission-state-content">
+                                    <div class="admission-state-row">
+                                        <span class="admission-state-label">Status</span>
+                                        <span class="admission-state-value" id="admission-state-enabled">Loading...</span>
+                                    </div>
+                                    <div class="admission-state-row">
+                                        <span class="admission-state-label">Mode</span>
+                                        <span class="admission-state-value" id="admission-state-mode">-</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="admission-section admission-rules">
+                                <div class="admission-header">
+                                    <span class="admission-icon">📋</span>
+                                    <span>Admission Rules</span>
+                                    <span id="admission-rules-count"></span>
+                                </div>
+                                <div class="admission-rules-list" id="admission-rules-list">
+                                    Loading...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="viz-status pending" id="viz-status">
+                        <span class="viz-status-dot"></span>
+                        <span class="viz-status-text">Ready</span>
+                    </div>
+                </div>
+                <div class="nv-logs-container" id="nv-logs-container">
+                    <div class="nv-logs-header">
+                        <span>Admission Events</span>
+                        <button type="button" class="btn-refresh" id="btn-refresh-logs" title="Refresh events">↻</button>
+                    </div>
+                    <div class="nv-logs-list empty" id="nv-logs-list">
+                        Click refresh to load events
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Find the card-body to insert before
+        const demoParams = document.getElementById('demo-params');
+        if (!demoParams) return;
+
+        // Remove existing visualization
+        this.removeVisualization();
+
+        // Insert visualization BEFORE the params (at the top)
+        const vizWrapper = document.createElement('div');
+        vizWrapper.id = 'viz-wrapper';
+        vizWrapper.innerHTML = vizHtml;
+        demoParams.parentNode.insertBefore(vizWrapper, demoParams);
+
+        this.vizContainer = document.getElementById('demo-visualization');
+        this.vizState = 'pending';
+
+        // Set up namespace change listener
+        const namespaceSelect = document.getElementById('viz-admission-namespace');
+        if (namespaceSelect) {
+            namespaceSelect.addEventListener('change', () => {
+                this.syncAdmissionFormFromViz();
+                this.updateAdmissionNamespaceStyle();
+            });
+            // Initial style update
+            this.updateAdmissionNamespaceStyle();
+        }
+
+        // Set up pod name input listener
+        const podNameInput = document.getElementById('viz-admission-pod');
+        if (podNameInput) {
+            podNameInput.addEventListener('input', () => this.syncAdmissionFormFromViz());
+        }
+
+        // Set up action buttons
+        document.querySelectorAll('.btn-admission').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const action = btn.dataset.action;
+                this.runAdmissionAction(action);
+            });
+        });
+
+        // Set up refresh buttons
+        document.getElementById('btn-refresh-admission')?.addEventListener('click', () => this.loadAdmissionState());
+        document.getElementById('btn-refresh-logs')?.addEventListener('click', () => this.fetchAdmissionEvents());
+
+        // Initial load
+        this.loadAdmissionState();
+        this.loadAdmissionRules();
+    }
+
+    /**
+     * Sync admission form from visualization
+     */
+    syncAdmissionFormFromViz() {
+        const namespaceSelect = document.getElementById('viz-admission-namespace');
+        const podNameInput = document.getElementById('viz-admission-pod');
+        const hiddenNamespace = document.getElementById('param-namespace');
+        const hiddenPodName = document.getElementById('param-pod_name');
+
+        if (namespaceSelect && hiddenNamespace) {
+            hiddenNamespace.value = namespaceSelect.value;
+        }
+        if (podNameInput && hiddenPodName) {
+            hiddenPodName.value = podNameInput.value;
+        }
+    }
+
+    /**
+     * Update namespace select styling based on value
+     */
+    updateAdmissionNamespaceStyle() {
+        const namespaceSelect = document.getElementById('viz-admission-namespace');
+        if (!namespaceSelect) return;
+
+        const isForbidden = namespaceSelect.value.includes('forbidden');
+        namespaceSelect.classList.toggle('forbidden', isForbidden);
+        namespaceSelect.classList.toggle('allowed', !isForbidden);
+    }
+
+    /**
+     * Run admission action
+     */
+    runAdmissionAction(action) {
+        if (this.isRunning || !wsManager.isConnected()) return;
+
+        // Update hidden action field
+        const hiddenAction = document.getElementById('param-action');
+        if (hiddenAction) {
+            hiddenAction.value = action;
+        }
+
+        // Sync form values
+        this.syncAdmissionFormFromViz();
+
+        // Update visualization to running state
+        this.updateVisualization('running', `${action === 'create' ? 'Creating' : action === 'delete' ? 'Deleting' : 'Checking'} pod...`);
+
+        // Run the demo
+        this.runCurrentDemo();
+    }
+
+    /**
+     * Load admission control state
+     */
+    async loadAdmissionState() {
+        const enabledEl = document.getElementById('admission-state-enabled');
+        const modeEl = document.getElementById('admission-state-mode');
+
+        if (!enabledEl || !modeEl) return;
+
+        enabledEl.textContent = 'Loading...';
+        modeEl.textContent = '-';
+
+        const credentials = settingsManager.getCredentials();
+        if (!credentials.password) {
+            enabledEl.textContent = 'Not configured';
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/neuvector/admission-state', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: credentials.username,
+                    password: credentials.password,
+                }),
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                const enabled = result.enabled;
+                const mode = result.mode || 'monitor';
+                enabledEl.textContent = enabled ? 'Enabled' : 'Disabled';
+                enabledEl.className = 'admission-state-value ' + (enabled ? 'enabled' : 'disabled');
+                modeEl.textContent = mode.charAt(0).toUpperCase() + mode.slice(1);
+                modeEl.className = 'admission-state-value mode-' + mode;
+            } else {
+                enabledEl.textContent = 'Error';
+                modeEl.textContent = result.message || 'Failed';
+            }
+        } catch (error) {
+            console.error('Failed to get admission state:', error);
+            enabledEl.textContent = 'Error';
+        }
+    }
+
+    /**
+     * Load admission rules
+     */
+    async loadAdmissionRules() {
+        const listEl = document.getElementById('admission-rules-list');
+        const countEl = document.getElementById('admission-rules-count');
+
+        if (!listEl) return;
+
+        listEl.innerHTML = 'Loading...';
+        listEl.className = 'admission-rules-list loading';
+        if (countEl) countEl.textContent = '';
+
+        const credentials = settingsManager.getCredentials();
+        if (!credentials.password) {
+            listEl.innerHTML = 'Configure SUSE Security credentials first';
+            listEl.className = 'admission-rules-list empty';
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/neuvector/admission-rules', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: credentials.username,
+                    password: credentials.password,
+                }),
+            });
+
+            const result = await response.json();
+
+            if (result.success && result.rules.length > 0) {
+                if (countEl) countEl.textContent = `(${result.rules.length})`;
+
+                listEl.innerHTML = result.rules.map(rule => {
+                    const criteria = rule.criteria.map(c => `${c.name} ${c.op} ${c.value}`).join(', ');
+                    return `
+                        <div class="admission-rule-item ${rule.disable ? 'disabled' : ''} ${rule.rule_type}">
+                            <div class="admission-rule-type">${rule.rule_type.toUpperCase()}</div>
+                            <div class="admission-rule-info">
+                                <span class="admission-rule-comment">${this.escapeHtml(rule.comment || 'No description')}</span>
+                                <span class="admission-rule-criteria">${this.escapeHtml(criteria)}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                listEl.className = 'admission-rules-list';
+            } else if (result.success) {
+                listEl.innerHTML = 'No admission rules';
+                listEl.className = 'admission-rules-list empty';
+            } else {
+                listEl.innerHTML = result.message || 'Failed to load';
+                listEl.className = 'admission-rules-list empty';
+            }
+        } catch (error) {
+            console.error('Failed to get admission rules:', error);
+            listEl.innerHTML = 'Error loading rules';
+            listEl.className = 'admission-rules-list empty';
+        }
+    }
+
+    /**
+     * Fetch admission events
+     */
+    async fetchAdmissionEvents() {
+        const logsList = document.getElementById('nv-logs-list');
+        if (!logsList) return;
+
+        logsList.innerHTML = 'Loading...';
+        logsList.className = 'nv-logs-list loading';
+
+        const credentials = settingsManager.getCredentials();
+        if (!credentials.password) {
+            logsList.innerHTML = 'Configure SUSE Security credentials first';
+            logsList.className = 'nv-logs-list empty';
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/neuvector/admission-events', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: credentials.username,
+                    password: credentials.password,
+                    limit: 20,
+                }),
+            });
+
+            const result = await response.json();
+
+            if (result.success && result.events.length > 0) {
+                logsList.innerHTML = result.events.map(event => {
+                    const time = event.reported_at ? new Date(event.reported_at).toLocaleTimeString() : '';
+                    const levelClass = event.level?.toLowerCase() || 'info';
+                    return `
+                        <div class="nv-log-item ${levelClass}">
+                            <div class="nv-log-header">
+                                <span class="nv-log-type admission">${event.name}</span>
+                                <span class="nv-log-time">${time}</span>
+                            </div>
+                            <div class="nv-log-message">${this.escapeHtml(event.message)}</div>
+                            <div class="nv-log-details">${this.escapeHtml(event.workload)} in ${this.escapeHtml(event.namespace)}</div>
+                        </div>
+                    `;
+                }).join('');
+                logsList.className = 'nv-logs-list';
+            } else if (result.success) {
+                logsList.innerHTML = 'No admission events';
+                logsList.className = 'nv-logs-list empty';
+            } else {
+                logsList.innerHTML = result.message || 'Failed to load events';
+                logsList.className = 'nv-logs-list empty';
+            }
+        } catch (error) {
+            console.error('Failed to fetch admission events:', error);
+            logsList.innerHTML = 'Error loading events';
+            logsList.className = 'nv-logs-list empty';
         }
     }
 
