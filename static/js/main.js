@@ -1355,7 +1355,7 @@ class DemoApp {
                             <input type="checkbox" id="viz-sensor-creditcard" data-sensor="sensor.creditcard">
                             <span class="viz-toggle-slider"></span>
                         </label>
-                        <span class="viz-dlp-sensor-name">Credit Card</span>
+                        <span class="viz-dlp-sensor-name">Matricule</span>
                         <div class="viz-dlp-action-toggle" id="viz-action-creditcard" data-sensor="sensor.creditcard">
                             <button type="button" class="viz-action-btn active" data-action="allow">Alert</button>
                             <button type="button" class="viz-action-btn" data-action="deny">Block</button>
@@ -1430,7 +1430,7 @@ class DemoApp {
                             <input type="checkbox" id="viz-tgt-sensor-creditcard" data-sensor="sensor.creditcard" data-target="target">
                             <span class="viz-toggle-slider"></span>
                         </label>
-                        <span class="viz-dlp-sensor-name">Credit Card</span>
+                        <span class="viz-dlp-sensor-name">Matricule</span>
                         <div class="viz-dlp-action-toggle" id="viz-tgt-action-creditcard" data-sensor="sensor.creditcard" data-target="target">
                             <button type="button" class="viz-action-btn active" data-action="allow">Alert</button>
                             <button type="button" class="viz-action-btn" data-action="deny">Block</button>

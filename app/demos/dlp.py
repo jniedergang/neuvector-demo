@@ -51,7 +51,7 @@ class DLPDemo(DemoModule):
                 default="production1",
                 required=True,
                 options=[
-                    {"value": "production1", "label": "Production1"},
+                    {"value": "production1", "label": "Espion1"},
                 ],
                 help_text="Pod from which to send test data",
             ),
@@ -62,7 +62,7 @@ class DLPDemo(DemoModule):
                 default="nginx",
                 required=True,
                 options=[
-                    {"value": "nginx", "label": "Internal Nginx Pod"},
+                    {"value": "nginx", "label": "Cible1"},
                     {"value": "external", "label": "External Service (example.com)"},
                 ],
                 help_text="Where to send the test data",
@@ -74,7 +74,7 @@ class DLPDemo(DemoModule):
                 default="credit_card",
                 required=True,
                 options=[
-                    {"value": "credit_card", "label": "Credit Card Number"},
+                    {"value": "credit_card", "label": "Matricule"},
                     {"value": "ssn", "label": "Social Security Number"},
                     {"value": "custom", "label": "Custom Pattern"},
                 ],
@@ -95,7 +95,7 @@ class DLPDemo(DemoModule):
         # NeuVector DLP regex excludes repetitive patterns like 4242-4242-4242-4242
         # Use realistic-looking test numbers that will trigger DLP blocking
         test_patterns = {
-            "credit_card": ("4532-0151-1283-0366", "Test Visa card number"),
+            "credit_card": ("4532-0151-1283-0366", "Test Matricule pattern"),
             "ssn": ("078-05-1120", "Test SSN pattern"),
         }
 
