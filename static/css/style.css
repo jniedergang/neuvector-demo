@@ -1194,6 +1194,9 @@ select.form-control {
     align-items: center;
     gap: 0.5rem;
     margin-bottom: 0.5rem;
+    width: 100%;
+    justify-content: center;
+    position: relative;
 }
 
 .viz-box .viz-icon {
@@ -1205,6 +1208,44 @@ select.form-control {
     font-weight: 600;
     text-align: center;
     color: var(--text-color);
+}
+
+/* Mode icons (padlock/magnifying glass) */
+.viz-mode-icons {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 0.85rem;
+}
+
+.viz-mode-icon {
+    cursor: help;
+    opacity: 0.7;
+    transition: opacity 0.2s, transform 0.2s;
+    line-height: 1;
+}
+
+.viz-mode-icon:hover {
+    opacity: 1;
+    transform: scale(1.2);
+}
+
+.viz-mode-icon.protect {
+    opacity: 1;
+    filter: drop-shadow(0 0 2px rgba(220, 53, 69, 0.5));
+}
+
+.viz-mode-icon.monitor {
+    opacity: 0.9;
+    filter: drop-shadow(0 0 2px rgba(255, 193, 7, 0.5));
+}
+
+.viz-mode-icon.discover {
+    opacity: 0.5;
 }
 
 .viz-box .viz-select {
@@ -1440,6 +1481,34 @@ select.form-control {
     padding: 0.4rem 1rem;
     font-size: 0.85rem;
     font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 180px;
+    justify-content: center;
+}
+
+.btn-run-demo:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.btn-run-demo .btn-spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    display: none;
+}
+
+.btn-run-demo:disabled .btn-spinner {
+    display: inline-block;
+}
+
+.btn-run-demo .btn-text {
+    white-space: nowrap;
 }
 
 /* DLP Sensors section */
@@ -1577,12 +1646,14 @@ select.form-control {
 
 /* Target settings hidden by default */
 .viz-target .viz-pod-settings,
-.viz-target .viz-process-list {
+.viz-target .viz-process-list,
+.viz-target .viz-dlp-sensors {
     display: none;
 }
 
 .viz-target.show-pod-settings .viz-pod-settings,
-.viz-target.show-pod-settings .viz-process-list {
+.viz-target.show-pod-settings .viz-process-list,
+.viz-target.show-pod-settings .viz-dlp-sensors {
     display: block;
 }
 
