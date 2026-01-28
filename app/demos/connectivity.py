@@ -29,8 +29,8 @@ class ConnectivityDemo(DemoModule):
                 default="production1",
                 required=True,
                 options=[
-                    {"value": "production1", "label": "Production1"},
-                    {"value": "web1", "label": "Web1"},
+                    {"value": "production1", "label": "Espion1"},
+                    {"value": "web1", "label": "Cible1"},
                 ],
                 help_text="Pod from which to run the test",
             ),
@@ -53,8 +53,8 @@ class ConnectivityDemo(DemoModule):
                 type="select",
                 default="web1",
                 options=[
-                    {"value": "production1", "label": "Production1"},
-                    {"value": "web1", "label": "Web1"},
+                    {"value": "production1", "label": "Espion1"},
+                    {"value": "web1", "label": "Cible1"},
                 ],
                 help_text="Target pod (when Target Type is Pod)",
             ),
