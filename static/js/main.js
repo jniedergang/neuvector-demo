@@ -357,13 +357,31 @@ class DemoApp {
         }
 
         // Detect success
-        if (text.includes('[OK]') || text.includes('HTTP/') || lowerText.includes('success')) {
-            // Check if it's a curl success (contains HTTP status)
-            if (text.includes('HTTP/1') || text.includes('HTTP/2') || text.includes('200')) {
-                this.updateVisualization('success', 'Connection successful');
-                setTimeout(() => this.fetchNeuVectorEvents(), 1000);
-                return;
-            }
+        if (text.includes('[OK]') || lowerText.includes('success')) {
+            this.updateVisualization('success', 'Command executed successfully');
+            setTimeout(() => this.fetchNeuVectorEvents(), 1000);
+            return;
+        }
+
+        // Check if it's a curl success (contains HTTP status)
+        if (text.includes('HTTP/1') || text.includes('HTTP/2') || text.includes(' 200 ') || text.includes(' 301 ') || text.includes(' 302 ')) {
+            this.updateVisualization('success', 'HTTP request successful');
+            setTimeout(() => this.fetchNeuVectorEvents(), 1000);
+            return;
+        }
+
+        // Detect ping success
+        if (lowerText.includes('bytes from') || (lowerText.includes('time=') && lowerText.includes('ms'))) {
+            this.updateVisualization('success', 'Ping successful');
+            setTimeout(() => this.fetchNeuVectorEvents(), 1000);
+            return;
+        }
+
+        // Detect nmap success (open ports)
+        if (lowerText.includes('/tcp') && lowerText.includes('open')) {
+            this.updateVisualization('success', 'Port scan completed');
+            setTimeout(() => this.fetchNeuVectorEvents(), 1000);
+            return;
         }
 
         // Detect network block
@@ -552,9 +570,9 @@ class DemoApp {
             this.demoDescription.innerHTML = `<p>${demo.description}</p>`;
         }
 
-        // Check if this is a connectivity-type demo (has pod_name and target_url)
+        // Check if this is a connectivity-type demo (has pod_name and target_type)
         const paramNames = demo.parameters.map(p => p.name);
-        const isConnectivityDemo = paramNames.includes('pod_name') && paramNames.includes('target_url');
+        const isConnectivityDemo = paramNames.includes('pod_name') && paramNames.includes('target_type');
 
         if (this.demoParams) {
             if (isConnectivityDemo) {
@@ -601,8 +619,10 @@ class DemoApp {
      */
     renderCompactDemoParams(demo) {
         const podParam = demo.parameters.find(p => p.name === 'pod_name');
-        const targetParam = demo.parameters.find(p => p.name === 'target_url');
-        const methodParam = demo.parameters.find(p => p.name === 'method');
+        const targetTypeParam = demo.parameters.find(p => p.name === 'target_type');
+        const targetPodParam = demo.parameters.find(p => p.name === 'target_pod');
+        const targetPublicParam = demo.parameters.find(p => p.name === 'target_public');
+        const targetCustomParam = demo.parameters.find(p => p.name === 'target_custom');
 
         const modeOptions = `
             <option value="Discover">Discover</option>
@@ -618,8 +638,16 @@ class DemoApp {
             `<option value="${opt.value}" ${opt.value === podParam.default ? 'selected' : ''}>${opt.label}</option>`
         ).join('');
 
-        const methodOptions = methodParam ? methodParam.options.map(opt =>
-            `<option value="${opt.value}" ${opt.value === methodParam.default ? 'selected' : ''}>${opt.label}</option>`
+        const targetTypeOptions = targetTypeParam.options.map(opt =>
+            `<option value="${opt.value}" ${opt.value === targetTypeParam.default ? 'selected' : ''}>${opt.label}</option>`
+        ).join('');
+
+        const targetPodOptions = targetPodParam ? targetPodParam.options.map(opt =>
+            `<option value="${opt.value}" ${opt.value === targetPodParam.default ? 'selected' : ''}>${opt.label}</option>`
+        ).join('') : '';
+
+        const targetPublicOptions = targetPublicParam ? targetPublicParam.options.map(opt =>
+            `<option value="${opt.value}" ${opt.value === targetPublicParam.default ? 'selected' : ''}>${opt.label}</option>`
         ).join('') : '';
 
         return `
@@ -644,16 +672,23 @@ class DemoApp {
                         </div>
                     </div>
                     <div class="form-group">
-                        <label for="param-target_url">Target URL *</label>
-                        <input type="text" class="form-control" name="target_url" id="param-target_url"
-                               value="${targetParam.default || ''}" placeholder="${targetParam.placeholder || ''}" required>
+                        <label for="param-target_type">Target *</label>
+                        <select class="form-control" name="target_type" id="param-target_type" required>${targetTypeOptions}</select>
                     </div>
-                    ${methodParam ? `
-                    <div class="form-group">
-                        <label for="param-method">HTTP Method</label>
-                        <select class="form-control" name="method" id="param-method">${methodOptions}</select>
+                    <div class="form-group target-field" id="target-pod-group" style="display: none;">
+                        <label for="param-target_pod">Target Pod</label>
+                        <select class="form-control" name="target_pod" id="param-target_pod">${targetPodOptions}</select>
                     </div>
-                    ` : ''}
+                    <div class="form-group target-field" id="target-public-group">
+                        <label for="param-target_public">Public Website</label>
+                        <select class="form-control" name="target_public" id="param-target_public">${targetPublicOptions}</select>
+                    </div>
+                    <div class="form-group target-field" id="target-custom-group" style="display: none;">
+                        <label for="param-target_custom">Custom Target</label>
+                        <input type="text" class="form-control" name="target_custom" id="param-target_custom"
+                               value="" placeholder="hostname, IP or URL">
+                    </div>
+                    <input type="hidden" name="command" id="param-command" value="curl">
                 </div>
                 <div class="demo-config-right">
                     <div class="process-rules-container" id="process-rules-container">
@@ -666,6 +701,41 @@ class DemoApp {
                 </div>
             </div>
         `;
+    }
+
+    /**
+     * Set up target type switching
+     */
+    setupTargetTypeSwitch() {
+        const targetTypeSelect = document.getElementById('param-target_type');
+        if (!targetTypeSelect) return;
+
+        const updateTargetFields = () => {
+            const type = targetTypeSelect.value;
+            document.getElementById('target-pod-group').style.display = type === 'pod' ? 'block' : 'none';
+            document.getElementById('target-public-group').style.display = type === 'public' ? 'block' : 'none';
+            document.getElementById('target-custom-group').style.display = type === 'custom' ? 'block' : 'none';
+            this.updateVizLabels();
+        };
+
+        targetTypeSelect.addEventListener('change', updateTargetFields);
+        updateTargetFields(); // Initial state
+    }
+
+    /**
+     * Get resolved target from form
+     */
+    getResolvedTarget() {
+        const targetType = document.getElementById('param-target_type')?.value || 'public';
+
+        if (targetType === 'pod') {
+            const pod = document.getElementById('param-target_pod')?.value || 'web1';
+            return `${pod}.neuvector-demo.svc.cluster.local`;
+        } else if (targetType === 'public') {
+            return document.getElementById('param-target_public')?.value || 'https://www.google.com';
+        } else {
+            return document.getElementById('param-target_custom')?.value || 'localhost';
+        }
     }
 
     /**
@@ -948,7 +1018,7 @@ class DemoApp {
      * Create visualization HTML for a demo
      */
     createVisualization(demo) {
-        // Only create visualization for demos with pod_name and target_url parameters
+        // Only create visualization for demos with pod_name and target_type parameters
         if (!demo) {
             this.removeVisualization();
             return;
@@ -956,7 +1026,7 @@ class DemoApp {
 
         // Check if demo has the required parameters for visualization
         const paramNames = demo.parameters.map(p => p.name);
-        const hasConnectivityParams = paramNames.includes('pod_name') && paramNames.includes('target_url');
+        const hasConnectivityParams = paramNames.includes('pod_name') && paramNames.includes('target_type');
 
         if (!hasConnectivityParams) {
             this.removeVisualization();
@@ -965,18 +1035,8 @@ class DemoApp {
 
         // Get parameter values for display
         const podSelect = document.getElementById('param-pod_name');
-        const targetInput = document.getElementById('param-target_url');
         const sourceName = podSelect ? podSelect.options[podSelect.selectedIndex]?.text || 'Source' : 'Source';
-        const targetUrl = targetInput ? targetInput.value || 'Target' : 'Target';
-
-        // Extract domain from URL for display
-        let targetLabel = targetUrl;
-        try {
-            const url = new URL(targetUrl.startsWith('http') ? targetUrl : `https://${targetUrl}`);
-            targetLabel = url.hostname;
-        } catch (e) {
-            targetLabel = targetUrl.substring(0, 20);
-        }
+        const targetLabel = this.getTargetLabel();
 
         const vizHtml = `
             <div class="demo-viz-row">
@@ -1001,7 +1061,12 @@ class DemoApp {
                     <div class="viz-status pending" id="viz-status">
                         <span class="viz-status-dot"></span>
                         <span class="viz-status-text">Ready</span>
-                        <button type="button" class="btn btn-primary btn-viz-run" id="btn-viz-run">Run Demo</button>
+                    </div>
+                    <div class="viz-commands" id="viz-commands">
+                        <button type="button" class="btn btn-primary btn-cmd active" data-cmd="curl" title="HTTP request">curl</button>
+                        <button type="button" class="btn btn-outline btn-cmd" data-cmd="ping" title="ICMP ping">ping</button>
+                        <button type="button" class="btn btn-outline btn-cmd" data-cmd="ssh" title="SSH connection">ssh</button>
+                        <button type="button" class="btn btn-outline btn-cmd" data-cmd="nmap" title="Port scan">nmap</button>
                     </div>
                 </div>
                 <div class="nv-logs-container" id="nv-logs-container">
@@ -1032,13 +1097,22 @@ class DemoApp {
         this.vizContainer = document.getElementById('demo-visualization');
         this.vizState = 'pending';
 
+        // Set up target type switching
+        this.setupTargetTypeSwitch();
+
         // Set up event listeners for parameter changes
         if (podSelect) {
             podSelect.addEventListener('change', () => this.updateVizLabels());
         }
-        if (targetInput) {
-            targetInput.addEventListener('input', () => this.updateVizLabels());
-        }
+
+        // Set up target field change listeners
+        ['param-target_type', 'param-target_pod', 'param-target_public', 'param-target_custom'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('change', () => this.updateVizLabels());
+                el.addEventListener('input', () => this.updateVizLabels());
+            }
+        });
 
         // Set up refresh button
         const refreshBtn = document.getElementById('btn-refresh-logs');
@@ -1046,13 +1120,72 @@ class DemoApp {
             refreshBtn.addEventListener('click', () => this.fetchNeuVectorEvents());
         }
 
-        // Set up viz run button
-        const vizRunBtn = document.getElementById('btn-viz-run');
-        if (vizRunBtn) {
-            vizRunBtn.addEventListener('click', (e) => {
+        // Set up command buttons
+        document.querySelectorAll('.btn-cmd').forEach(btn => {
+            btn.addEventListener('click', (e) => {
                 e.preventDefault();
+                const cmd = btn.dataset.cmd;
+                this.setCommand(cmd);
                 this.runCurrentDemo();
             });
+        });
+    }
+
+    /**
+     * Set the command and update UI
+     */
+    setCommand(cmd) {
+        // Update hidden input
+        const cmdInput = document.getElementById('param-command');
+        if (cmdInput) cmdInput.value = cmd;
+
+        // Update button states
+        document.querySelectorAll('.btn-cmd').forEach(btn => {
+            if (btn.dataset.cmd === cmd) {
+                btn.classList.remove('btn-outline');
+                btn.classList.add('btn-primary', 'active');
+            } else {
+                btn.classList.remove('btn-primary', 'active');
+                btn.classList.add('btn-outline');
+            }
+        });
+
+        // Update arrow label
+        const arrowLabel = document.getElementById('viz-arrow-label');
+        if (arrowLabel) arrowLabel.textContent = cmd;
+    }
+
+    /**
+     * Get target label for display
+     */
+    getTargetLabel() {
+        const targetType = document.getElementById('param-target_type')?.value || 'public';
+
+        if (targetType === 'pod') {
+            const podSelect = document.getElementById('param-target_pod');
+            return podSelect ? podSelect.options[podSelect.selectedIndex]?.text || 'Pod' : 'Pod';
+        } else if (targetType === 'public') {
+            const publicSelect = document.getElementById('param-target_public');
+            if (publicSelect) {
+                const url = publicSelect.value || '';
+                try {
+                    return new URL(url).hostname;
+                } catch (e) {
+                    return publicSelect.options[publicSelect.selectedIndex]?.text || 'Website';
+                }
+            }
+            return 'Website';
+        } else {
+            const custom = document.getElementById('param-target_custom')?.value || 'Custom';
+            // Extract hostname from custom value
+            try {
+                if (custom.includes('://')) {
+                    return new URL(custom).hostname;
+                }
+                return custom.split('/')[0].split(':')[0].substring(0, 20);
+            } catch (e) {
+                return custom.substring(0, 20);
+            }
         }
     }
 
@@ -1072,23 +1205,22 @@ class DemoApp {
      */
     updateVizLabels() {
         const podSelect = document.getElementById('param-pod_name');
-        const targetInput = document.getElementById('param-target_url');
         const sourceLabel = document.getElementById('viz-source-label');
-        const targetLabel = document.getElementById('viz-target-label');
+        const targetLabelEl = document.getElementById('viz-target-label');
+        const targetIcon = document.querySelector('#viz-target .viz-icon');
 
         if (podSelect && sourceLabel) {
             sourceLabel.textContent = podSelect.options[podSelect.selectedIndex]?.text || 'Source';
         }
 
-        if (targetInput && targetLabel) {
-            let label = targetInput.value || 'Target';
-            try {
-                const url = new URL(label.startsWith('http') ? label : `https://${label}`);
-                label = url.hostname;
-            } catch (e) {
-                label = label.substring(0, 20);
-            }
-            targetLabel.textContent = label;
+        if (targetLabelEl) {
+            targetLabelEl.textContent = this.getTargetLabel();
+        }
+
+        // Update target icon based on type
+        if (targetIcon) {
+            const targetType = document.getElementById('param-target_type')?.value || 'public';
+            targetIcon.textContent = targetType === 'pod' ? '📦' : '🌐';
         }
     }
 
