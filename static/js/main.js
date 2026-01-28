@@ -891,10 +891,13 @@ class DemoApp {
         // Create visualization for supported demos
         this.createVisualization(demo);
 
-        // Set up refresh button for events
-        const refreshBtn = document.getElementById('btn-refresh-logs');
-        if (refreshBtn) {
-            refreshBtn.addEventListener('click', () => this.fetchNeuVectorEvents());
+        // Set up refresh button for events (only for non-admission demos)
+        // Admission demo sets up its own listener in createAdmissionVisualization()
+        if (!isAdmissionDemo) {
+            const refreshBtn = document.getElementById('btn-refresh-logs');
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', () => this.fetchNeuVectorEvents());
+            }
         }
     }
 
