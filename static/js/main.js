@@ -1472,9 +1472,8 @@ class DemoApp {
         } else if (isDLPDemo) {
             commandsSection = `
                 <div class="viz-commands" id="viz-commands">
-                    <button type="button" class="btn btn-primary btn-run-demo" id="btn-viz-run-dlp" title="Send DLP test data" disabled>
-                        <span class="btn-text">Checking DLP config...</span>
-                        <span class="btn-spinner"></span>
+                    <button type="button" class="btn btn-primary btn-run-demo" id="btn-viz-run-dlp" title="Send DLP test data">
+                        Run DLP Test
                     </button>
                 </div>
             `;
@@ -1581,8 +1580,6 @@ class DemoApp {
                 // Reload DLP sensors if this is a DLP demo
                 if (this.currentDemoType === 'dlp') {
                     this.loadDLPSensors(sourceSelect.value);
-                    // Check DLP ready state after a short delay
-                    setTimeout(() => this.checkDLPReadyState(), 500);
                 }
             });
         }
@@ -1765,8 +1762,6 @@ class DemoApp {
         // Load initial DLP sensor status for DLP demos
         if (isDLPDemo) {
             this.loadDLPSensors(initialSourcePod);
-            // Check DLP ready state after a short delay to allow UI to update
-            setTimeout(() => this.checkDLPReadyState(), 500);
         }
     }
 
@@ -2152,116 +2147,12 @@ class DemoApp {
                 console.error('Failed to update DLP sensor:', result.message);
                 if (checkboxElement) checkboxElement.checked = !enabled; // Revert on error
             }
-            // Check DLP ready state after update
-            setTimeout(() => this.checkDLPReadyState(), 300);
         } catch (error) {
             console.error('Failed to update DLP sensor:', error);
             if (checkboxElement) {
                 checkboxElement.disabled = false;
                 checkboxElement.checked = !enabled; // Revert on error
             }
-        }
-    }
-
-    /**
-     * Check if DLP is ready and update the run button state
-     * DLP is ready when:
-     * - Network Policy is "Protect"
-     * - Process Profile is "Protect"
-     * - Baseline is "zero-drift"
-     * - At least one DLP sensor is enabled with "deny" action on the source
-     */
-    async checkDLPReadyState() {
-        const runBtn = document.getElementById('btn-viz-run-dlp');
-        if (!runBtn) return;
-
-        const btnText = runBtn.querySelector('.btn-text');
-        const btnSpinner = runBtn.querySelector('.btn-spinner');
-
-        // Show loading state
-        runBtn.disabled = true;
-        if (btnText) btnText.textContent = 'Checking DLP config...';
-        if (btnSpinner) btnSpinner.style.display = '';
-
-        const credentials = settingsManager.getCredentials();
-        if (!credentials.password) {
-            if (btnText) btnText.textContent = 'Configure NeuVector API';
-            if (btnSpinner) btnSpinner.style.display = 'none';
-            return;
-        }
-
-        // Get source pod name
-        const sourceSelect = document.getElementById('viz-source-select');
-        const podName = sourceSelect?.value || 'production1';
-        const groupName = `nv.${podName.replace(/-test$/, '')}.neuvector-demo`;
-
-        try {
-            // Check group status (Network Policy, Process Profile, Baseline)
-            const groupStatus = await settingsManager.getGroupStatus(groupName);
-            const policyMode = groupStatus?.policy_mode || 'Discover';
-            const profileMode = groupStatus?.profile_mode || 'Discover';
-            const baseline = groupStatus?.baseline_profile || 'basic';
-
-            // Check if Network Policy is Protect
-            if (policyMode !== 'Protect') {
-                runBtn.disabled = true;
-                if (btnText) btnText.textContent = 'Set Network Policy to Protect';
-                if (btnSpinner) btnSpinner.style.display = 'none';
-                return;
-            }
-
-            // Check if Process Profile is Protect
-            if (profileMode !== 'Protect') {
-                runBtn.disabled = true;
-                if (btnText) btnText.textContent = 'Set Process Profile to Protect';
-                if (btnSpinner) btnSpinner.style.display = 'none';
-                return;
-            }
-
-            // Check if Baseline is zero-drift
-            if (baseline !== 'zero-drift') {
-                runBtn.disabled = true;
-                if (btnText) btnText.textContent = 'Set Baseline to Zero Drift';
-                if (btnSpinner) btnSpinner.style.display = 'none';
-                return;
-            }
-
-            // Check DLP config
-            const response = await fetch('/api/neuvector/dlp-config', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    username: credentials.username,
-                    password: credentials.password,
-                    group_name: groupName,
-                }),
-            });
-
-            const result = await response.json();
-
-            if (result.success) {
-                // Check if any sensor is enabled with "deny" action
-                const hasBlockingSensor = result.sensors.some(s => s.enabled && s.action === 'deny');
-
-                if (hasBlockingSensor) {
-                    runBtn.disabled = false;
-                    if (btnText) btnText.textContent = 'Run DLP Test';
-                    if (btnSpinner) btnSpinner.style.display = 'none';
-                } else {
-                    runBtn.disabled = true;
-                    if (btnText) btnText.textContent = 'Enable a DLP sensor with Block';
-                    if (btnSpinner) btnSpinner.style.display = 'none';
-                }
-            } else {
-                runBtn.disabled = true;
-                if (btnText) btnText.textContent = 'DLP config error';
-                if (btnSpinner) btnSpinner.style.display = 'none';
-            }
-        } catch (error) {
-            console.error('Failed to check DLP ready state:', error);
-            runBtn.disabled = true;
-            if (btnText) btnText.textContent = 'DLP check failed';
-            if (btnSpinner) btnSpinner.style.display = 'none';
         }
     }
 
@@ -2318,10 +2209,6 @@ class DemoApp {
                 setTimeout(() => {
                     this.updateVizPodStatus(target, podName);
                     this.updateVizProcessRules(target, podName);
-                    // Check DLP ready state if this is a source pod update in DLP demo
-                    if (target === 'source' && this.currentDemoType === 'dlp') {
-                        this.checkDLPReadyState();
-                    }
                 }, 500);
             } else {
                 console.error('Failed to update setting:', result.message);

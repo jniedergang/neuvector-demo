@@ -1481,34 +1481,6 @@ select.form-control {
     padding: 0.4rem 1rem;
     font-size: 0.85rem;
     font-weight: 500;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    min-width: 180px;
-    justify-content: center;
-}
-
-.btn-run-demo:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
-}
-
-.btn-run-demo .btn-spinner {
-    width: 14px;
-    height: 14px;
-    border: 2px solid rgba(255,255,255,0.3);
-    border-top-color: #fff;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    display: none;
-}
-
-.btn-run-demo:disabled .btn-spinner {
-    display: inline-block;
-}
-
-.btn-run-demo .btn-text {
-    white-space: nowrap;
 }
 
 /* DLP Sensors section */
