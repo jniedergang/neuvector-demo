@@ -593,24 +593,28 @@ class DemoApp {
         this.createVisualization(demo);
 
         // Set up pod status listener for connectivity demo
-        const podSelect = document.getElementById('param-pod_name');
-        if (podSelect) {
-            podSelect.addEventListener('change', () => {
-                this.updatePodStatus(podSelect.value);
-                this.updateProcessRules(podSelect.value);
-                this.updateVizLabels();
-            });
-            // Trigger initial fetch
-            this.updatePodStatus(podSelect.value);
-            this.updateProcessRules(podSelect.value);
+        const vizSourceSelect = document.getElementById('viz-source-select');
+        const initialPodName = vizSourceSelect?.value || 'production1';
 
-            // Set up change listeners for policy selects
-            ['pod-policy-mode', 'pod-profile-mode', 'pod-baseline-profile'].forEach(id => {
-                const select = document.getElementById(id);
-                if (select) {
-                    select.addEventListener('change', () => this.updatePodSetting(podSelect.value, select));
-                }
-            });
+        // Trigger initial fetch
+        this.updatePodStatus(initialPodName);
+        this.updateProcessRules(initialPodName);
+
+        // Set up change listeners for policy selects
+        ['pod-policy-mode', 'pod-profile-mode', 'pod-baseline-profile'].forEach(id => {
+            const select = document.getElementById(id);
+            if (select) {
+                select.addEventListener('change', () => {
+                    const currentPod = document.getElementById('viz-source-select')?.value || 'production1';
+                    this.updatePodSetting(currentPod, select);
+                });
+            }
+        });
+
+        // Set up refresh button for events
+        const refreshBtn = document.getElementById('btn-refresh-logs');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', () => this.fetchNeuVectorEvents());
         }
     }
 
@@ -622,7 +626,6 @@ class DemoApp {
         const targetTypeParam = demo.parameters.find(p => p.name === 'target_type');
         const targetPodParam = demo.parameters.find(p => p.name === 'target_pod');
         const targetPublicParam = demo.parameters.find(p => p.name === 'target_public');
-        const targetCustomParam = demo.parameters.find(p => p.name === 'target_custom');
 
         const modeOptions = `
             <option value="Discover">Discover</option>
@@ -650,13 +653,18 @@ class DemoApp {
             `<option value="${opt.value}" ${opt.value === targetPublicParam.default ? 'selected' : ''}>${opt.label}</option>`
         ).join('') : '';
 
+        // Hidden form fields synced from visualization + Pod settings and Events
         return `
+            <!-- Hidden form fields synced from visualization -->
+            <input type="hidden" name="pod_name" id="param-pod_name" value="${podParam.default}">
+            <input type="hidden" name="target_type" id="param-target_type" value="${targetTypeParam.default}">
+            <input type="hidden" name="target_pod" id="param-target_pod" value="${targetPodParam?.default || ''}">
+            <input type="hidden" name="target_public" id="param-target_public" value="${targetPublicParam?.default || ''}">
+            <input type="hidden" name="target_custom" id="param-target_custom" value="">
+            <input type="hidden" name="command" id="param-command" value="curl">
+
             <div class="demo-compact-row">
                 <div class="demo-config-left">
-                    <div class="form-group">
-                        <label for="param-pod_name">Source Pod *</label>
-                        <select class="form-control" name="pod_name" id="param-pod_name" required>${podOptions}</select>
-                    </div>
                     <div class="pod-status-container" id="pod-status-container">
                         <div class="pod-status-row">
                             <span class="pod-status-label">Network Policy:</span>
@@ -671,32 +679,23 @@ class DemoApp {
                             <select class="pod-status-select" id="pod-baseline-profile" data-field="baseline_profile">${baselineOptions}</select>
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label for="param-target_type">Target *</label>
-                        <select class="form-control" name="target_type" id="param-target_type" required>${targetTypeOptions}</select>
-                    </div>
-                    <div class="form-group target-field" id="target-pod-group" style="display: none;">
-                        <label for="param-target_pod">Target Pod</label>
-                        <select class="form-control" name="target_pod" id="param-target_pod">${targetPodOptions}</select>
-                    </div>
-                    <div class="form-group target-field" id="target-public-group">
-                        <label for="param-target_public">Public Website</label>
-                        <select class="form-control" name="target_public" id="param-target_public">${targetPublicOptions}</select>
-                    </div>
-                    <div class="form-group target-field" id="target-custom-group" style="display: none;">
-                        <label for="param-target_custom">Custom Target</label>
-                        <input type="text" class="form-control" name="target_custom" id="param-target_custom"
-                               value="" placeholder="hostname, IP or URL">
-                    </div>
-                    <input type="hidden" name="command" id="param-command" value="curl">
-                </div>
-                <div class="demo-config-right">
                     <div class="process-rules-container" id="process-rules-container">
                         <div class="process-rules-header">
                             <span>Allowed Processes</span>
                             <span class="process-rules-count" id="process-rules-count"></span>
                         </div>
                         <div class="process-rules-list loading" id="process-rules-list">Loading...</div>
+                    </div>
+                </div>
+                <div class="demo-config-right">
+                    <div class="nv-logs-container" id="nv-logs-container">
+                        <div class="nv-logs-header">
+                            <span>NeuVector Events</span>
+                            <button class="btn-refresh" id="btn-refresh-logs" title="Refresh events">↻</button>
+                        </div>
+                        <div class="nv-logs-list empty" id="nv-logs-list">
+                            Click refresh to load events
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1033,29 +1032,54 @@ class DemoApp {
             return;
         }
 
-        // Get parameter values for display
-        const podSelect = document.getElementById('param-pod_name');
-        const sourceName = podSelect ? podSelect.options[podSelect.selectedIndex]?.text || 'Source' : 'Source';
-        const targetLabel = this.getTargetLabel();
+        // Get parameters for dropdowns
+        const podParam = demo.parameters.find(p => p.name === 'pod_name');
+        const targetTypeParam = demo.parameters.find(p => p.name === 'target_type');
+        const targetPodParam = demo.parameters.find(p => p.name === 'target_pod');
+        const targetPublicParam = demo.parameters.find(p => p.name === 'target_public');
+
+        // Build source options
+        const sourceOptions = podParam.options.map(opt =>
+            `<option value="${opt.value}" ${opt.value === podParam.default ? 'selected' : ''}>${opt.label}</option>`
+        ).join('');
+
+        // Build target type options
+        const targetTypeOptions = targetTypeParam.options.map(opt =>
+            `<option value="${opt.value}" ${opt.value === targetTypeParam.default ? 'selected' : ''}>${opt.label}</option>`
+        ).join('');
+
+        // Build target pod options
+        const targetPodOptions = targetPodParam ? targetPodParam.options.map(opt =>
+            `<option value="${opt.value}" ${opt.value === targetPodParam.default ? 'selected' : ''}>${opt.label}</option>`
+        ).join('') : '';
+
+        // Build target public options
+        const targetPublicOptions = targetPublicParam ? targetPublicParam.options.map(opt => {
+            let label = opt.label;
+            try { label = new URL(opt.value).hostname; } catch(e) {}
+            return `<option value="${opt.value}" ${opt.value === targetPublicParam.default ? 'selected' : ''}>${label}</option>`;
+        }).join('') : '';
 
         const vizHtml = `
             <div class="demo-viz-row">
                 <div class="demo-visualization" id="demo-visualization">
-                    <div class="viz-header">
-                        <span>Visualization</span>
-                    </div>
                     <div class="viz-content">
                         <div class="viz-box viz-source pending" id="viz-source">
                             <div class="viz-icon">📦</div>
-                            <div class="viz-label" id="viz-source-label">${this.escapeHtml(sourceName)}</div>
+                            <div class="viz-label">Source</div>
+                            <select class="viz-select" id="viz-source-select" name="pod_name">${sourceOptions}</select>
                         </div>
                         <div class="viz-arrow pending" id="viz-arrow">
                             <div class="viz-arrow-line"></div>
                             <div class="viz-arrow-label" id="viz-arrow-label">curl</div>
                         </div>
                         <div class="viz-box viz-target pending" id="viz-target">
-                            <div class="viz-icon">🌐</div>
-                            <div class="viz-label" id="viz-target-label">${this.escapeHtml(targetLabel)}</div>
+                            <div class="viz-icon" id="viz-target-icon">🌐</div>
+                            <div class="viz-label">Target</div>
+                            <select class="viz-select" id="viz-target-type" name="target_type">${targetTypeOptions}</select>
+                            <select class="viz-select" id="viz-target-pod" name="target_pod" style="display:none;">${targetPodOptions}</select>
+                            <select class="viz-select" id="viz-target-public" name="target_public">${targetPublicOptions}</select>
+                            <input type="text" class="viz-select" id="viz-target-custom" name="target_custom" placeholder="hostname/IP" style="display:none;">
                         </div>
                     </div>
                     <div class="viz-status pending" id="viz-status">
@@ -1069,55 +1093,37 @@ class DemoApp {
                         <button type="button" class="btn btn-outline btn-cmd" data-cmd="nmap" title="Port scan">nmap</button>
                     </div>
                 </div>
-                <div class="nv-logs-container" id="nv-logs-container">
-                    <div class="nv-logs-header">
-                        <span>NeuVector Events</span>
-                        <button class="btn-refresh" id="btn-refresh-logs" title="Refresh events">↻</button>
-                    </div>
-                    <div class="nv-logs-list empty" id="nv-logs-list">
-                        Click refresh to load events
-                    </div>
-                </div>
+                <input type="hidden" id="param-command" name="command" value="curl">
             </div>
         `;
 
-        // Find or create container after demo-params
+        // Find the card-body to insert before
         const demoParams = document.getElementById('demo-params');
         if (!demoParams) return;
 
         // Remove existing visualization
         this.removeVisualization();
 
-        // Insert visualization after the params
+        // Insert visualization BEFORE the params (at the top)
         const vizWrapper = document.createElement('div');
         vizWrapper.id = 'viz-wrapper';
         vizWrapper.innerHTML = vizHtml;
-        demoParams.parentNode.insertBefore(vizWrapper, demoParams.nextSibling);
+        demoParams.parentNode.insertBefore(vizWrapper, demoParams);
 
         this.vizContainer = document.getElementById('demo-visualization');
         this.vizState = 'pending';
 
-        // Set up target type switching
-        this.setupTargetTypeSwitch();
+        // Set up target type switching in visualization
+        this.setupVizTargetSwitch();
 
-        // Set up event listeners for parameter changes
-        if (podSelect) {
-            podSelect.addEventListener('change', () => this.updateVizLabels());
-        }
-
-        // Set up target field change listeners
-        ['param-target_type', 'param-target_pod', 'param-target_public', 'param-target_custom'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) {
-                el.addEventListener('change', () => this.updateVizLabels());
-                el.addEventListener('input', () => this.updateVizLabels());
-            }
-        });
-
-        // Set up refresh button
-        const refreshBtn = document.getElementById('btn-refresh-logs');
-        if (refreshBtn) {
-            refreshBtn.addEventListener('click', () => this.fetchNeuVectorEvents());
+        // Set up source select listener
+        const sourceSelect = document.getElementById('viz-source-select');
+        if (sourceSelect) {
+            sourceSelect.addEventListener('change', () => {
+                this.syncFormFromViz();
+                this.updatePodStatus(sourceSelect.value);
+                this.updateProcessRules(sourceSelect.value);
+            });
         }
 
         // Set up command buttons
@@ -1129,6 +1135,65 @@ class DemoApp {
                 this.runCurrentDemo();
             });
         });
+    }
+
+    /**
+     * Set up target type switching in visualization
+     */
+    setupVizTargetSwitch() {
+        const targetType = document.getElementById('viz-target-type');
+        const targetPod = document.getElementById('viz-target-pod');
+        const targetPublic = document.getElementById('viz-target-public');
+        const targetCustom = document.getElementById('viz-target-custom');
+        const targetIcon = document.getElementById('viz-target-icon');
+
+        if (!targetType) return;
+
+        const updateTargetFields = () => {
+            const type = targetType.value;
+            if (targetPod) targetPod.style.display = type === 'pod' ? 'block' : 'none';
+            if (targetPublic) targetPublic.style.display = type === 'public' ? 'block' : 'none';
+            if (targetCustom) targetCustom.style.display = type === 'custom' ? 'block' : 'none';
+            if (targetIcon) targetIcon.textContent = type === 'pod' ? '📦' : '🌐';
+            this.syncFormFromViz();
+        };
+
+        targetType.addEventListener('change', updateTargetFields);
+        if (targetPod) targetPod.addEventListener('change', () => this.syncFormFromViz());
+        if (targetPublic) targetPublic.addEventListener('change', () => this.syncFormFromViz());
+        if (targetCustom) targetCustom.addEventListener('input', () => this.syncFormFromViz());
+
+        updateTargetFields();
+    }
+
+    /**
+     * Sync hidden form fields from visualization selects
+     */
+    syncFormFromViz() {
+        // Sync source
+        const vizSource = document.getElementById('viz-source-select');
+        const formSource = document.getElementById('param-pod_name');
+        if (vizSource && formSource) formSource.value = vizSource.value;
+
+        // Sync target type
+        const vizTargetType = document.getElementById('viz-target-type');
+        const formTargetType = document.getElementById('param-target_type');
+        if (vizTargetType && formTargetType) formTargetType.value = vizTargetType.value;
+
+        // Sync target pod
+        const vizTargetPod = document.getElementById('viz-target-pod');
+        const formTargetPod = document.getElementById('param-target_pod');
+        if (vizTargetPod && formTargetPod) formTargetPod.value = vizTargetPod.value;
+
+        // Sync target public
+        const vizTargetPublic = document.getElementById('viz-target-public');
+        const formTargetPublic = document.getElementById('param-target_public');
+        if (vizTargetPublic && formTargetPublic) formTargetPublic.value = vizTargetPublic.value;
+
+        // Sync target custom
+        const vizTargetCustom = document.getElementById('viz-target-custom');
+        const formTargetCustom = document.getElementById('param-target_custom');
+        if (vizTargetCustom && formTargetCustom) formTargetCustom.value = vizTargetCustom.value;
     }
 
     /**
