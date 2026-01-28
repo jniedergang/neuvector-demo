@@ -600,7 +600,7 @@ class DemoApp {
             lowerText.includes('permission denied') ||
             lowerText.includes('operation not permitted') ||
             (text.includes('[ERROR]') && (lowerText.includes('process') || lowerText.includes('terminated')))) {
-            this.detectedResult = { state: 'intercepted', message: 'Process blocked by NeuVector' };
+            this.detectedResult = { state: 'intercepted', message: 'Process blocked by SUSE Security' };
             return;
         }
 
@@ -754,7 +754,7 @@ class DemoApp {
                     lowerMsg.includes('sigkill') ||
                     lowerMsg.includes('process') ||
                     lowerMsg.includes('denied')) {
-                    this.updateVisualization('intercepted', 'Process blocked by NeuVector');
+                    this.updateVisualization('intercepted', 'Process blocked by SUSE Security');
                 } else if (lowerMsg.includes('28') || lowerMsg.includes('timeout')) {
                     this.updateVisualization('blocked', 'Connection blocked (timeout)');
                 } else {
@@ -1095,7 +1095,7 @@ class DemoApp {
 
         const credentials = settingsManager.getCredentials();
         if (!credentials.password) {
-            list.innerHTML = 'Configure NeuVector credentials first';
+            list.innerHTML = 'Configure SUSE Security credentials first';
             list.className = 'process-rules-list empty';
             return;
         }
@@ -1409,20 +1409,6 @@ class DemoApp {
         } else if (isDLPDemo) {
             targetContent = `
                 <select class="viz-select" id="viz-dlp-target" name="target">${dlpTargetOptions}</select>
-                <div class="viz-pod-settings" id="viz-target-settings">
-                    <div class="viz-setting-row">
-                        <span class="viz-setting-label">Network Policy</span>
-                        <select class="viz-setting-select" id="viz-tgt-policy-mode" data-field="policy_mode" data-target="target">${modeOptions}</select>
-                    </div>
-                    <div class="viz-setting-row">
-                        <span class="viz-setting-label">Process Profile</span>
-                        <select class="viz-setting-select" id="viz-tgt-profile-mode" data-field="profile_mode" data-target="target">${modeOptions}</select>
-                    </div>
-                    <div class="viz-setting-row">
-                        <span class="viz-setting-label">Baseline</span>
-                        <select class="viz-setting-select" id="viz-tgt-baseline" data-field="baseline_profile" data-target="target">${baselineOptions}</select>
-                    </div>
-                </div>
                 <div class="viz-dlp-sensors" id="viz-tgt-dlp-sensors">
                     <div class="viz-dlp-sensors-header">DLP Sensors</div>
                     <div class="viz-dlp-sensor-row">
@@ -1446,6 +1432,20 @@ class DemoApp {
                             <button type="button" class="viz-action-btn active" data-action="allow">Alert</button>
                             <button type="button" class="viz-action-btn" data-action="deny">Block</button>
                         </div>
+                    </div>
+                </div>
+                <div class="viz-pod-settings" id="viz-target-settings">
+                    <div class="viz-setting-row">
+                        <span class="viz-setting-label">Network Policy</span>
+                        <select class="viz-setting-select" id="viz-tgt-policy-mode" data-field="policy_mode" data-target="target">${modeOptions}</select>
+                    </div>
+                    <div class="viz-setting-row">
+                        <span class="viz-setting-label">Process Profile</span>
+                        <select class="viz-setting-select" id="viz-tgt-profile-mode" data-field="profile_mode" data-target="target">${modeOptions}</select>
+                    </div>
+                    <div class="viz-setting-row">
+                        <span class="viz-setting-label">Baseline</span>
+                        <select class="viz-setting-select" id="viz-tgt-baseline" data-field="baseline_profile" data-target="target">${baselineOptions}</select>
                     </div>
                 </div>
                 <div class="viz-process-list" id="viz-target-processes">
@@ -1540,7 +1540,7 @@ class DemoApp {
                 </div>
                 <div class="nv-logs-container" id="nv-logs-container">
                     <div class="nv-logs-header">
-                        <span>NeuVector Events</span>
+                        <span>SUSE Security Events</span>
                         <button type="button" class="btn-refresh" id="btn-refresh-logs" title="Refresh events">↻</button>
                     </div>
                     <div class="nv-logs-list empty" id="nv-logs-list">
@@ -2412,7 +2412,7 @@ class DemoApp {
                 'running': 'Connecting...',
                 'success': 'Connection successful',
                 'blocked': 'Network blocked by policy',
-                'intercepted': 'Process blocked by NeuVector',
+                'intercepted': 'Process blocked by SUSE Security',
             };
             statusText.textContent = message || messages[state] || state;
         }
@@ -2435,7 +2435,7 @@ class DemoApp {
 
         const credentials = settingsManager.getCredentials();
         if (!credentials.password) {
-            logsList.innerHTML = 'Configure NeuVector credentials first';
+            logsList.innerHTML = 'Configure SUSE Security credentials first';
             logsList.className = 'nv-logs-list empty';
             return;
         }

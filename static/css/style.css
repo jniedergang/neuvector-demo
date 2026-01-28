@@ -1138,7 +1138,7 @@ select.form-control {
 
 /* Events panel in viz row */
 .demo-viz-row .nv-logs-container {
-    width: 280px;
+    width: 560px;
     flex-shrink: 0;
     max-height: 400px;
     display: flex;
@@ -1837,7 +1837,7 @@ select.form-control {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-/* NeuVector Events/Logs */
+/* SUSE Security Events/Logs */
 .nv-logs-container {
     background: var(--card-bg);
     border: 1px solid var(--border-color);
