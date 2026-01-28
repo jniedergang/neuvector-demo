@@ -3,23 +3,35 @@
  */
 
 /**
- * Settings Manager - handles NeuVector API credentials
+ * Settings Manager - handles NeuVector API credentials and logo
  */
 class SettingsManager {
     constructor() {
         this.STORAGE_KEY = 'neuvector_settings';
+        this.LOGO_KEY = 'neuvector_logo';
+        this.TITLE_KEY = 'neuvector_title';
         this.modal = document.getElementById('settings-modal');
         this.usernameInput = document.getElementById('settings-username');
         this.passwordInput = document.getElementById('settings-password');
+        this.titleInput = document.getElementById('settings-title');
         this.apiUrlDisplay = document.getElementById('settings-api-url');
         this.statusDiv = document.getElementById('settings-status');
         this.apiStatusBox = document.getElementById('api-status-box');
         this.apiStatusValue = document.getElementById('api-status-value');
+        this.logoFileInput = document.getElementById('logo-file-input');
+        this.logoPreview = document.getElementById('logo-preview');
+        this.removeLogo = document.getElementById('btn-remove-logo');
+        this.headerLogo = document.getElementById('header-logo');
+        this.headerTitle = document.getElementById('header-title');
     }
 
     init() {
         // Load saved settings
         this.loadSettings();
+
+        // Load and display logo and title
+        this.loadLogo();
+        this.loadTitle();
 
         // Fetch API URL
         this.fetchApiUrl();
@@ -35,6 +47,10 @@ class SettingsManager {
         document.getElementById('btn-close-settings')?.addEventListener('click', () => this.closeModal());
         document.getElementById('btn-test-connection')?.addEventListener('click', () => this.testConnection());
         document.getElementById('btn-save-settings')?.addEventListener('click', () => this.saveSettings());
+
+        // Logo event listeners
+        this.logoFileInput?.addEventListener('change', (e) => this.handleLogoUpload(e));
+        this.removeLogo?.addEventListener('click', () => this.handleLogoRemove());
 
         // Close on overlay click
         this.modal?.addEventListener('click', (e) => {
@@ -63,8 +79,24 @@ class SettingsManager {
     openModal() {
         this.loadSettings();
         this.clearStatus();
+        // Refresh title
+        const title = localStorage.getItem(this.TITLE_KEY) || 'NeuVector Demo Platform';
+        if (this.titleInput) {
+            this.titleInput.value = title;
+        }
+        // Refresh logo preview
+        const logoData = localStorage.getItem(this.LOGO_KEY);
+        if (logoData) {
+            this.displayLogo(logoData);
+        } else {
+            if (this.logoPreview) {
+                this.logoPreview.innerHTML = '<span class="logo-placeholder">No logo</span>';
+            }
+            if (this.removeLogo) {
+                this.removeLogo.style.display = 'none';
+            }
+        }
         this.modal?.classList.add('active');
-        this.usernameInput?.focus();
     }
 
     closeModal() {
@@ -92,9 +124,9 @@ class SettingsManager {
 
         try {
             localStorage.setItem(this.STORAGE_KEY, JSON.stringify(settings));
-            this.showStatus('Settings saved', 'success');
+            this.saveTitle(); // Save title
             this.checkApiStatus(); // Refresh API status
-            setTimeout(() => this.closeModal(), 1000);
+            this.closeModal();
         } catch (error) {
             this.showStatus('Failed to save settings', 'error');
         }
@@ -104,11 +136,11 @@ class SettingsManager {
         const credentials = this.getCredentials();
 
         if (!credentials.password) {
-            this.updateApiStatusDisplay('Not configured', '');
+            this.updateApiStatusDisplay('N/A', '');
             return;
         }
 
-        this.updateApiStatusDisplay('Checking...', 'checking');
+        this.updateApiStatusDisplay('...', 'checking');
 
         try {
             const response = await fetch('/api/neuvector/test', {
@@ -134,7 +166,7 @@ class SettingsManager {
             this.apiStatusValue.textContent = text;
         }
         if (this.apiStatusBox) {
-            this.apiStatusBox.className = 'api-status-box' + (status ? ' ' + status : '');
+            this.apiStatusBox.className = 'header-status-box' + (status ? ' ' + status : '');
         }
     }
 
@@ -144,8 +176,8 @@ class SettingsManager {
 
         if (!clusterStatusBox || !clusterStatusValue) return;
 
-        clusterStatusBox.className = 'api-status-box checking';
-        clusterStatusValue.textContent = 'Checking...';
+        clusterStatusBox.className = 'header-status-box checking';
+        clusterStatusValue.textContent = '...';
 
         try {
             const response = await fetch('/api/cluster-info');
@@ -155,15 +187,15 @@ class SettingsManager {
                 // Extract short name from context (e.g., "downstream" from "downstream")
                 const contextName = info.context || 'unknown';
                 const shortName = contextName.split('/').pop().split('@').pop();
-                clusterStatusValue.textContent = `${shortName} (${info.node_count} nodes)`;
-                clusterStatusBox.className = 'api-status-box ok';
+                clusterStatusValue.textContent = `${shortName} (${info.node_count}n)`;
+                clusterStatusBox.className = 'header-status-box ok';
             } else {
                 clusterStatusValue.textContent = 'Disconnected';
-                clusterStatusBox.className = 'api-status-box error';
+                clusterStatusBox.className = 'header-status-box error';
             }
         } catch (error) {
             clusterStatusValue.textContent = 'Error';
-            clusterStatusBox.className = 'api-status-box error';
+            clusterStatusBox.className = 'header-status-box error';
         }
     }
 
@@ -225,6 +257,144 @@ class SettingsManager {
         }
     }
 
+    /**
+     * Load title from localStorage and display it
+     */
+    loadTitle() {
+        try {
+            const title = localStorage.getItem(this.TITLE_KEY);
+            if (title) {
+                if (this.headerTitle) {
+                    this.headerTitle.textContent = title;
+                }
+                if (this.titleInput) {
+                    this.titleInput.value = title;
+                }
+                document.title = title;
+            }
+        } catch (error) {
+            console.error('Failed to load title:', error);
+        }
+    }
+
+    /**
+     * Save title to localStorage
+     */
+    saveTitle() {
+        const title = this.titleInput?.value || 'NeuVector Demo Platform';
+        try {
+            localStorage.setItem(this.TITLE_KEY, title);
+            if (this.headerTitle) {
+                this.headerTitle.textContent = title;
+            }
+            document.title = title;
+        } catch (error) {
+            console.error('Failed to save title:', error);
+        }
+    }
+
+    /**
+     * Load logo from localStorage and display it
+     */
+    loadLogo() {
+        try {
+            const logoData = localStorage.getItem(this.LOGO_KEY);
+            if (logoData) {
+                this.displayLogo(logoData);
+            }
+        } catch (error) {
+            console.error('Failed to load logo:', error);
+        }
+    }
+
+    /**
+     * Display logo in header and preview
+     */
+    displayLogo(dataUrl) {
+        // Update header logo
+        if (this.headerLogo) {
+            this.headerLogo.src = dataUrl;
+            this.headerLogo.style.display = 'inline';
+        }
+
+        // Update preview
+        if (this.logoPreview) {
+            this.logoPreview.innerHTML = `<img src="${dataUrl}" alt="Logo">`;
+        }
+
+        // Show remove button
+        if (this.removeLogo) {
+            this.removeLogo.style.display = 'inline-flex';
+        }
+    }
+
+    /**
+     * Handle logo file upload
+     */
+    handleLogoUpload(event) {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        // Check file type
+        if (!file.type.startsWith('image/')) {
+            alert('Please select an image file');
+            return;
+        }
+
+        // Check file size (max 500KB)
+        if (file.size > 500 * 1024) {
+            alert('Image must be smaller than 500KB');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const dataUrl = e.target?.result;
+            if (dataUrl) {
+                try {
+                    localStorage.setItem(this.LOGO_KEY, dataUrl);
+                    this.displayLogo(dataUrl);
+                } catch (error) {
+                    console.error('Failed to save logo:', error);
+                    alert('Failed to save logo. The image may be too large.');
+                }
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+
+    /**
+     * Handle logo removal
+     */
+    handleLogoRemove() {
+        try {
+            localStorage.removeItem(this.LOGO_KEY);
+        } catch (error) {
+            console.error('Failed to remove logo:', error);
+        }
+
+        // Hide header logo
+        if (this.headerLogo) {
+            this.headerLogo.src = '';
+            this.headerLogo.style.display = 'none';
+        }
+
+        // Reset preview
+        if (this.logoPreview) {
+            this.logoPreview.innerHTML = '<span class="logo-placeholder">No logo</span>';
+        }
+
+        // Hide remove button
+        if (this.removeLogo) {
+            this.removeLogo.style.display = 'none';
+        }
+
+        // Reset file input
+        if (this.logoFileInput) {
+            this.logoFileInput.value = '';
+        }
+    }
+
     async getGroupStatus(groupName) {
         const credentials = this.getCredentials();
         if (!credentials.password) {
@@ -260,6 +430,38 @@ document.addEventListener('DOMContentLoaded', () => {
     const app = new DemoApp();
     app.init();
     settingsManager.init();
+
+    // Sidebar toggle functionality
+    const sidebar = document.getElementById('sidebar');
+    const backdrop = document.getElementById('sidebar-backdrop');
+    const toggleBtn = document.getElementById('btn-sidebar-toggle');
+    const closeBtn = document.getElementById('btn-sidebar-close');
+
+    const openSidebar = () => {
+        sidebar?.classList.add('open');
+        backdrop?.classList.add('visible');
+    };
+
+    const closeSidebar = () => {
+        sidebar?.classList.remove('open');
+        backdrop?.classList.remove('visible');
+    };
+
+    toggleBtn?.addEventListener('click', openSidebar);
+    closeBtn?.addEventListener('click', closeSidebar);
+    backdrop?.addEventListener('click', closeSidebar);
+
+    // Close sidebar when a demo is selected
+    document.querySelectorAll('.demo-item').forEach(item => {
+        item.addEventListener('click', closeSidebar);
+    });
+
+    // Close sidebar on Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && sidebar?.classList.contains('open')) {
+            closeSidebar();
+        }
+    });
 });
 
 class DemoApp {
@@ -284,7 +486,7 @@ class DemoApp {
         this.statusText = document.getElementById('status-text');
         this.demoForm = document.getElementById('demo-form');
         this.demoParams = document.getElementById('demo-params');
-        this.demoTitle = document.getElementById('demo-title');
+        this.demoSelector = document.getElementById('demo-selector');
         this.demoDescription = document.getElementById('demo-description');
         this.runButton = document.getElementById('run-demo-btn');
 
@@ -299,7 +501,15 @@ class DemoApp {
         document.getElementById('btn-status')?.addEventListener('click', () => this.runAction('status'));
         document.getElementById('btn-clear')?.addEventListener('click', () => this.clearConsole());
 
-        // Demo items
+        // Demo selector dropdown
+        this.demoSelector?.addEventListener('change', (e) => {
+            const demoId = e.target.value;
+            if (demoId) {
+                this.selectDemo(demoId);
+            }
+        });
+
+        // Demo items in sidebar
         document.querySelectorAll('.demo-item').forEach(item => {
             item.addEventListener('click', () => this.selectDemo(item.dataset.demoId));
         });
@@ -511,8 +721,35 @@ class DemoApp {
                     this.updateVisualization('blocked', message || 'Connection failed');
                 }
             }
-            // Fetch events after demo completes
+        }
+
+        // Always fetch events and refresh process rules after demo completes
+        if (this.vizContainer) {
             setTimeout(() => this.fetchNeuVectorEvents(), 1000);
+            setTimeout(() => this.fetchNeuVectorEvents(), 3000);
+            // Refresh process rules (new processes may have been learned)
+            setTimeout(() => this.refreshAllProcessRules(), 2000);
+        }
+    }
+
+    /**
+     * Refresh all visible process rule lists
+     */
+    refreshAllProcessRules() {
+        const srcSelect = document.getElementById('viz-source-select');
+        const tgtPod = document.getElementById('viz-target-pod');
+        const tgtType = document.getElementById('viz-target-type');
+
+        if (srcSelect) {
+            const srcPod = srcSelect.value;
+            if (srcPod) {
+                this.updateVizProcessRules('source', srcPod);
+            }
+        }
+
+        // Refresh target process rules if target is a pod
+        if (tgtType && tgtType.value === 'pod' && tgtPod && tgtPod.value) {
+            this.updateVizProcessRules('target', tgtPod.value);
         }
     }
 
@@ -533,10 +770,23 @@ class DemoApp {
      * Select a demo
      */
     selectDemo(demoId) {
-        // Update active state
+        // Update active state in sidebar
         document.querySelectorAll('.demo-item').forEach(item => {
             item.classList.toggle('active', item.dataset.demoId === demoId);
         });
+
+        // Update dropdown selector
+        if (this.demoSelector && this.demoSelector.value !== demoId) {
+            this.demoSelector.value = demoId;
+        }
+
+        // Close sidebar on mobile after selection
+        const sidebar = document.getElementById('sidebar');
+        const backdrop = document.getElementById('sidebar-backdrop');
+        if (sidebar?.classList.contains('open')) {
+            sidebar.classList.remove('open');
+            backdrop?.classList.remove('visible');
+        }
 
         // Load demo details
         this.loadDemo(demoId);
@@ -562,22 +812,25 @@ class DemoApp {
      * Render demo form
      */
     renderDemoForm(demo) {
-        if (this.demoTitle) {
-            this.demoTitle.textContent = `${demo.icon} ${demo.name}`;
-        }
+        // Dropdown is already updated in selectDemo()
 
         if (this.demoDescription) {
             this.demoDescription.innerHTML = `<p>${demo.description}</p>`;
         }
 
-        // Check if this is a connectivity-type demo (has pod_name and target_type)
+        // Check demo type for visualization
         const paramNames = demo.parameters.map(p => p.name);
         const isConnectivityDemo = paramNames.includes('pod_name') && paramNames.includes('target_type');
+        const isDLPDemo = paramNames.includes('pod_name') && paramNames.includes('data_type') && paramNames.includes('target');
+        const hasVisualization = isConnectivityDemo || isDLPDemo;
 
         if (this.demoParams) {
             if (isConnectivityDemo) {
                 // Render compact layout for connectivity demos
                 this.demoParams.innerHTML = this.renderCompactDemoParams(demo);
+            } else if (isDLPDemo) {
+                // Render compact layout for DLP demos
+                this.demoParams.innerHTML = this.renderDLPDemoParams(demo);
             } else {
                 // Standard layout for other demos
                 this.demoParams.innerHTML = demo.parameters.map(param => this.renderParameter(param)).join('');
@@ -585,31 +838,12 @@ class DemoApp {
         }
 
         if (this.runButton) {
-            // Hide main run button for connectivity demos (it's in the visualization)
-            this.runButton.style.display = isConnectivityDemo ? 'none' : 'inline-flex';
+            // Hide main run button for visualization demos (it's in the visualization)
+            this.runButton.style.display = hasVisualization ? 'none' : 'inline-flex';
         }
 
-        // Create visualization for connectivity demos
+        // Create visualization for supported demos
         this.createVisualization(demo);
-
-        // Set up pod status listener for connectivity demo
-        const vizSourceSelect = document.getElementById('viz-source-select');
-        const initialPodName = vizSourceSelect?.value || 'production1';
-
-        // Trigger initial fetch
-        this.updatePodStatus(initialPodName);
-        this.updateProcessRules(initialPodName);
-
-        // Set up change listeners for policy selects
-        ['pod-policy-mode', 'pod-profile-mode', 'pod-baseline-profile'].forEach(id => {
-            const select = document.getElementById(id);
-            if (select) {
-                select.addEventListener('change', () => {
-                    const currentPod = document.getElementById('viz-source-select')?.value || 'production1';
-                    this.updatePodSetting(currentPod, select);
-                });
-            }
-        });
 
         // Set up refresh button for events
         const refreshBtn = document.getElementById('btn-refresh-logs');
@@ -627,33 +861,7 @@ class DemoApp {
         const targetPodParam = demo.parameters.find(p => p.name === 'target_pod');
         const targetPublicParam = demo.parameters.find(p => p.name === 'target_public');
 
-        const modeOptions = `
-            <option value="Discover">Discover</option>
-            <option value="Monitor">Monitor</option>
-            <option value="Protect">Protect</option>
-        `;
-        const baselineOptions = `
-            <option value="basic">basic</option>
-            <option value="zero-drift">zero-drift</option>
-        `;
-
-        const podOptions = podParam.options.map(opt =>
-            `<option value="${opt.value}" ${opt.value === podParam.default ? 'selected' : ''}>${opt.label}</option>`
-        ).join('');
-
-        const targetTypeOptions = targetTypeParam.options.map(opt =>
-            `<option value="${opt.value}" ${opt.value === targetTypeParam.default ? 'selected' : ''}>${opt.label}</option>`
-        ).join('');
-
-        const targetPodOptions = targetPodParam ? targetPodParam.options.map(opt =>
-            `<option value="${opt.value}" ${opt.value === targetPodParam.default ? 'selected' : ''}>${opt.label}</option>`
-        ).join('') : '';
-
-        const targetPublicOptions = targetPublicParam ? targetPublicParam.options.map(opt =>
-            `<option value="${opt.value}" ${opt.value === targetPublicParam.default ? 'selected' : ''}>${opt.label}</option>`
-        ).join('') : '';
-
-        // Hidden form fields synced from visualization + Pod settings and Events
+        // Hidden form fields only - events panel moved to visualization row
         return `
             <!-- Hidden form fields synced from visualization -->
             <input type="hidden" name="pod_name" id="param-pod_name" value="${podParam.default}">
@@ -662,43 +870,24 @@ class DemoApp {
             <input type="hidden" name="target_public" id="param-target_public" value="${targetPublicParam?.default || ''}">
             <input type="hidden" name="target_custom" id="param-target_custom" value="">
             <input type="hidden" name="command" id="param-command" value="curl">
+        `;
+    }
 
-            <div class="demo-compact-row">
-                <div class="demo-config-left">
-                    <div class="pod-status-container" id="pod-status-container">
-                        <div class="pod-status-row">
-                            <span class="pod-status-label">Network Policy:</span>
-                            <select class="pod-status-select" id="pod-policy-mode" data-field="policy_mode">${modeOptions}</select>
-                        </div>
-                        <div class="pod-status-row">
-                            <span class="pod-status-label">Process Profile:</span>
-                            <select class="pod-status-select" id="pod-profile-mode" data-field="profile_mode">${modeOptions}</select>
-                        </div>
-                        <div class="pod-status-row">
-                            <span class="pod-status-label">Baseline:</span>
-                            <select class="pod-status-select" id="pod-baseline-profile" data-field="baseline_profile">${baselineOptions}</select>
-                        </div>
-                    </div>
-                    <div class="process-rules-container" id="process-rules-container">
-                        <div class="process-rules-header">
-                            <span>Allowed Processes</span>
-                            <span class="process-rules-count" id="process-rules-count"></span>
-                        </div>
-                        <div class="process-rules-list loading" id="process-rules-list">Loading...</div>
-                    </div>
-                </div>
-                <div class="demo-config-right">
-                    <div class="nv-logs-container" id="nv-logs-container">
-                        <div class="nv-logs-header">
-                            <span>NeuVector Events</span>
-                            <button class="btn-refresh" id="btn-refresh-logs" title="Refresh events">↻</button>
-                        </div>
-                        <div class="nv-logs-list empty" id="nv-logs-list">
-                            Click refresh to load events
-                        </div>
-                    </div>
-                </div>
-            </div>
+    /**
+     * Render compact demo parameters for DLP demos
+     */
+    renderDLPDemoParams(demo) {
+        const podParam = demo.parameters.find(p => p.name === 'pod_name');
+        const targetParam = demo.parameters.find(p => p.name === 'target');
+        const dataTypeParam = demo.parameters.find(p => p.name === 'data_type');
+
+        // Hidden form fields only - synced from visualization
+        return `
+            <!-- Hidden form fields synced from visualization -->
+            <input type="hidden" name="pod_name" id="param-pod_name" value="${podParam?.default || 'production1'}">
+            <input type="hidden" name="target" id="param-target" value="${targetParam?.default || 'nginx'}">
+            <input type="hidden" name="data_type" id="param-data_type" value="${dataTypeParam?.default || 'credit_card'}">
+            <input type="hidden" name="custom_data" id="param-custom_data" value="">
         `;
     }
 
@@ -961,7 +1150,7 @@ class DemoApp {
             const result = await response.json();
 
             if (result.success) {
-                // Animate removal
+                // Animate removal then refresh full list
                 itemElement.style.opacity = '0';
                 itemElement.style.height = '0';
                 itemElement.style.padding = '0';
@@ -970,19 +1159,11 @@ class DemoApp {
                 itemElement.style.transition = 'all 0.3s ease';
 
                 setTimeout(() => {
-                    itemElement.remove();
-                    // Update count
-                    const count = document.getElementById('process-rules-count');
-                    const list = document.getElementById('process-rules-list');
-                    if (count && list) {
-                        const remaining = list.querySelectorAll('.process-rule-item').length;
-                        count.textContent = remaining > 0 ? `(${remaining})` : '';
-                        if (remaining === 0) {
-                            list.innerHTML = 'No process rules';
-                            list.className = 'process-rules-list empty';
-                        }
-                    }
-                }, 300);
+                    // Refresh from API to get accurate state
+                    const podSelect = document.getElementById('viz-source-select') || document.getElementById('param-pod_name');
+                    const podName = podSelect?.value || 'production1';
+                    this.updateProcessRules(podName);
+                }, 400);
             } else {
                 // Show error
                 itemElement.classList.remove('deleting');
@@ -1017,7 +1198,6 @@ class DemoApp {
      * Create visualization HTML for a demo
      */
     createVisualization(demo) {
-        // Only create visualization for demos with pod_name and target_type parameters
         if (!demo) {
             this.removeVisualization();
             return;
@@ -1025,75 +1205,239 @@ class DemoApp {
 
         // Check if demo has the required parameters for visualization
         const paramNames = demo.parameters.map(p => p.name);
-        const hasConnectivityParams = paramNames.includes('pod_name') && paramNames.includes('target_type');
+        const isConnectivityDemo = paramNames.includes('pod_name') && paramNames.includes('target_type');
+        const isDLPDemo = paramNames.includes('pod_name') && paramNames.includes('data_type') && paramNames.includes('target');
 
-        if (!hasConnectivityParams) {
+        if (!isConnectivityDemo && !isDLPDemo) {
             this.removeVisualization();
             return;
         }
 
+        // Store demo type for later use
+        this.currentDemoType = isDLPDemo ? 'dlp' : 'connectivity';
+
         // Get parameters for dropdowns
         const podParam = demo.parameters.find(p => p.name === 'pod_name');
-        const targetTypeParam = demo.parameters.find(p => p.name === 'target_type');
-        const targetPodParam = demo.parameters.find(p => p.name === 'target_pod');
-        const targetPublicParam = demo.parameters.find(p => p.name === 'target_public');
 
         // Build source options
         const sourceOptions = podParam.options.map(opt =>
             `<option value="${opt.value}" ${opt.value === podParam.default ? 'selected' : ''}>${opt.label}</option>`
         ).join('');
 
-        // Build target type options
-        const targetTypeOptions = targetTypeParam.options.map(opt =>
-            `<option value="${opt.value}" ${opt.value === targetTypeParam.default ? 'selected' : ''}>${opt.label}</option>`
-        ).join('');
+        // Variables for connectivity demos
+        let targetTypeOptions = '';
+        let targetPodOptions = '';
+        let targetPublicOptions = '';
 
-        // Build target pod options
-        const targetPodOptions = targetPodParam ? targetPodParam.options.map(opt =>
-            `<option value="${opt.value}" ${opt.value === targetPodParam.default ? 'selected' : ''}>${opt.label}</option>`
-        ).join('') : '';
+        // Variables for DLP demos
+        let dlpTargetOptions = '';
+        let dataTypeOptions = '';
 
-        // Build target public options
-        const targetPublicOptions = targetPublicParam ? targetPublicParam.options.map(opt => {
-            let label = opt.label;
-            try { label = new URL(opt.value).hostname; } catch(e) {}
-            return `<option value="${opt.value}" ${opt.value === targetPublicParam.default ? 'selected' : ''}>${label}</option>`;
-        }).join('') : '';
+        if (isConnectivityDemo) {
+            const targetTypeParam = demo.parameters.find(p => p.name === 'target_type');
+            const targetPodParam = demo.parameters.find(p => p.name === 'target_pod');
+            const targetPublicParam = demo.parameters.find(p => p.name === 'target_public');
+
+            // Build target type options
+            targetTypeOptions = targetTypeParam.options.map(opt =>
+                `<option value="${opt.value}" ${opt.value === targetTypeParam.default ? 'selected' : ''}>${opt.label}</option>`
+            ).join('');
+
+            // Build target pod options
+            targetPodOptions = targetPodParam ? targetPodParam.options.map(opt =>
+                `<option value="${opt.value}" ${opt.value === targetPodParam.default ? 'selected' : ''}>${opt.label}</option>`
+            ).join('') : '';
+
+            // Build target public options
+            targetPublicOptions = targetPublicParam ? targetPublicParam.options.map(opt => {
+                let label = opt.label;
+                try { label = new URL(opt.value).hostname; } catch(e) {}
+                return `<option value="${opt.value}" ${opt.value === targetPublicParam.default ? 'selected' : ''}>${label}</option>`;
+            }).join('') : '';
+        } else if (isDLPDemo) {
+            const targetParam = demo.parameters.find(p => p.name === 'target');
+            const dataTypeParam = demo.parameters.find(p => p.name === 'data_type');
+
+            // Build DLP target options
+            dlpTargetOptions = targetParam ? targetParam.options.map(opt =>
+                `<option value="${opt.value}" ${opt.value === targetParam.default ? 'selected' : ''}>${opt.label}</option>`
+            ).join('') : '';
+
+            // Build data type options
+            dataTypeOptions = dataTypeParam ? dataTypeParam.options.map(opt =>
+                `<option value="${opt.value}" ${opt.value === dataTypeParam.default ? 'selected' : ''}>${opt.label}</option>`
+            ).join('') : '';
+        }
+
+        // Mode options for settings
+        const modeOptions = `
+            <option value="Discover">Discover</option>
+            <option value="Monitor">Monitor</option>
+            <option value="Protect">Protect</option>
+        `;
+        const baselineOptions = `
+            <option value="basic">basic</option>
+            <option value="zero-drift">zero-drift</option>
+        `;
+
+        // Build source extra content (for DLP demos)
+        let sourceExtraContent = '';
+        if (isDLPDemo) {
+            sourceExtraContent = `
+                <div class="viz-dlp-settings" id="viz-dlp-settings">
+                    <div class="viz-setting-row">
+                        <span class="viz-setting-label">Data Type</span>
+                        <select class="viz-setting-select viz-dlp-select" id="viz-data-type" name="data_type">${dataTypeOptions}</select>
+                    </div>
+                    <div class="viz-setting-row" id="viz-custom-data-row" style="display:none;">
+                        <span class="viz-setting-label">Custom Data</span>
+                        <input type="text" class="viz-setting-input" id="viz-custom-data" name="custom_data" placeholder="Enter data...">
+                    </div>
+                </div>
+                <div class="viz-dlp-sensors" id="viz-dlp-sensors">
+                    <div class="viz-dlp-sensors-header">DLP Sensors</div>
+                    <div class="viz-dlp-sensor-row">
+                        <label class="viz-toggle">
+                            <input type="checkbox" id="viz-sensor-creditcard" data-sensor="sensor.creditcard">
+                            <span class="viz-toggle-slider"></span>
+                        </label>
+                        <span class="viz-dlp-sensor-name">Credit Card</span>
+                        <div class="viz-dlp-action-toggle" id="viz-action-creditcard" data-sensor="sensor.creditcard">
+                            <button type="button" class="viz-action-btn active" data-action="allow">Alert</button>
+                            <button type="button" class="viz-action-btn" data-action="deny">Block</button>
+                        </div>
+                    </div>
+                    <div class="viz-dlp-sensor-row">
+                        <label class="viz-toggle">
+                            <input type="checkbox" id="viz-sensor-ssn" data-sensor="sensor.ssn">
+                            <span class="viz-toggle-slider"></span>
+                        </label>
+                        <span class="viz-dlp-sensor-name">SSN</span>
+                        <div class="viz-dlp-action-toggle" id="viz-action-ssn" data-sensor="sensor.ssn">
+                            <button type="button" class="viz-action-btn active" data-action="allow">Alert</button>
+                            <button type="button" class="viz-action-btn" data-action="deny">Block</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Build target content based on demo type
+        let targetContent = '';
+        if (isConnectivityDemo) {
+            targetContent = `
+                <select class="viz-select" id="viz-target-type" name="target_type">${targetTypeOptions}</select>
+                <select class="viz-select" id="viz-target-pod" name="target_pod" style="display:none;">${targetPodOptions}</select>
+                <select class="viz-select" id="viz-target-public" name="target_public">${targetPublicOptions}</select>
+                <input type="text" class="viz-select" id="viz-target-custom" name="target_custom" placeholder="hostname/IP" style="display:none;">
+                <div class="viz-pod-settings" id="viz-target-settings">
+                    <div class="viz-setting-row">
+                        <span class="viz-setting-label">Network Policy</span>
+                        <select class="viz-setting-select" id="viz-tgt-policy-mode" data-field="policy_mode" data-target="target">${modeOptions}</select>
+                    </div>
+                    <div class="viz-setting-row">
+                        <span class="viz-setting-label">Process Profile</span>
+                        <select class="viz-setting-select" id="viz-tgt-profile-mode" data-field="profile_mode" data-target="target">${modeOptions}</select>
+                    </div>
+                    <div class="viz-setting-row">
+                        <span class="viz-setting-label">Baseline</span>
+                        <select class="viz-setting-select" id="viz-tgt-baseline" data-field="baseline_profile" data-target="target">${baselineOptions}</select>
+                    </div>
+                </div>
+                <div class="viz-process-list" id="viz-target-processes">
+                    <div class="viz-process-header">
+                        <span>Allowed Processes</span>
+                        <span id="viz-tgt-process-count"></span>
+                    </div>
+                    <div class="viz-process-items loading" id="viz-tgt-process-items">Loading...</div>
+                </div>
+            `;
+        } else if (isDLPDemo) {
+            targetContent = `
+                <select class="viz-select" id="viz-dlp-target" name="target">${dlpTargetOptions}</select>
+            `;
+        }
+
+        // Build commands section based on demo type
+        let commandsSection = '';
+        if (isConnectivityDemo) {
+            commandsSection = `
+                <div class="viz-commands" id="viz-commands">
+                    <button type="button" class="btn btn-primary btn-cmd active" data-cmd="curl" title="HTTP request">curl</button>
+                    <button type="button" class="btn btn-outline btn-cmd" data-cmd="ping" title="ICMP ping">ping</button>
+                    <button type="button" class="btn btn-outline btn-cmd" data-cmd="ssh" title="SSH connection">ssh</button>
+                    <button type="button" class="btn btn-outline btn-cmd" data-cmd="nmap" title="Port scan">nmap</button>
+                </div>
+            `;
+        } else if (isDLPDemo) {
+            commandsSection = `
+                <div class="viz-commands" id="viz-commands">
+                    <button type="button" class="btn btn-primary btn-run-demo" id="btn-viz-run-dlp" title="Send DLP test data">Run DLP Test</button>
+                </div>
+            `;
+        }
 
         const vizHtml = `
             <div class="demo-viz-row">
                 <div class="demo-visualization" id="demo-visualization">
                     <div class="viz-content">
                         <div class="viz-box viz-source pending" id="viz-source">
-                            <div class="viz-icon">📦</div>
-                            <div class="viz-label">Source</div>
+                            <div class="viz-box-header">
+                                <div class="viz-icon">🐳</div>
+                                <div class="viz-label">Source</div>
+                            </div>
                             <select class="viz-select" id="viz-source-select" name="pod_name">${sourceOptions}</select>
+                            ${sourceExtraContent}
+                            <div class="viz-pod-settings" id="viz-source-settings">
+                                <div class="viz-setting-row">
+                                    <span class="viz-setting-label">Network Policy</span>
+                                    <select class="viz-setting-select" id="viz-src-policy-mode" data-field="policy_mode" data-target="source">${modeOptions}</select>
+                                </div>
+                                <div class="viz-setting-row">
+                                    <span class="viz-setting-label">Process Profile</span>
+                                    <select class="viz-setting-select" id="viz-src-profile-mode" data-field="profile_mode" data-target="source">${modeOptions}</select>
+                                </div>
+                                <div class="viz-setting-row">
+                                    <span class="viz-setting-label">Baseline</span>
+                                    <select class="viz-setting-select" id="viz-src-baseline" data-field="baseline_profile" data-target="source">${baselineOptions}</select>
+                                </div>
+                            </div>
+                            <div class="viz-process-list" id="viz-source-processes">
+                                <div class="viz-process-header">
+                                    <span>Allowed Processes</span>
+                                    <span id="viz-src-process-count"></span>
+                                </div>
+                                <div class="viz-process-items loading" id="viz-src-process-items">Loading...</div>
+                            </div>
                         </div>
                         <div class="viz-arrow pending" id="viz-arrow">
                             <div class="viz-arrow-line"></div>
-                            <div class="viz-arrow-label" id="viz-arrow-label">curl</div>
+                            <div class="viz-arrow-label" id="viz-arrow-label">${isDLPDemo ? 'POST' : 'curl'}</div>
                         </div>
-                        <div class="viz-box viz-target pending" id="viz-target">
-                            <div class="viz-icon" id="viz-target-icon">🌐</div>
-                            <div class="viz-label">Target</div>
-                            <select class="viz-select" id="viz-target-type" name="target_type">${targetTypeOptions}</select>
-                            <select class="viz-select" id="viz-target-pod" name="target_pod" style="display:none;">${targetPodOptions}</select>
-                            <select class="viz-select" id="viz-target-public" name="target_public">${targetPublicOptions}</select>
-                            <input type="text" class="viz-select" id="viz-target-custom" name="target_custom" placeholder="hostname/IP" style="display:none;">
+                        <div class="viz-box viz-target pending ${isDLPDemo ? '' : ''}" id="viz-target">
+                            <div class="viz-box-header">
+                                <div class="viz-icon" id="viz-target-icon">🌐</div>
+                                <div class="viz-label">Target</div>
+                            </div>
+                            ${targetContent}
                         </div>
                     </div>
                     <div class="viz-status pending" id="viz-status">
                         <span class="viz-status-dot"></span>
                         <span class="viz-status-text">Ready</span>
                     </div>
-                    <div class="viz-commands" id="viz-commands">
-                        <button type="button" class="btn btn-primary btn-cmd active" data-cmd="curl" title="HTTP request">curl</button>
-                        <button type="button" class="btn btn-outline btn-cmd" data-cmd="ping" title="ICMP ping">ping</button>
-                        <button type="button" class="btn btn-outline btn-cmd" data-cmd="ssh" title="SSH connection">ssh</button>
-                        <button type="button" class="btn btn-outline btn-cmd" data-cmd="nmap" title="Port scan">nmap</button>
+                    ${commandsSection}
+                </div>
+                <div class="nv-logs-container" id="nv-logs-container">
+                    <div class="nv-logs-header">
+                        <span>NeuVector Events</span>
+                        <button type="button" class="btn-refresh" id="btn-refresh-logs" title="Refresh events">↻</button>
+                    </div>
+                    <div class="nv-logs-list empty" id="nv-logs-list">
+                        Click refresh to load events
                     </div>
                 </div>
-                <input type="hidden" id="param-command" name="command" value="curl">
+                ${isConnectivityDemo ? '<input type="hidden" id="param-command" name="command" value="curl">' : ''}
             </div>
         `;
 
@@ -1121,12 +1465,51 @@ class DemoApp {
         if (sourceSelect) {
             sourceSelect.addEventListener('change', () => {
                 this.syncFormFromViz();
-                this.updatePodStatus(sourceSelect.value);
-                this.updateProcessRules(sourceSelect.value);
+                this.updateVizPodStatus('source', sourceSelect.value);
+                this.updateVizProcessRules('source', sourceSelect.value);
+                // Reload DLP sensors if this is a DLP demo
+                if (this.currentDemoType === 'dlp') {
+                    this.loadDLPSensors(sourceSelect.value);
+                }
             });
         }
 
-        // Set up command buttons
+        // Set up target pod select listener
+        const targetPodSelect = document.getElementById('viz-target-pod');
+        if (targetPodSelect) {
+            targetPodSelect.addEventListener('change', () => {
+                this.syncFormFromViz();
+                const targetType = document.getElementById('viz-target-type')?.value;
+                if (targetType === 'pod') {
+                    this.updateVizPodStatus('target', targetPodSelect.value);
+                    this.updateVizProcessRules('target', targetPodSelect.value);
+                }
+            });
+        }
+
+        // Set up settings change listeners for source
+        ['viz-src-policy-mode', 'viz-src-profile-mode', 'viz-src-baseline'].forEach(id => {
+            const select = document.getElementById(id);
+            if (select) {
+                select.addEventListener('change', () => {
+                    const podName = document.getElementById('viz-source-select')?.value || 'production1';
+                    this.updateVizPodSetting('source', podName, select);
+                });
+            }
+        });
+
+        // Set up settings change listeners for target
+        ['viz-tgt-policy-mode', 'viz-tgt-profile-mode', 'viz-tgt-baseline'].forEach(id => {
+            const select = document.getElementById(id);
+            if (select) {
+                select.addEventListener('change', () => {
+                    const podName = document.getElementById('viz-target-pod')?.value || 'web1';
+                    this.updateVizPodSetting('target', podName, select);
+                });
+            }
+        });
+
+        // Set up command buttons (connectivity demos)
         document.querySelectorAll('.btn-cmd').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -1135,6 +1518,99 @@ class DemoApp {
                 this.runCurrentDemo();
             });
         });
+
+        // Set up DLP-specific listeners
+        if (isDLPDemo) {
+            // Data type change listener
+            const dataTypeSelect = document.getElementById('viz-data-type');
+            const customDataRow = document.getElementById('viz-custom-data-row');
+            if (dataTypeSelect) {
+                dataTypeSelect.addEventListener('change', () => {
+                    // Show/hide custom data field
+                    if (customDataRow) {
+                        customDataRow.style.display = dataTypeSelect.value === 'custom' ? 'flex' : 'none';
+                    }
+                    this.syncFormFromViz();
+                });
+            }
+
+            // Custom data input listener
+            const customDataInput = document.getElementById('viz-custom-data');
+            if (customDataInput) {
+                customDataInput.addEventListener('input', () => this.syncFormFromViz());
+            }
+
+            // DLP target change listener
+            const dlpTargetSelect = document.getElementById('viz-dlp-target');
+            if (dlpTargetSelect) {
+                dlpTargetSelect.addEventListener('change', () => {
+                    this.syncFormFromViz();
+                    // Update target icon based on target
+                    const targetIcon = document.getElementById('viz-target-icon');
+                    if (targetIcon) {
+                        targetIcon.textContent = dlpTargetSelect.value === 'nginx' ? '🐳' : '🌐';
+                    }
+                });
+            }
+
+            // DLP run button
+            const runDlpBtn = document.getElementById('btn-viz-run-dlp');
+            if (runDlpBtn) {
+                runDlpBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.runCurrentDemo();
+                });
+            }
+
+            // DLP sensor toggle listeners
+            // DLP sensor enable/disable toggles
+            document.querySelectorAll('.viz-dlp-sensors input[type="checkbox"]').forEach(checkbox => {
+                checkbox.addEventListener('change', () => {
+                    const sensorName = checkbox.dataset.sensor;
+                    const enabled = checkbox.checked;
+                    const podName = document.getElementById('viz-source-select')?.value || 'production1';
+                    // Get current action for this sensor
+                    const actionToggle = document.querySelector(`.viz-dlp-action-toggle[data-sensor="${sensorName}"]`);
+                    const activeBtn = actionToggle?.querySelector('.viz-action-btn.active');
+                    const action = activeBtn?.dataset.action || 'allow';
+                    this.updateDLPSensor(podName, sensorName, enabled, action, checkbox);
+                });
+            });
+
+            // DLP sensor action toggles (Alert/Block)
+            document.querySelectorAll('.viz-dlp-action-toggle').forEach(toggle => {
+                toggle.querySelectorAll('.viz-action-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const sensorName = toggle.dataset.sensor;
+                        const action = btn.dataset.action;
+                        const podName = document.getElementById('viz-source-select')?.value || 'production1';
+
+                        // Check if sensor is enabled
+                        const checkbox = document.querySelector(`input[data-sensor="${sensorName}"]`);
+                        if (!checkbox?.checked) {
+                            return; // Don't change action if sensor is disabled
+                        }
+
+                        // Update button states
+                        toggle.querySelectorAll('.viz-action-btn').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+
+                        // Update sensor with new action
+                        this.updateDLPSensor(podName, sensorName, true, action, checkbox);
+                    });
+                });
+            });
+        }
+
+        // Initial load of source pod status
+        const initialSourcePod = sourceSelect?.value || 'production1';
+        this.updateVizPodStatus('source', initialSourcePod);
+        this.updateVizProcessRules('source', initialSourcePod);
+
+        // Load initial DLP sensor status for DLP demos
+        if (isDLPDemo) {
+            this.loadDLPSensors(initialSourcePod);
+        }
     }
 
     /**
@@ -1146,6 +1622,7 @@ class DemoApp {
         const targetPublic = document.getElementById('viz-target-public');
         const targetCustom = document.getElementById('viz-target-custom');
         const targetIcon = document.getElementById('viz-target-icon');
+        const targetBox = document.getElementById('viz-target');
 
         if (!targetType) return;
 
@@ -1154,16 +1631,381 @@ class DemoApp {
             if (targetPod) targetPod.style.display = type === 'pod' ? 'block' : 'none';
             if (targetPublic) targetPublic.style.display = type === 'public' ? 'block' : 'none';
             if (targetCustom) targetCustom.style.display = type === 'custom' ? 'block' : 'none';
-            if (targetIcon) targetIcon.textContent = type === 'pod' ? '📦' : '🌐';
+            if (targetIcon) targetIcon.textContent = type === 'pod' ? '🐳' : '🌐';
+
+            // Show/hide target pod settings
+            if (targetBox) {
+                if (type === 'pod') {
+                    targetBox.classList.add('show-pod-settings');
+                    // Load target pod status
+                    const podName = targetPod?.value || 'web1';
+                    this.updateVizPodStatus('target', podName);
+                    this.updateVizProcessRules('target', podName);
+                } else {
+                    targetBox.classList.remove('show-pod-settings');
+                }
+            }
+
             this.syncFormFromViz();
         };
 
         targetType.addEventListener('change', updateTargetFields);
-        if (targetPod) targetPod.addEventListener('change', () => this.syncFormFromViz());
         if (targetPublic) targetPublic.addEventListener('change', () => this.syncFormFromViz());
         if (targetCustom) targetCustom.addEventListener('input', () => this.syncFormFromViz());
 
         updateTargetFields();
+    }
+
+    /**
+     * Update pod status in visualization panel
+     */
+    async updateVizPodStatus(target, podName) {
+        const prefix = target === 'source' ? 'viz-src' : 'viz-tgt';
+        const policyMode = document.getElementById(`${prefix}-policy-mode`);
+        const profileMode = document.getElementById(`${prefix}-profile-mode`);
+        const baseline = document.getElementById(`${prefix}-baseline`);
+
+        if (!policyMode || !profileMode || !baseline) return;
+
+        // Map pod name to NeuVector group name
+        const serviceName = podName.replace(/-test$/, '');
+        const groupName = `nv.${serviceName}.neuvector-demo`;
+
+        // Disable selects during load
+        policyMode.disabled = true;
+        profileMode.disabled = true;
+        baseline.disabled = true;
+
+        const result = await settingsManager.getGroupStatus(groupName);
+
+        if (result) {
+            const policy = result.policy_mode || 'Discover';
+            const profile = result.profile_mode || 'Discover';
+            const baselineVal = result.baseline_profile || 'zero-drift';
+
+            policyMode.value = policy;
+            policyMode.className = 'viz-setting-select mode-' + policy.toLowerCase();
+
+            profileMode.value = profile;
+            profileMode.className = 'viz-setting-select mode-' + profile.toLowerCase();
+
+            baseline.value = baselineVal;
+            baseline.className = 'viz-setting-select';
+
+            // Enable selects
+            policyMode.disabled = false;
+            profileMode.disabled = false;
+            baseline.disabled = false;
+        }
+    }
+
+    /**
+     * Update process rules in visualization panel
+     */
+    async updateVizProcessRules(target, podName) {
+        const prefix = target === 'source' ? 'viz-src' : 'viz-tgt';
+        const list = document.getElementById(`${prefix}-process-items`);
+        const count = document.getElementById(`${prefix}-process-count`);
+
+        if (!list) return;
+
+        // Map pod name to NeuVector group name
+        const serviceName = podName.replace(/-test$/, '');
+        const groupName = `nv.${serviceName}.neuvector-demo`;
+
+        // Show loading state
+        list.innerHTML = 'Loading...';
+        list.className = 'viz-process-items loading';
+        if (count) count.textContent = '';
+
+        const credentials = settingsManager.getCredentials();
+        if (!credentials.password) {
+            list.innerHTML = 'Not configured';
+            list.className = 'viz-process-items empty';
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/neuvector/process-profile', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: credentials.username,
+                    password: credentials.password,
+                    group_name: groupName,
+                }),
+            });
+
+            const result = await response.json();
+
+            if (result.success && result.process_list.length > 0) {
+                if (count) count.textContent = `(${result.process_list.length})`;
+
+                // Store groupName for delete operations
+                list.dataset.groupName = groupName;
+                list.dataset.target = target;
+                list.dataset.podName = podName;
+
+                list.innerHTML = result.process_list.map(p => `
+                    <div class="viz-process-item" data-name="${this.escapeHtml(p.name)}" data-path="${this.escapeHtml(p.path)}">
+                        <span class="viz-process-name">${this.escapeHtml(p.name)}</span>
+                        <span class="viz-process-type ${p.cfg_type}">${p.cfg_type}</span>
+                        <button type="button" class="viz-btn-delete" title="Delete">&times;</button>
+                    </div>
+                `).join('');
+                list.className = 'viz-process-items';
+
+                // Add event listeners for delete buttons
+                list.querySelectorAll('.viz-btn-delete').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const item = e.target.closest('.viz-process-item');
+                        if (item) {
+                            this.deleteVizProcessRule(
+                                groupName,
+                                item.dataset.name,
+                                item.dataset.path,
+                                item,
+                                target,
+                                podName
+                            );
+                        }
+                    });
+                });
+            } else if (result.success) {
+                list.innerHTML = 'No rules';
+                list.className = 'viz-process-items empty';
+            } else {
+                list.innerHTML = 'Error';
+                list.className = 'viz-process-items empty';
+            }
+        } catch (error) {
+            console.error('Failed to get process rules:', error);
+            list.innerHTML = 'Error';
+            list.className = 'viz-process-items empty';
+        }
+    }
+
+    /**
+     * Delete a process rule from visualization
+     */
+    async deleteVizProcessRule(groupName, processName, processPath, itemElement, target, podName) {
+        const credentials = settingsManager.getCredentials();
+        if (!credentials.password) {
+            return;
+        }
+
+        // Visual feedback
+        itemElement.classList.add('deleting');
+        const deleteBtn = itemElement.querySelector('.viz-btn-delete');
+        if (deleteBtn) {
+            deleteBtn.disabled = true;
+            deleteBtn.textContent = '...';
+        }
+
+        try {
+            const response = await fetch('/api/neuvector/delete-process-rule', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: credentials.username,
+                    password: credentials.password,
+                    group_name: groupName,
+                    process_name: processName,
+                    process_path: processPath,
+                }),
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                // Animate removal then refresh the full list
+                itemElement.style.opacity = '0';
+                itemElement.style.transform = 'translateX(-10px)';
+                itemElement.style.transition = 'all 0.2s ease';
+
+                setTimeout(() => {
+                    // Refresh from API to get accurate state
+                    this.updateVizProcessRules(target, podName);
+                }, 300);
+            } else {
+                itemElement.classList.remove('deleting');
+                if (deleteBtn) {
+                    deleteBtn.disabled = false;
+                    deleteBtn.textContent = '×';
+                }
+                console.error('Failed to delete rule:', result.message);
+            }
+        } catch (error) {
+            console.error('Failed to delete process rule:', error);
+            itemElement.classList.remove('deleting');
+            if (deleteBtn) {
+                deleteBtn.disabled = false;
+                deleteBtn.textContent = '×';
+            }
+        }
+    }
+
+    /**
+     * Load DLP sensor status for a pod
+     */
+    async loadDLPSensors(podName) {
+        const credentials = settingsManager.getCredentials();
+        if (!credentials.password) {
+            return;
+        }
+
+        const groupName = `nv.${podName.replace(/-test$/, '')}.neuvector-demo`;
+
+        try {
+            const response = await fetch('/api/neuvector/dlp-config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: credentials.username,
+                    password: credentials.password,
+                    group_name: groupName,
+                }),
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                // Update checkbox and action states
+                for (const sensor of result.sensors) {
+                    let sensorKey = '';
+                    if (sensor.name === 'sensor.creditcard') {
+                        sensorKey = 'creditcard';
+                    } else if (sensor.name === 'sensor.ssn') {
+                        sensorKey = 'ssn';
+                    }
+
+                    if (sensorKey) {
+                        // Update checkbox
+                        const checkbox = document.getElementById(`viz-sensor-${sensorKey}`);
+                        if (checkbox) {
+                            checkbox.checked = sensor.enabled;
+                            checkbox.disabled = false;
+                        }
+
+                        // Update action buttons
+                        const actionToggle = document.getElementById(`viz-action-${sensorKey}`);
+                        if (actionToggle && sensor.action) {
+                            actionToggle.querySelectorAll('.viz-action-btn').forEach(btn => {
+                                btn.classList.toggle('active', btn.dataset.action === sensor.action);
+                            });
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Failed to load DLP sensors:', error);
+        }
+    }
+
+    /**
+     * Update a DLP sensor for a pod
+     */
+    async updateDLPSensor(podName, sensorName, enabled, action, checkboxElement) {
+        const credentials = settingsManager.getCredentials();
+        if (!credentials.password) {
+            if (checkboxElement) checkboxElement.checked = !enabled; // Revert
+            return;
+        }
+
+        const groupName = `nv.${podName.replace(/-test$/, '')}.neuvector-demo`;
+
+        // Disable during update
+        if (checkboxElement) checkboxElement.disabled = true;
+
+        try {
+            const response = await fetch('/api/neuvector/update-dlp-sensor', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: credentials.username,
+                    password: credentials.password,
+                    group_name: groupName,
+                    sensor_name: sensorName,
+                    enabled: enabled,
+                    action: action,
+                }),
+            });
+
+            const result = await response.json();
+            if (checkboxElement) checkboxElement.disabled = false;
+
+            if (!result.success) {
+                console.error('Failed to update DLP sensor:', result.message);
+                if (checkboxElement) checkboxElement.checked = !enabled; // Revert on error
+            }
+        } catch (error) {
+            console.error('Failed to update DLP sensor:', error);
+            if (checkboxElement) {
+                checkboxElement.disabled = false;
+                checkboxElement.checked = !enabled; // Revert on error
+            }
+        }
+    }
+
+    /**
+     * Update a pod setting via API from visualization
+     */
+    async updateVizPodSetting(target, podName, selectElement) {
+        const field = selectElement.dataset.field;
+        const value = selectElement.value;
+        const serviceName = podName.replace(/-test$/, '') + '.neuvector-demo';
+
+        // Disable select during update
+        selectElement.disabled = true;
+        const originalClass = selectElement.className;
+
+        const credentials = settingsManager.getCredentials();
+        if (!credentials.password) {
+            selectElement.disabled = false;
+            console.warn('No password configured for NeuVector API');
+            return;
+        }
+
+        console.log(`Updating ${field} to ${value} for service ${serviceName}`);
+
+        try {
+            const body = {
+                username: credentials.username,
+                password: credentials.password,
+                service_name: serviceName,
+            };
+            body[field] = value;
+
+            const response = await fetch('/api/neuvector/update-group', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            });
+
+            const result = await response.json();
+            console.log('Update result:', result);
+
+            if (result.success) {
+                // Update class based on mode
+                if (field === 'policy_mode' || field === 'profile_mode') {
+                    selectElement.className = 'viz-setting-select mode-' + value.toLowerCase();
+                }
+                // Verify by reloading status and process rules after a short delay
+                setTimeout(() => {
+                    this.updateVizPodStatus(target, podName);
+                    this.updateVizProcessRules(target, podName);
+                }, 500);
+            } else {
+                console.error('Failed to update setting:', result.message);
+                // Revert on error
+                this.updateVizPodStatus(target, podName);
+            }
+        } catch (error) {
+            console.error('Failed to update setting:', error);
+        }
+
+        selectElement.disabled = false;
     }
 
     /**
@@ -1175,6 +2017,7 @@ class DemoApp {
         const formSource = document.getElementById('param-pod_name');
         if (vizSource && formSource) formSource.value = vizSource.value;
 
+        // Sync connectivity demo fields
         // Sync target type
         const vizTargetType = document.getElementById('viz-target-type');
         const formTargetType = document.getElementById('param-target_type');
@@ -1194,6 +2037,22 @@ class DemoApp {
         const vizTargetCustom = document.getElementById('viz-target-custom');
         const formTargetCustom = document.getElementById('param-target_custom');
         if (vizTargetCustom && formTargetCustom) formTargetCustom.value = vizTargetCustom.value;
+
+        // Sync DLP demo fields
+        // Sync DLP target
+        const vizDlpTarget = document.getElementById('viz-dlp-target');
+        const formDlpTarget = document.getElementById('param-target');
+        if (vizDlpTarget && formDlpTarget) formDlpTarget.value = vizDlpTarget.value;
+
+        // Sync data type
+        const vizDataType = document.getElementById('viz-data-type');
+        const formDataType = document.getElementById('param-data_type');
+        if (vizDataType && formDataType) formDataType.value = vizDataType.value;
+
+        // Sync custom data
+        const vizCustomData = document.getElementById('viz-custom-data');
+        const formCustomData = document.getElementById('param-custom_data');
+        if (vizCustomData && formCustomData) formCustomData.value = vizCustomData.value;
     }
 
     /**
@@ -1349,11 +2208,16 @@ class DemoApp {
      * Fetch NeuVector events for current pod
      */
     async fetchNeuVectorEvents() {
+        console.log('[NV Events] fetchNeuVectorEvents called');
         const logsList = document.getElementById('nv-logs-list');
         const refreshBtn = document.getElementById('btn-refresh-logs');
-        const podSelect = document.getElementById('param-pod_name');
+        // Try viz select first, then hidden input
+        const podSelect = document.getElementById('viz-source-select') || document.getElementById('param-pod_name');
 
-        if (!logsList) return;
+        if (!logsList) {
+            console.log('[NV Events] No logs list element found');
+            return;
+        }
 
         const credentials = settingsManager.getCredentials();
         if (!credentials.password) {
@@ -1362,13 +2226,14 @@ class DemoApp {
             return;
         }
 
-        // Get group name from pod selection
+        // Get group name from pod selection - use null to fetch all events
         let groupName = null;
         if (podSelect) {
-            const podName = podSelect.value;
+            const podName = podSelect.value || 'production1';
             const serviceName = podName.replace(/-test$/, '');
             groupName = `nv.${serviceName}.neuvector-demo`;
         }
+        console.log('[NV Events] Fetching events for group:', groupName || 'all');
 
         // Show loading
         logsList.innerHTML = 'Loading...';
@@ -1388,6 +2253,7 @@ class DemoApp {
             });
 
             const result = await response.json();
+            console.log('[NV Events] API response:', result);
 
             if (result.success && result.events.length > 0) {
                 logsList.innerHTML = result.events.map(event => {
@@ -1408,11 +2274,12 @@ class DemoApp {
                 logsList.innerHTML = 'No recent events';
                 logsList.className = 'nv-logs-list empty';
             } else {
+                console.error('[NV Events] API error:', result.message);
                 logsList.innerHTML = result.message || 'Failed to load events';
                 logsList.className = 'nv-logs-list empty';
             }
         } catch (error) {
-            console.error('Failed to fetch events:', error);
+            console.error('[NV Events] Failed to fetch events:', error);
             logsList.innerHTML = 'Error loading events';
             logsList.className = 'nv-logs-list empty';
         }

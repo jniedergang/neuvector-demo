@@ -70,8 +70,9 @@ class DLPDemo(DemoModule):
     def _get_test_data(self, data_type: str, custom_data: str) -> tuple[str, str]:
         """Get test data based on type. Returns (data, description)."""
         # These are obviously fake test patterns
+        # NeuVector sensor.creditcard expects card numbers with separators (dashes/spaces)
         test_patterns = {
-            "credit_card": ("4111-1111-1111-1111", "Test Visa card number"),
+            "credit_card": ("4242-4242-4242-4242", "Test Visa card number (4242)"),
             "ssn": ("123-45-6789", "Test SSN pattern"),
         }
 
@@ -104,15 +105,17 @@ class DLPDemo(DemoModule):
             target_url = "https://httpbin.org/post"
 
         # Build curl command with POST data
+        # Send as plain text body for better DLP detection (NeuVector inspects packet payload)
+        body = f"Transaction payment info: card={test_data} amount=100.00"
         curl_args = [
             "curl", "-v", "-X", "POST",
-            "-H", "Content-Type: application/x-www-form-urlencoded",
-            "-d", f"sensitive_data={test_data}",
+            "-H", "Content-Type: text/plain",
+            "-d", body,
             "-m", "15",
             target_url,
         ]
 
-        yield f"[CMD] Sending POST request with sensitive data pattern"
+        yield f"[CMD] Sending POST request with sensitive data: {test_data}"
         yield f"[CMD] Target: {target_url}"
         yield ""
 
