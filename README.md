@@ -14,14 +14,53 @@ Application web interactive pour executer des demonstrations NeuVector sur un cl
 | Demo | Description |
 |------|-------------|
 | **Interception de Process** | Test d'execution de commandes (curl) avec visualisation du blocage par NeuVector |
-| **DLP Detection** | Test d'envoi de donnees sensibles (carte credit, SSN) |
+| **DLP Detection** | Test d'envoi de donnees sensibles (carte credit, SSN) avec blocage DLP |
 
 ### Interface
 
 - **Visualization interactive** : Diagramme Source → Target montrant l'etat de la connexion
+- **Controles NeuVector** : Network Policy, Process Profile, Baseline configurables en direct
+- **DLP Sensors** : Activation/desactivation des sensors avec mode Alert ou Block
+- **Mode Icons** : Indicateurs visuels (cadenas/loupe) montrant l'etat Protect/Monitor
 - **NeuVector Events** : Affichage des incidents et violations detectes en temps reel
 - **Allowed Processes** : Gestion des regles de process (ajout/suppression)
 - **Cluster Status** : Affichage de l'etat du cluster K8s et de l'API NeuVector
+
+## Visualization Interactive
+
+### Etats Visuels
+
+| Etat | Source | Fleche | Target | Description |
+|------|--------|--------|--------|-------------|
+| **Pending** | Gris | Gris pointille | Gris | Avant execution |
+| **Running** | Bleu pulsant | Bleu anime | Bleu | En cours |
+| **Success** | Vert | Vert plein | Vert | Communication OK |
+| **Network Blocked** | Orange | Rouge barre | Rouge | Reseau bloque |
+| **Process Intercepted** | Rouge barre | Rouge barre | Gris | Process bloque |
+
+### Mode Icons (Source et Target)
+
+- 🔒 **Cadenas** : Mode Protect actif
+- 🔍 **Loupe** : Mode Monitor actif
+- 👁️ **Oeil** : Mode Discover actif
+
+### Controles Pod (Source et Target)
+
+Pour chaque pod (source et target interne), les controles suivants sont disponibles :
+
+- **Network Policy** : Discover / Monitor / Protect
+- **Process Profile** : Discover / Monitor / Protect
+- **Baseline** : Basic / Zero Drift / Shield
+
+### DLP Sensors
+
+Les sensors DLP peuvent etre actives/desactives avec deux modes :
+- **Alert** : Detecte et journalise sans bloquer
+- **Block** : Detecte, journalise et bloque le trafic
+
+Sensors disponibles :
+- Credit Card (sensor.creditcard)
+- SSN (sensor.ssn)
 
 ## Architecture
 
@@ -31,7 +70,7 @@ Application web interactive pour executer des demonstrations NeuVector sur un cl
 │  ┌───────────────────────────────────────────────────────────┐  │
 │  │  Visualization  │  NeuVector Events  │  Allowed Processes │  │
 │  │  [Source]──────►[Target]             │  - curl            │  │
-│  │   Status: OK/Blocked/Intercepted     │  - wget            │  │
+│  │   🔒🔍 Status   │  Incidents/DLP     │  - wget            │  │
 │  └───────────────────────────────────────────────────────────┘  │
 └──────────────────────────┬──────────────────────────────────────┘
                            │ WebSocket / HTTP
@@ -61,7 +100,7 @@ neuvector-demo-web/
 │   ├── main.py              # Application FastAPI
 │   ├── config.py            # Configuration
 │   ├── api/
-│   │   ├── routes.py        # Endpoints REST
+│   │   ├── routes.py        # Endpoints REST + NeuVector API
 │   │   └── websocket.py     # WebSocket handlers
 │   ├── core/
 │   │   ├── kubectl.py       # Wrapper kubectl securise
@@ -74,9 +113,9 @@ neuvector-demo-web/
 │   │   └── registry.py      # Auto-registration
 │   └── lifecycle/           # Actions prepare/reset/status
 ├── static/
-│   ├── css/style.css
+│   ├── css/style.css        # Styles (visualization, DLP, events)
 │   └── js/
-│       ├── main.js          # Logique UI + Visualization
+│       ├── main.js          # Logique UI + Visualization + DLP
 │       └── websocket.js     # Client WebSocket
 ├── templates/
 │   └── index.html
@@ -175,120 +214,9 @@ kubectl create secret docker-registry registry-credentials \
 
 #### 2.4 Deployer avec le Manifest Registry
 
-Creer `manifests/deployment-registry.yaml` :
-
-```yaml
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: neuvector-demo-web
-  namespace: neuvector-demo
-  labels:
-    app: neuvector-demo-web
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: neuvector-demo-web
-  template:
-    metadata:
-      labels:
-        app: neuvector-demo-web
-    spec:
-      serviceAccountName: demo-web-sa
-      imagePullSecrets:
-      - name: registry-credentials
-      containers:
-      - name: web
-        image: registry.example.com/neuvector-demo-web:v1.0.0  # <-- Modifier ici
-        imagePullPolicy: Always
-        ports:
-        - containerPort: 8080
-          name: http
-        env:
-        - name: HOST
-          value: "0.0.0.0"
-        - name: PORT
-          value: "8080"
-        - name: DEMO_NAMESPACE
-          value: "neuvector-demo"
-        - name: NEUVECTOR_NAMESPACE
-          value: "neuvector"
-        resources:
-          requests:
-            memory: "128Mi"
-            cpu: "100m"
-          limits:
-            memory: "256Mi"
-            cpu: "500m"
-        readinessProbe:
-          httpGet:
-            path: /api/health
-            port: 8080
-          initialDelaySeconds: 5
-          periodSeconds: 10
-        livenessProbe:
-          httpGet:
-            path: /api/health
-            port: 8080
-          initialDelaySeconds: 10
-          periodSeconds: 30
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: neuvector-demo-web
-  namespace: neuvector-demo
-spec:
-  type: NodePort
-  selector:
-    app: neuvector-demo-web
-  ports:
-  - port: 8080
-    targetPort: 8080
-    nodePort: 30080
-    protocol: TCP
-    name: http
-```
-
-**Deploiement :**
-
 ```bash
 kubectl apply -f manifests/rbac.yaml
 kubectl apply -f manifests/deployment-registry.yaml
-```
-
-#### 2.5 Script de Deploiement Automatise (Registre)
-
-Creer `scripts/deploy-registry.sh` :
-
-```bash
-#!/bin/bash
-set -e
-
-REGISTRY_URL="${REGISTRY_URL:-registry.example.com}"
-IMAGE_NAME="${IMAGE_NAME:-neuvector-demo-web}"
-IMAGE_TAG="${IMAGE_TAG:-latest}"
-KUBECONFIG="${KUBECONFIG:-$HOME/.kube/config}"
-
-echo "[INFO] Build de l'image..."
-docker build -t ${REGISTRY_URL}/${IMAGE_NAME}:${IMAGE_TAG} .
-
-echo "[INFO] Push vers le registre..."
-docker push ${REGISTRY_URL}/${IMAGE_NAME}:${IMAGE_TAG}
-
-echo "[INFO] Deploiement Kubernetes..."
-kubectl --kubeconfig "$KUBECONFIG" apply -f manifests/rbac.yaml
-kubectl --kubeconfig "$KUBECONFIG" apply -f manifests/deployment-registry.yaml
-
-echo "[INFO] Rollout restart..."
-kubectl --kubeconfig "$KUBECONFIG" rollout restart deployment/neuvector-demo-web -n neuvector-demo
-
-echo "[INFO] Attente du rollout..."
-kubectl --kubeconfig "$KUBECONFIG" rollout status deployment/neuvector-demo-web -n neuvector-demo
-
-echo "[INFO] Deploiement termine!"
 ```
 
 ---
@@ -336,8 +264,8 @@ sudo systemctl restart rke2-server  # ou rke2-agent
 1. **Ouvrir l'interface** : `http://<NODE_IP>:30080`
 2. **Configurer NeuVector** : Cliquer sur l'icone ⚙️ et entrer les credentials
 3. **Preparer l'environnement** : Cliquer **Prepare** pour deployer les pods de test
-4. **Selectionner une demo** : Choisir "Interception de Process"
-5. **Configurer et executer** : Ajuster les parametres et cliquer **Run Demo**
+4. **Selectionner une demo** : Choisir "Interception de Process" ou "DLP Detection Test"
+5. **Configurer et executer** : Ajuster les parametres et cliquer **Run Demo** ou **Run DLP Test**
 6. **Observer** :
    - La visualization montre l'etat (Success/Blocked/Intercepted)
    - Les events NeuVector s'affichent en temps reel
@@ -354,6 +282,48 @@ Cette demo teste le blocage de processus par NeuVector :
    - Executer `curl` vers une URL → process autorise
    - Supprimer `curl` des Allowed Processes
    - Ré-executer → **Process Intercepted** (exit code 137)
+
+### Demo : DLP Detection
+
+Cette demo teste la detection et le blocage de donnees sensibles :
+
+1. **Prerequis** (le bouton indique ce qui manque) :
+   - Network Policy en **Protect**
+   - Process Profile en **Protect**
+   - Baseline en **Zero Drift**
+   - Au moins un DLP sensor active en mode **Block**
+
+2. **Configuration** :
+   - Selectionner le pod source (production1)
+   - Selectionner la cible (Internal Nginx Pod ou External Service)
+   - Activer le sensor "Credit Card" en mode **Block**
+
+3. **Execution** :
+   - Cliquer **Run DLP Test**
+   - Le test envoie un numero de carte de test (4532-0151-1283-0366)
+   - NeuVector detecte le pattern et bloque la requete
+
+4. **Resultat** :
+   - La visualization passe en rouge (bloque)
+   - Un event DLP apparait dans le panel NeuVector Events
+
+---
+
+## API Endpoints
+
+### NeuVector Integration
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/neuvector/test` | POST | Test de connexion API |
+| `/api/neuvector/group-status` | POST | Statut d'un groupe (modes, baseline) |
+| `/api/neuvector/update-group` | POST | Modifier policy_mode, profile_mode, baseline |
+| `/api/neuvector/dlp-config` | POST | Configuration DLP d'un groupe |
+| `/api/neuvector/update-dlp-sensor` | POST | Activer/desactiver un sensor DLP |
+| `/api/neuvector/process-profile` | POST | Liste des process autorises |
+| `/api/neuvector/add-process` | POST | Ajouter un process autorise |
+| `/api/neuvector/delete-process` | POST | Supprimer un process autorise |
+| `/api/neuvector/recent-events` | POST | Evenements recents (incidents, violations, DLP) |
 
 ---
 
@@ -490,6 +460,13 @@ Verifier que le ServiceAccount a les permissions :
 ```bash
 kubectl auth can-i get pods -n neuvector-demo --as=system:serviceaccount:neuvector-demo:demo-web-sa
 ```
+
+### DLP ne bloque pas
+
+1. Verifier que Network Policy est en **Protect**
+2. Verifier qu'un sensor DLP est active en mode **Block** (pas Alert)
+3. Le pattern de carte credit doit etre non-repetitif (ex: 4532-0151-1283-0366)
+4. Les patterns repetitifs (4242-4242-4242-4242) sont exclus par le regex NeuVector
 
 ---
 

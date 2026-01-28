@@ -1,9 +1,23 @@
 /**
  * NeuVector Demo Platform - Main JavaScript
+ *
+ * This file contains the main UI logic for the NeuVector Demo Platform:
+ * - SettingsManager: NeuVector API credentials, logo, and title management
+ * - DemoManager: Demo selection, visualization, execution, and NeuVector integration
+ *
+ * Features:
+ * - Interactive visualization with Source → Target diagram
+ * - Real-time NeuVector Events display (incidents, violations, DLP)
+ * - Pod settings management (Network Policy, Process Profile, Baseline)
+ * - DLP Sensors configuration with Alert/Block modes
+ * - Mode icons showing Protect/Monitor/Discover status
+ * - Process rules management (add/delete)
+ * - DLP ready state validation before execution
  */
 
 /**
- * Settings Manager - handles NeuVector API credentials and logo
+ * Settings Manager - handles NeuVector API credentials, logo and title
+ * Stores settings in localStorage and provides API connectivity testing
  */
 class SettingsManager {
     constructor() {
@@ -464,6 +478,26 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+/**
+ * DemoApp - Main application class for demo management
+ *
+ * Handles:
+ * - Demo list loading and selection
+ * - Interactive visualization (Source → Target diagram)
+ * - Pod settings (Network Policy, Process Profile, Baseline)
+ * - DLP sensors configuration and ready state validation
+ * - Mode icons display (Protect/Monitor/Discover)
+ * - Process rules management
+ * - NeuVector Events display
+ * - WebSocket communication for demo execution
+ *
+ * Visualization States:
+ * - pending: Initial state before execution
+ * - running: Demo is executing
+ * - success: Communication successful
+ * - blocked: Network blocked by NeuVector
+ * - intercepted: Process intercepted by NeuVector
+ */
 class DemoApp {
     constructor() {
         this.currentDemo = null;
@@ -471,6 +505,8 @@ class DemoApp {
         this.console = null;
         this.vizState = 'pending';
         this.vizContainer = null;
+        this.currentDemoType = null;  // 'connectivity', 'dlp', or other
+        this.detectedResult = null;   // Store detected result until execution completes
     }
 
     init() {
@@ -552,6 +588,9 @@ class DemoApp {
 
         const lowerText = text.toLowerCase();
 
+        // Store detected result but don't update visualization yet - wait for onComplete
+        // This prevents premature green/red display before the command finishes
+
         // Detect process interception (check first - exit code 137 = SIGKILL from NeuVector)
         if (lowerText.includes('exit code 137') ||
             lowerText.includes('exit code 9') ||
@@ -561,53 +600,49 @@ class DemoApp {
             lowerText.includes('permission denied') ||
             lowerText.includes('operation not permitted') ||
             (text.includes('[ERROR]') && (lowerText.includes('process') || lowerText.includes('terminated')))) {
-            this.updateVisualization('intercepted', 'Process blocked by NeuVector');
-            setTimeout(() => this.fetchNeuVectorEvents(), 1000);
+            this.detectedResult = { state: 'intercepted', message: 'Process blocked by NeuVector' };
             return;
         }
 
         // Detect success
         if (text.includes('[OK]') || lowerText.includes('success')) {
-            this.updateVisualization('success', 'Command executed successfully');
-            setTimeout(() => this.fetchNeuVectorEvents(), 1000);
+            this.detectedResult = { state: 'success', message: 'Command executed successfully' };
             return;
         }
 
         // Check if it's a curl success (contains HTTP status)
         if (text.includes('HTTP/1') || text.includes('HTTP/2') || text.includes(' 200 ') || text.includes(' 301 ') || text.includes(' 302 ')) {
-            this.updateVisualization('success', 'HTTP request successful');
-            setTimeout(() => this.fetchNeuVectorEvents(), 1000);
+            this.detectedResult = { state: 'success', message: 'HTTP request successful' };
             return;
         }
 
         // Detect ping success
         if (lowerText.includes('bytes from') || (lowerText.includes('time=') && lowerText.includes('ms'))) {
-            this.updateVisualization('success', 'Ping successful');
-            setTimeout(() => this.fetchNeuVectorEvents(), 1000);
+            this.detectedResult = { state: 'success', message: 'Ping successful' };
             return;
         }
 
         // Detect nmap success (open ports)
         if (lowerText.includes('/tcp') && lowerText.includes('open')) {
-            this.updateVisualization('success', 'Port scan completed');
-            setTimeout(() => this.fetchNeuVectorEvents(), 1000);
+            this.detectedResult = { state: 'success', message: 'Port scan completed' };
             return;
         }
 
-        // Detect network block
+        // Detect network block / timeout
         if (lowerText.includes('connection refused') ||
             lowerText.includes('connection timed out') ||
+            lowerText.includes('operation timed out') ||
             lowerText.includes('network unreachable') ||
             lowerText.includes('could not resolve') ||
             lowerText.includes('no route to host') ||
+            lowerText.includes('exit code 28') ||
             (text.includes('[ERROR]') && lowerText.includes('curl'))) {
-            this.updateVisualization('blocked', 'Network blocked by policy');
-            setTimeout(() => this.fetchNeuVectorEvents(), 1000);
+            this.detectedResult = { state: 'blocked', message: 'Network blocked by policy' };
             return;
         }
 
-        // Detect running/connecting
-        if (text.includes('[CMD]') || lowerText.includes('executing') || lowerText.includes('connecting')) {
+        // Detect running/connecting - only update if no result detected yet
+        if (!this.detectedResult && (text.includes('[CMD]') || lowerText.includes('executing') || lowerText.includes('connecting'))) {
             this.updateVisualization('running', 'Connecting...');
         }
     }
@@ -703,9 +738,12 @@ class DemoApp {
         this.appendOutput('');
         this.appendOutput(success ? '[DONE] Operation completed successfully' : `[FAILED] ${message || 'Operation failed'}`, success ? 'info' : 'error');
 
-        // Update visualization if still in running state
-        if (this.vizContainer && this.vizState === 'running') {
-            if (success) {
+        // Update visualization based on detected result or completion status
+        if (this.vizContainer) {
+            // Use detected result if available, otherwise infer from success/message
+            if (this.detectedResult) {
+                this.updateVisualization(this.detectedResult.state, this.detectedResult.message);
+            } else if (success) {
                 this.updateVisualization('success', 'Connection successful');
             } else {
                 // Determine failure type from message
@@ -717,10 +755,14 @@ class DemoApp {
                     lowerMsg.includes('process') ||
                     lowerMsg.includes('denied')) {
                     this.updateVisualization('intercepted', 'Process blocked by NeuVector');
+                } else if (lowerMsg.includes('28') || lowerMsg.includes('timeout')) {
+                    this.updateVisualization('blocked', 'Connection blocked (timeout)');
                 } else {
                     this.updateVisualization('blocked', message || 'Connection failed');
                 }
             }
+            // Reset detected result for next run
+            this.detectedResult = null;
         }
 
         // Always fetch events and refresh process rules after demo completes
@@ -1196,6 +1238,18 @@ class DemoApp {
 
     /**
      * Create visualization HTML for a demo
+     *
+     * Creates the interactive Source → Target diagram with:
+     * - Source pod selector with settings (Network Policy, Process Profile, Baseline)
+     * - Source DLP sensors for DLP demo
+     * - Target selector (pod, public URL, or custom)
+     * - Target settings and DLP sensors for internal pods
+     * - Mode icons showing Protect/Monitor/Discover status
+     * - Process rules list
+     * - NeuVector Events panel
+     * - Command buttons (Run Demo / Run DLP Test)
+     *
+     * @param {Object} demo - Demo configuration object
      */
     createVisualization(demo) {
         if (!demo) {
@@ -1355,6 +1409,52 @@ class DemoApp {
         } else if (isDLPDemo) {
             targetContent = `
                 <select class="viz-select" id="viz-dlp-target" name="target">${dlpTargetOptions}</select>
+                <div class="viz-pod-settings" id="viz-target-settings">
+                    <div class="viz-setting-row">
+                        <span class="viz-setting-label">Network Policy</span>
+                        <select class="viz-setting-select" id="viz-tgt-policy-mode" data-field="policy_mode" data-target="target">${modeOptions}</select>
+                    </div>
+                    <div class="viz-setting-row">
+                        <span class="viz-setting-label">Process Profile</span>
+                        <select class="viz-setting-select" id="viz-tgt-profile-mode" data-field="profile_mode" data-target="target">${modeOptions}</select>
+                    </div>
+                    <div class="viz-setting-row">
+                        <span class="viz-setting-label">Baseline</span>
+                        <select class="viz-setting-select" id="viz-tgt-baseline" data-field="baseline_profile" data-target="target">${baselineOptions}</select>
+                    </div>
+                </div>
+                <div class="viz-dlp-sensors" id="viz-tgt-dlp-sensors">
+                    <div class="viz-dlp-sensors-header">DLP Sensors</div>
+                    <div class="viz-dlp-sensor-row">
+                        <label class="viz-toggle">
+                            <input type="checkbox" id="viz-tgt-sensor-creditcard" data-sensor="sensor.creditcard" data-target="target">
+                            <span class="viz-toggle-slider"></span>
+                        </label>
+                        <span class="viz-dlp-sensor-name">Credit Card</span>
+                        <div class="viz-dlp-action-toggle" id="viz-tgt-action-creditcard" data-sensor="sensor.creditcard" data-target="target">
+                            <button type="button" class="viz-action-btn active" data-action="allow">Alert</button>
+                            <button type="button" class="viz-action-btn" data-action="deny">Block</button>
+                        </div>
+                    </div>
+                    <div class="viz-dlp-sensor-row">
+                        <label class="viz-toggle">
+                            <input type="checkbox" id="viz-tgt-sensor-ssn" data-sensor="sensor.ssn" data-target="target">
+                            <span class="viz-toggle-slider"></span>
+                        </label>
+                        <span class="viz-dlp-sensor-name">SSN</span>
+                        <div class="viz-dlp-action-toggle" id="viz-tgt-action-ssn" data-sensor="sensor.ssn" data-target="target">
+                            <button type="button" class="viz-action-btn active" data-action="allow">Alert</button>
+                            <button type="button" class="viz-action-btn" data-action="deny">Block</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="viz-process-list" id="viz-target-processes">
+                    <div class="viz-process-header">
+                        <span>Allowed Processes</span>
+                        <span id="viz-tgt-process-count"></span>
+                    </div>
+                    <div class="viz-process-items loading" id="viz-tgt-process-items">Loading...</div>
+                </div>
             `;
         }
 
@@ -1372,7 +1472,10 @@ class DemoApp {
         } else if (isDLPDemo) {
             commandsSection = `
                 <div class="viz-commands" id="viz-commands">
-                    <button type="button" class="btn btn-primary btn-run-demo" id="btn-viz-run-dlp" title="Send DLP test data">Run DLP Test</button>
+                    <button type="button" class="btn btn-primary btn-run-demo" id="btn-viz-run-dlp" title="Send DLP test data" disabled>
+                        <span class="btn-text">Checking DLP config...</span>
+                        <span class="btn-spinner"></span>
+                    </button>
                 </div>
             `;
         }
@@ -1385,6 +1488,10 @@ class DemoApp {
                             <div class="viz-box-header">
                                 <div class="viz-icon">🐳</div>
                                 <div class="viz-label">Source</div>
+                                <div class="viz-mode-icons" id="viz-src-mode-icons">
+                                    <span class="viz-mode-icon network" id="viz-src-icon-network" title="Network Policy">🔍</span>
+                                    <span class="viz-mode-icon process" id="viz-src-icon-process" title="Process Profile">🔍</span>
+                                </div>
                             </div>
                             <select class="viz-select" id="viz-source-select" name="pod_name">${sourceOptions}</select>
                             ${sourceExtraContent}
@@ -1418,6 +1525,10 @@ class DemoApp {
                             <div class="viz-box-header">
                                 <div class="viz-icon" id="viz-target-icon">🌐</div>
                                 <div class="viz-label">Target</div>
+                                <div class="viz-mode-icons" id="viz-tgt-mode-icons">
+                                    <span class="viz-mode-icon network" id="viz-tgt-icon-network" title="Network Policy">🔍</span>
+                                    <span class="viz-mode-icon process" id="viz-tgt-icon-process" title="Process Profile">🔍</span>
+                                </div>
                             </div>
                             ${targetContent}
                         </div>
@@ -1470,6 +1581,8 @@ class DemoApp {
                 // Reload DLP sensors if this is a DLP demo
                 if (this.currentDemoType === 'dlp') {
                     this.loadDLPSensors(sourceSelect.value);
+                    // Check DLP ready state after a short delay
+                    setTimeout(() => this.checkDLPReadyState(), 500);
                 }
             });
         }
@@ -1503,8 +1616,14 @@ class DemoApp {
             const select = document.getElementById(id);
             if (select) {
                 select.addEventListener('change', () => {
-                    const podName = document.getElementById('viz-target-pod')?.value || 'web1';
-                    this.updateVizPodSetting('target', podName, select);
+                    // For DLP demo, use web1 when target is nginx
+                    const dlpTarget = document.getElementById('viz-dlp-target');
+                    const podName = dlpTarget
+                        ? (dlpTarget.value === 'nginx' ? 'web1' : null)
+                        : (document.getElementById('viz-target-pod')?.value || 'web1');
+                    if (podName) {
+                        this.updateVizPodSetting('target', podName, select);
+                    }
                 });
             }
         });
@@ -1542,6 +1661,8 @@ class DemoApp {
 
             // DLP target change listener
             const dlpTargetSelect = document.getElementById('viz-dlp-target');
+            const targetBox = document.getElementById('viz-target');
+            const targetModeIcons = document.getElementById('viz-tgt-mode-icons');
             if (dlpTargetSelect) {
                 dlpTargetSelect.addEventListener('change', () => {
                     this.syncFormFromViz();
@@ -1550,7 +1671,33 @@ class DemoApp {
                     if (targetIcon) {
                         targetIcon.textContent = dlpTargetSelect.value === 'nginx' ? '🐳' : '🌐';
                     }
+                    // Show/hide target settings based on target type
+                    const isInternalPod = dlpTargetSelect.value === 'nginx';
+                    // Use class toggle for proper CSS display (shows settings, DLP sensors, process list)
+                    if (targetBox) {
+                        targetBox.classList.toggle('show-pod-settings', isInternalPod);
+                    }
+                    if (targetModeIcons) targetModeIcons.style.display = isInternalPod ? '' : 'none';
+                    // Load target pod status if internal
+                    if (isInternalPod) {
+                        this.updateVizPodStatus('target', 'web1');
+                        this.loadDLPSensors('web1', 'target');
+                        this.updateVizProcessRules('target', 'web1');
+                    }
                 });
+                // Trigger initial state
+                const isInternalPod = dlpTargetSelect.value === 'nginx';
+                // Use class toggle for proper CSS display (shows settings, DLP sensors, process list)
+                if (targetBox) {
+                    targetBox.classList.toggle('show-pod-settings', isInternalPod);
+                }
+                if (targetModeIcons) targetModeIcons.style.display = isInternalPod ? '' : 'none';
+                // Load initial target data if internal pod
+                if (isInternalPod) {
+                    this.updateVizPodStatus('target', 'web1');
+                    this.loadDLPSensors('web1', 'target');
+                    this.updateVizProcessRules('target', 'web1');
+                }
             }
 
             // DLP run button
@@ -1563,30 +1710,38 @@ class DemoApp {
             }
 
             // DLP sensor toggle listeners
-            // DLP sensor enable/disable toggles
+            // DLP sensor enable/disable toggles (for both source and target)
             document.querySelectorAll('.viz-dlp-sensors input[type="checkbox"]').forEach(checkbox => {
                 checkbox.addEventListener('change', () => {
                     const sensorName = checkbox.dataset.sensor;
                     const enabled = checkbox.checked;
-                    const podName = document.getElementById('viz-source-select')?.value || 'production1';
-                    // Get current action for this sensor
-                    const actionToggle = document.querySelector(`.viz-dlp-action-toggle[data-sensor="${sensorName}"]`);
+                    const isTarget = checkbox.dataset.target === 'target';
+                    const podName = isTarget
+                        ? 'web1'
+                        : (document.getElementById('viz-source-select')?.value || 'production1');
+                    // Get current action for this sensor (in the same container)
+                    const container = checkbox.closest('.viz-dlp-sensors');
+                    const actionToggle = container?.querySelector(`.viz-dlp-action-toggle[data-sensor="${sensorName}"]`);
                     const activeBtn = actionToggle?.querySelector('.viz-action-btn.active');
                     const action = activeBtn?.dataset.action || 'allow';
                     this.updateDLPSensor(podName, sensorName, enabled, action, checkbox);
                 });
             });
 
-            // DLP sensor action toggles (Alert/Block)
+            // DLP sensor action toggles (Alert/Block) for both source and target
             document.querySelectorAll('.viz-dlp-action-toggle').forEach(toggle => {
                 toggle.querySelectorAll('.viz-action-btn').forEach(btn => {
                     btn.addEventListener('click', () => {
                         const sensorName = toggle.dataset.sensor;
                         const action = btn.dataset.action;
-                        const podName = document.getElementById('viz-source-select')?.value || 'production1';
+                        const isTarget = toggle.dataset.target === 'target';
+                        const podName = isTarget
+                            ? 'web1'
+                            : (document.getElementById('viz-source-select')?.value || 'production1');
 
-                        // Check if sensor is enabled
-                        const checkbox = document.querySelector(`input[data-sensor="${sensorName}"]`);
+                        // Check if sensor is enabled (in the same container)
+                        const container = toggle.closest('.viz-dlp-sensors');
+                        const checkbox = container?.querySelector(`input[data-sensor="${sensorName}"]`);
                         if (!checkbox?.checked) {
                             return; // Don't change action if sensor is disabled
                         }
@@ -1610,6 +1765,8 @@ class DemoApp {
         // Load initial DLP sensor status for DLP demos
         if (isDLPDemo) {
             this.loadDLPSensors(initialSourcePod);
+            // Check DLP ready state after a short delay to allow UI to update
+            setTimeout(() => this.checkDLPReadyState(), 500);
         }
     }
 
@@ -1623,6 +1780,7 @@ class DemoApp {
         const targetCustom = document.getElementById('viz-target-custom');
         const targetIcon = document.getElementById('viz-target-icon');
         const targetBox = document.getElementById('viz-target');
+        const targetModeIcons = document.getElementById('viz-tgt-mode-icons');
 
         if (!targetType) return;
 
@@ -1632,6 +1790,7 @@ class DemoApp {
             if (targetPublic) targetPublic.style.display = type === 'public' ? 'block' : 'none';
             if (targetCustom) targetCustom.style.display = type === 'custom' ? 'block' : 'none';
             if (targetIcon) targetIcon.textContent = type === 'pod' ? '🐳' : '🌐';
+            if (targetModeIcons) targetModeIcons.style.display = type === 'pod' ? '' : 'none';
 
             // Show/hide target pod settings
             if (targetBox) {
@@ -1696,6 +1855,57 @@ class DemoApp {
             policyMode.disabled = false;
             profileMode.disabled = false;
             baseline.disabled = false;
+
+            // Update mode icons
+            this.updateModeIcons(target, policy, profile);
+        }
+    }
+
+    /**
+     * Update mode icons in visualization header
+     * Shows padlock for Protect, magnifying glass for Monitor, nothing for Discover
+     */
+    updateModeIcons(target, policyMode, profileMode) {
+        const prefix = target === 'source' ? 'viz-src' : 'viz-tgt';
+        const networkIcon = document.getElementById(`${prefix}-icon-network`);
+        const processIcon = document.getElementById(`${prefix}-icon-process`);
+
+        if (networkIcon) {
+            if (policyMode === 'Protect') {
+                networkIcon.textContent = '🔒';
+                networkIcon.title = 'Network Policy: Protect';
+                networkIcon.classList.remove('monitor', 'discover');
+                networkIcon.classList.add('protect');
+            } else if (policyMode === 'Monitor') {
+                networkIcon.textContent = '🔍';
+                networkIcon.title = 'Network Policy: Monitor';
+                networkIcon.classList.remove('protect', 'discover');
+                networkIcon.classList.add('monitor');
+            } else {
+                networkIcon.textContent = '👁️';
+                networkIcon.title = 'Network Policy: Discover';
+                networkIcon.classList.remove('protect', 'monitor');
+                networkIcon.classList.add('discover');
+            }
+        }
+
+        if (processIcon) {
+            if (profileMode === 'Protect') {
+                processIcon.textContent = '🔒';
+                processIcon.title = 'Process Profile: Protect';
+                processIcon.classList.remove('monitor', 'discover');
+                processIcon.classList.add('protect');
+            } else if (profileMode === 'Monitor') {
+                processIcon.textContent = '🔍';
+                processIcon.title = 'Process Profile: Monitor';
+                processIcon.classList.remove('protect', 'discover');
+                processIcon.classList.add('monitor');
+            } else {
+                processIcon.textContent = '👁️';
+                processIcon.title = 'Process Profile: Discover';
+                processIcon.classList.remove('protect', 'monitor');
+                processIcon.classList.add('discover');
+            }
         }
     }
 
@@ -1848,14 +2058,17 @@ class DemoApp {
 
     /**
      * Load DLP sensor status for a pod
+     * @param {string} podName - The pod name
+     * @param {string} target - 'source' or 'target' to determine element IDs
      */
-    async loadDLPSensors(podName) {
+    async loadDLPSensors(podName, target = 'source') {
         const credentials = settingsManager.getCredentials();
         if (!credentials.password) {
             return;
         }
 
         const groupName = `nv.${podName.replace(/-test$/, '')}.neuvector-demo`;
+        const prefix = target === 'target' ? 'viz-tgt-' : 'viz-';
 
         try {
             const response = await fetch('/api/neuvector/dlp-config', {
@@ -1882,14 +2095,14 @@ class DemoApp {
 
                     if (sensorKey) {
                         // Update checkbox
-                        const checkbox = document.getElementById(`viz-sensor-${sensorKey}`);
+                        const checkbox = document.getElementById(`${prefix}sensor-${sensorKey}`);
                         if (checkbox) {
                             checkbox.checked = sensor.enabled;
                             checkbox.disabled = false;
                         }
 
                         // Update action buttons
-                        const actionToggle = document.getElementById(`viz-action-${sensorKey}`);
+                        const actionToggle = document.getElementById(`${prefix}action-${sensorKey}`);
                         if (actionToggle && sensor.action) {
                             actionToggle.querySelectorAll('.viz-action-btn').forEach(btn => {
                                 btn.classList.toggle('active', btn.dataset.action === sensor.action);
@@ -1939,12 +2152,116 @@ class DemoApp {
                 console.error('Failed to update DLP sensor:', result.message);
                 if (checkboxElement) checkboxElement.checked = !enabled; // Revert on error
             }
+            // Check DLP ready state after update
+            setTimeout(() => this.checkDLPReadyState(), 300);
         } catch (error) {
             console.error('Failed to update DLP sensor:', error);
             if (checkboxElement) {
                 checkboxElement.disabled = false;
                 checkboxElement.checked = !enabled; // Revert on error
             }
+        }
+    }
+
+    /**
+     * Check if DLP is ready and update the run button state
+     * DLP is ready when:
+     * - Network Policy is "Protect"
+     * - Process Profile is "Protect"
+     * - Baseline is "zero-drift"
+     * - At least one DLP sensor is enabled with "deny" action on the source
+     */
+    async checkDLPReadyState() {
+        const runBtn = document.getElementById('btn-viz-run-dlp');
+        if (!runBtn) return;
+
+        const btnText = runBtn.querySelector('.btn-text');
+        const btnSpinner = runBtn.querySelector('.btn-spinner');
+
+        // Show loading state
+        runBtn.disabled = true;
+        if (btnText) btnText.textContent = 'Checking DLP config...';
+        if (btnSpinner) btnSpinner.style.display = '';
+
+        const credentials = settingsManager.getCredentials();
+        if (!credentials.password) {
+            if (btnText) btnText.textContent = 'Configure NeuVector API';
+            if (btnSpinner) btnSpinner.style.display = 'none';
+            return;
+        }
+
+        // Get source pod name
+        const sourceSelect = document.getElementById('viz-source-select');
+        const podName = sourceSelect?.value || 'production1';
+        const groupName = `nv.${podName.replace(/-test$/, '')}.neuvector-demo`;
+
+        try {
+            // Check group status (Network Policy, Process Profile, Baseline)
+            const groupStatus = await settingsManager.getGroupStatus(groupName);
+            const policyMode = groupStatus?.policy_mode || 'Discover';
+            const profileMode = groupStatus?.profile_mode || 'Discover';
+            const baseline = groupStatus?.baseline_profile || 'basic';
+
+            // Check if Network Policy is Protect
+            if (policyMode !== 'Protect') {
+                runBtn.disabled = true;
+                if (btnText) btnText.textContent = 'Set Network Policy to Protect';
+                if (btnSpinner) btnSpinner.style.display = 'none';
+                return;
+            }
+
+            // Check if Process Profile is Protect
+            if (profileMode !== 'Protect') {
+                runBtn.disabled = true;
+                if (btnText) btnText.textContent = 'Set Process Profile to Protect';
+                if (btnSpinner) btnSpinner.style.display = 'none';
+                return;
+            }
+
+            // Check if Baseline is zero-drift
+            if (baseline !== 'zero-drift') {
+                runBtn.disabled = true;
+                if (btnText) btnText.textContent = 'Set Baseline to Zero Drift';
+                if (btnSpinner) btnSpinner.style.display = 'none';
+                return;
+            }
+
+            // Check DLP config
+            const response = await fetch('/api/neuvector/dlp-config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: credentials.username,
+                    password: credentials.password,
+                    group_name: groupName,
+                }),
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                // Check if any sensor is enabled with "deny" action
+                const hasBlockingSensor = result.sensors.some(s => s.enabled && s.action === 'deny');
+
+                if (hasBlockingSensor) {
+                    runBtn.disabled = false;
+                    if (btnText) btnText.textContent = 'Run DLP Test';
+                    if (btnSpinner) btnSpinner.style.display = 'none';
+                } else {
+                    runBtn.disabled = true;
+                    if (btnText) btnText.textContent = 'Enable a DLP sensor with Block';
+                    if (btnSpinner) btnSpinner.style.display = 'none';
+                }
+            } else {
+                runBtn.disabled = true;
+                if (btnText) btnText.textContent = 'DLP config error';
+                if (btnSpinner) btnSpinner.style.display = 'none';
+            }
+        } catch (error) {
+            console.error('Failed to check DLP ready state:', error);
+            runBtn.disabled = true;
+            if (btnText) btnText.textContent = 'DLP check failed';
+            if (btnSpinner) btnSpinner.style.display = 'none';
         }
     }
 
@@ -1990,11 +2307,21 @@ class DemoApp {
                 // Update class based on mode
                 if (field === 'policy_mode' || field === 'profile_mode') {
                     selectElement.className = 'viz-setting-select mode-' + value.toLowerCase();
+
+                    // Update mode icons immediately
+                    const prefix = target === 'source' ? 'viz-src' : 'viz-tgt';
+                    const policySelect = document.getElementById(`${prefix}-policy-mode`);
+                    const profileSelect = document.getElementById(`${prefix}-profile-mode`);
+                    this.updateModeIcons(target, policySelect?.value || 'Discover', profileSelect?.value || 'Discover');
                 }
                 // Verify by reloading status and process rules after a short delay
                 setTimeout(() => {
                     this.updateVizPodStatus(target, podName);
                     this.updateVizProcessRules(target, podName);
+                    // Check DLP ready state if this is a source pod update in DLP demo
+                    if (target === 'source' && this.currentDemoType === 'dlp') {
+                        this.checkDLPReadyState();
+                    }
                 }, 500);
             } else {
                 console.error('Failed to update setting:', result.message);
@@ -2288,25 +2615,27 @@ class DemoApp {
     }
 
     /**
-     * Format event timestamp for display
+     * Format event timestamp for display (precise with seconds)
      */
     formatEventTime(timestamp) {
         try {
             const date = new Date(timestamp);
             const now = new Date();
-            const diff = now - date;
 
-            // If less than 1 hour, show minutes ago
-            if (diff < 3600000) {
-                const mins = Math.floor(diff / 60000);
-                return mins <= 1 ? 'just now' : `${mins}m ago`;
-            }
+            // Always show time with seconds (HH:MM:SS)
+            const timeStr = date.toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+
             // If today, show time only
             if (date.toDateString() === now.toDateString()) {
-                return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                return timeStr;
             }
-            // Otherwise show date
-            return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+            // Otherwise show date + time
+            const dateStr = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+            return `${dateStr} ${timeStr}`;
         } catch (e) {
             return '';
         }
@@ -2400,6 +2729,9 @@ class DemoApp {
      */
     runCurrentDemo() {
         if (this.isRunning || !wsManager.isConnected() || !this.currentDemo) return;
+
+        // Reset detected result for new run
+        this.detectedResult = null;
 
         // Collect parameters
         const params = {};
