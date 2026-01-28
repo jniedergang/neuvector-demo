@@ -11,8 +11,8 @@ metadata:
 spec:
   containers:
   - name: opensuse
-    image: opensuse/tumbleweed
-    command: ["sleep", "infinity"]
+    image: localhost/demo-production1:latest
+    imagePullPolicy: Never
     resources:
       requests:
         memory: "64Mi"
@@ -33,7 +33,8 @@ metadata:
 spec:
   containers:
   - name: nginx
-    image: nginx:alpine
+    image: localhost/demo-web1:latest
+    imagePullPolicy: Never
     ports:
     - containerPort: 80
       name: http
