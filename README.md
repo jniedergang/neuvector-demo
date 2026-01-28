@@ -287,25 +287,26 @@ Cette demo teste le blocage de processus par NeuVector :
 
 Cette demo teste la detection et le blocage de donnees sensibles :
 
-1. **Prerequis** (le bouton indique ce qui manque) :
+1. **Configuration pour blocage DLP** (recommande) :
    - Network Policy en **Protect**
    - Process Profile en **Protect**
    - Baseline en **Zero Drift**
    - Au moins un DLP sensor active en mode **Block**
 
-2. **Configuration** :
+2. **Parametres** :
    - Selectionner le pod source (production1)
    - Selectionner la cible (Internal Nginx Pod ou External Service)
-   - Activer le sensor "Credit Card" en mode **Block**
+   - Choisir le type de donnees sensibles (Credit Card, SSN, Custom)
 
 3. **Execution** :
    - Cliquer **Run DLP Test**
    - Le test envoie un numero de carte de test (4532-0151-1283-0366)
-   - NeuVector detecte le pattern et bloque la requete
+   - Si DLP est configure en mode Block, NeuVector bloque la requete
 
 4. **Resultat** :
-   - La visualization passe en rouge (bloque)
-   - Un event DLP apparait dans le panel NeuVector Events
+   - Si bloque : la visualization passe en rouge, timeout de connexion
+   - Si non bloque : la visualization passe en vert, reponse recue
+   - Les events DLP apparaissent dans le panel NeuVector Events
 
 ---
 
