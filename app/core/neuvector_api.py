@@ -952,10 +952,12 @@ class NeuVectorAPI:
             audits = data.get("audits", [])
 
             # Filter for admission-related events
+            # Event names: Admission.Control.Allowed, Admission.Control.Denied,
+            # Admission.Control.Violation, Admission.Control.Configured, etc.
             admission_events = [
                 a for a in audits
-                if "admission" in a.get("name", "").lower()
-                or a.get("name", "") in ["Admission.Control.Denied", "Admission.Control.Allowed"]
+                if a.get("name", "").startswith("Admission.Control.")
+                or "admission" in a.get("name", "").lower()
             ]
 
             # Sort by time (most recent first) and limit
