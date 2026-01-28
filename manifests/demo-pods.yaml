@@ -1,4 +1,13 @@
 ---
+# Forbidden namespace for Admission Control demo
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: forbidden-namespace1
+  labels:
+    demo: admission-control
+    policy: forbidden
+---
 # Production1 pod - OpenSUSE for running curl and network tests
 apiVersion: v1
 kind: Pod

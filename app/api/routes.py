@@ -649,3 +649,339 @@ async def update_dlp_sensor(request: UpdateDLPSensorRequest):
             success=False,
             message=f"Unexpected error: {str(e)}",
         )
+
+
+# ========== Admission Control Endpoints ==========
+
+class AdmissionStateRequest(BaseModel):
+    """Request model for admission control state."""
+    username: str
+    password: str
+
+
+class AdmissionStateResponse(BaseModel):
+    """Response model for admission control state."""
+    success: bool
+    enabled: bool = False
+    mode: str = ""
+    message: str = ""
+
+
+@router.post("/neuvector/admission-state", response_model=AdmissionStateResponse)
+async def get_admission_state(request: AdmissionStateRequest):
+    """Get admission control state."""
+    api = NeuVectorAPI(
+        base_url=NEUVECTOR_API_URL,
+        username=request.username,
+        password=request.password,
+    )
+
+    try:
+        await api.authenticate()
+        state = await api.get_admission_state()
+        await api.logout()
+        await api.close()
+
+        return AdmissionStateResponse(
+            success=True,
+            enabled=state.get("enable", False),
+            mode=state.get("mode", ""),
+        )
+    except NeuVectorAPIError as e:
+        await api.close()
+        return AdmissionStateResponse(
+            success=False,
+            message=str(e),
+        )
+    except Exception as e:
+        await api.close()
+        return AdmissionStateResponse(
+            success=False,
+            message=f"Unexpected error: {str(e)}",
+        )
+
+
+class UpdateAdmissionStateRequest(BaseModel):
+    """Request model for updating admission control state."""
+    username: str
+    password: str
+    enable: bool
+    mode: str = "monitor"  # "monitor" or "protect"
+
+
+class UpdateAdmissionStateResponse(BaseModel):
+    """Response model for updating admission control state."""
+    success: bool
+    message: str = ""
+
+
+@router.post("/neuvector/update-admission-state", response_model=UpdateAdmissionStateResponse)
+async def update_admission_state(request: UpdateAdmissionStateRequest):
+    """Enable or disable admission control."""
+    api = NeuVectorAPI(
+        base_url=NEUVECTOR_API_URL,
+        username=request.username,
+        password=request.password,
+    )
+
+    try:
+        await api.authenticate()
+        await api.set_admission_state(
+            enable=request.enable,
+            mode=request.mode,
+        )
+        await api.logout()
+        await api.close()
+
+        status = "enabled" if request.enable else "disabled"
+        return UpdateAdmissionStateResponse(
+            success=True,
+            message=f"Admission control {status} in {request.mode} mode",
+        )
+    except NeuVectorAPIError as e:
+        await api.close()
+        return UpdateAdmissionStateResponse(
+            success=False,
+            message=str(e),
+        )
+    except Exception as e:
+        await api.close()
+        return UpdateAdmissionStateResponse(
+            success=False,
+            message=f"Unexpected error: {str(e)}",
+        )
+
+
+class AdmissionRule(BaseModel):
+    """Admission rule model."""
+    id: int
+    rule_type: str
+    comment: str
+    criteria: list[dict[str, Any]]
+    disable: bool
+
+
+class AdmissionRulesRequest(BaseModel):
+    """Request model for getting admission rules."""
+    username: str
+    password: str
+
+
+class AdmissionRulesResponse(BaseModel):
+    """Response model for admission rules."""
+    success: bool
+    rules: list[AdmissionRule] = []
+    message: str = ""
+
+
+@router.post("/neuvector/admission-rules", response_model=AdmissionRulesResponse)
+async def get_admission_rules(request: AdmissionRulesRequest):
+    """Get all admission control rules."""
+    api = NeuVectorAPI(
+        base_url=NEUVECTOR_API_URL,
+        username=request.username,
+        password=request.password,
+    )
+
+    try:
+        await api.authenticate()
+        rules = await api.get_admission_rules()
+        await api.logout()
+        await api.close()
+
+        rule_list = [
+            AdmissionRule(
+                id=r.get("id", 0),
+                rule_type=r.get("rule_type", ""),
+                comment=r.get("comment", ""),
+                criteria=r.get("criteria", []),
+                disable=r.get("disable", False),
+            )
+            for r in rules
+        ]
+
+        return AdmissionRulesResponse(
+            success=True,
+            rules=rule_list,
+        )
+    except NeuVectorAPIError as e:
+        await api.close()
+        return AdmissionRulesResponse(
+            success=False,
+            message=str(e),
+        )
+    except Exception as e:
+        await api.close()
+        return AdmissionRulesResponse(
+            success=False,
+            message=f"Unexpected error: {str(e)}",
+        )
+
+
+class CreateAdmissionRuleRequest(BaseModel):
+    """Request model for creating admission rule."""
+    username: str
+    password: str
+    namespace: str
+    comment: str = ""
+
+
+class CreateAdmissionRuleResponse(BaseModel):
+    """Response model for creating admission rule."""
+    success: bool
+    rule_id: Optional[int] = None
+    message: str = ""
+
+
+@router.post("/neuvector/create-admission-rule", response_model=CreateAdmissionRuleResponse)
+async def create_admission_rule(request: CreateAdmissionRuleRequest):
+    """Create an admission rule to deny resources in a namespace."""
+    api = NeuVectorAPI(
+        base_url=NEUVECTOR_API_URL,
+        username=request.username,
+        password=request.password,
+    )
+
+    try:
+        await api.authenticate()
+        result = await api.create_namespace_deny_rule(
+            namespace=request.namespace,
+            comment=request.comment,
+        )
+        await api.logout()
+        await api.close()
+
+        rule_id = result.get("id", result.get("rule", {}).get("id"))
+
+        return CreateAdmissionRuleResponse(
+            success=True,
+            rule_id=rule_id,
+            message=f"Admission rule created for namespace '{request.namespace}'",
+        )
+    except NeuVectorAPIError as e:
+        await api.close()
+        return CreateAdmissionRuleResponse(
+            success=False,
+            message=str(e),
+        )
+    except Exception as e:
+        await api.close()
+        return CreateAdmissionRuleResponse(
+            success=False,
+            message=f"Unexpected error: {str(e)}",
+        )
+
+
+class DeleteAdmissionRuleRequest(BaseModel):
+    """Request model for deleting admission rule."""
+    username: str
+    password: str
+    rule_id: int
+
+
+class DeleteAdmissionRuleResponse(BaseModel):
+    """Response model for deleting admission rule."""
+    success: bool
+    message: str = ""
+
+
+@router.post("/neuvector/delete-admission-rule", response_model=DeleteAdmissionRuleResponse)
+async def delete_admission_rule(request: DeleteAdmissionRuleRequest):
+    """Delete an admission control rule."""
+    api = NeuVectorAPI(
+        base_url=NEUVECTOR_API_URL,
+        username=request.username,
+        password=request.password,
+    )
+
+    try:
+        await api.authenticate()
+        await api.delete_admission_rule(request.rule_id)
+        await api.logout()
+        await api.close()
+
+        return DeleteAdmissionRuleResponse(
+            success=True,
+            message=f"Admission rule {request.rule_id} deleted",
+        )
+    except NeuVectorAPIError as e:
+        await api.close()
+        return DeleteAdmissionRuleResponse(
+            success=False,
+            message=str(e),
+        )
+    except Exception as e:
+        await api.close()
+        return DeleteAdmissionRuleResponse(
+            success=False,
+            message=f"Unexpected error: {str(e)}",
+        )
+
+
+class AdmissionEvent(BaseModel):
+    """Admission event model."""
+    name: str
+    message: str
+    workload: str
+    namespace: str
+    reported_at: str
+    level: str
+
+
+class AdmissionEventsRequest(BaseModel):
+    """Request model for getting admission events."""
+    username: str
+    password: str
+    limit: int = 10
+
+
+class AdmissionEventsResponse(BaseModel):
+    """Response model for admission events."""
+    success: bool
+    events: list[AdmissionEvent] = []
+    message: str = ""
+
+
+@router.post("/neuvector/admission-events", response_model=AdmissionEventsResponse)
+async def get_admission_events(request: AdmissionEventsRequest):
+    """Get recent admission control events."""
+    api = NeuVectorAPI(
+        base_url=NEUVECTOR_API_URL,
+        username=request.username,
+        password=request.password,
+    )
+
+    try:
+        await api.authenticate()
+        events = await api.get_admission_events(limit=request.limit)
+        await api.logout()
+        await api.close()
+
+        event_list = [
+            AdmissionEvent(
+                name=e.get("name", "Unknown"),
+                message=e.get("message", ""),
+                workload=e.get("workload_name", e.get("res_name", "")),
+                namespace=e.get("workload_domain", e.get("res_domain", "")),
+                reported_at=e.get("reported_at", ""),
+                level=e.get("level", "Warning"),
+            )
+            for e in events
+        ]
+
+        return AdmissionEventsResponse(
+            success=True,
+            events=event_list,
+        )
+    except NeuVectorAPIError as e:
+        await api.close()
+        return AdmissionEventsResponse(
+            success=False,
+            message=str(e),
+        )
+    except Exception as e:
+        await api.close()
+        return AdmissionEventsResponse(
+            success=False,
+            message=f"Unexpected error: {str(e)}",
+        )

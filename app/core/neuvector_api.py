@@ -697,3 +697,275 @@ class NeuVectorAPI:
 
         # Update the group with new sensors list
         return await self.update_group_dlp_sensors(group_name, new_sensors)
+
+    # ========== Admission Control API ==========
+
+    async def get_admission_state(self) -> dict[str, Any]:
+        """
+        Get admission control state.
+
+        Returns:
+            Admission control state object
+
+        Raises:
+            NeuVectorAPIError: If request fails
+        """
+        client = await self._get_client()
+
+        try:
+            response = await client.get(
+                "/v1/admission/state",
+                headers=self._auth_headers(),
+            )
+
+            if response.status_code != 200:
+                raise NeuVectorAPIError(f"Failed to get admission state: {response.status_code}")
+
+            data = response.json()
+            return data.get("state", {})
+
+        except httpx.RequestError as e:
+            raise NeuVectorAPIError(f"Connection error: {str(e)}")
+
+    async def set_admission_state(self, enable: bool, mode: str = "monitor") -> dict[str, Any]:
+        """
+        Enable or disable admission control.
+
+        Args:
+            enable: True to enable, False to disable
+            mode: "monitor" or "protect"
+
+        Returns:
+            Result of the operation
+
+        Raises:
+            NeuVectorAPIError: If request fails
+        """
+        client = await self._get_client()
+
+        try:
+            payload = {
+                "state": {
+                    "enable": enable,
+                    "mode": mode,
+                }
+            }
+
+            response = await client.patch(
+                "/v1/admission/state",
+                json=payload,
+                headers=self._auth_headers(),
+            )
+
+            if response.status_code not in (200, 204):
+                raise NeuVectorAPIError(f"Failed to update admission state: {response.status_code}")
+
+            return {"success": True, "enable": enable, "mode": mode}
+
+        except httpx.RequestError as e:
+            raise NeuVectorAPIError(f"Connection error: {str(e)}")
+
+    async def get_admission_rules(self, scope: str = "local") -> list[dict[str, Any]]:
+        """
+        Get all admission control rules.
+
+        Args:
+            scope: "local", "fed", or empty for all
+
+        Returns:
+            List of admission rule objects
+
+        Raises:
+            NeuVectorAPIError: If request fails
+        """
+        client = await self._get_client()
+
+        try:
+            params = {}
+            if scope:
+                params["scope"] = scope
+
+            response = await client.get(
+                "/v1/admission/rules",
+                headers=self._auth_headers(),
+                params=params,
+            )
+
+            if response.status_code != 200:
+                raise NeuVectorAPIError(f"Failed to get admission rules: {response.status_code}")
+
+            data = response.json()
+            return data.get("rules", [])
+
+        except httpx.RequestError as e:
+            raise NeuVectorAPIError(f"Connection error: {str(e)}")
+
+    async def create_admission_rule(
+        self,
+        rule_type: str = "deny",
+        comment: str = "",
+        criteria: list[dict[str, Any]] = None,
+        disable: bool = False,
+    ) -> dict[str, Any]:
+        """
+        Create a new admission control rule.
+
+        Args:
+            rule_type: "deny" or "allow"
+            comment: Rule description
+            criteria: List of criteria objects
+            disable: Whether to create the rule as disabled
+
+        Returns:
+            Created rule object
+
+        Raises:
+            NeuVectorAPIError: If request fails
+        """
+        client = await self._get_client()
+
+        try:
+            payload = {
+                "config": {
+                    "category": "Kubernetes",
+                    "rule_type": rule_type,
+                    "comment": comment,
+                    "criteria": criteria or [],
+                    "disable": disable,
+                }
+            }
+
+            response = await client.post(
+                "/v1/admission/rule",
+                json=payload,
+                headers=self._auth_headers(),
+            )
+
+            if response.status_code not in (200, 201):
+                error_msg = f"Failed to create admission rule: {response.status_code}"
+                try:
+                    error_data = response.json()
+                    if "error" in error_data:
+                        error_msg = f"Failed to create admission rule: {error_data['error']}"
+                except Exception:
+                    pass
+                raise NeuVectorAPIError(error_msg)
+
+            return response.json()
+
+        except httpx.RequestError as e:
+            raise NeuVectorAPIError(f"Connection error: {str(e)}")
+
+    async def delete_admission_rule(self, rule_id: int) -> dict[str, Any]:
+        """
+        Delete an admission control rule.
+
+        Args:
+            rule_id: ID of the rule to delete
+
+        Returns:
+            Result of the operation
+
+        Raises:
+            NeuVectorAPIError: If request fails
+        """
+        client = await self._get_client()
+
+        try:
+            response = await client.delete(
+                f"/v1/admission/rule/{rule_id}",
+                headers=self._auth_headers(),
+            )
+
+            if response.status_code not in (200, 204):
+                raise NeuVectorAPIError(f"Failed to delete admission rule: {response.status_code}")
+
+            return {"success": True, "deleted_id": rule_id}
+
+        except httpx.RequestError as e:
+            raise NeuVectorAPIError(f"Connection error: {str(e)}")
+
+    async def create_namespace_deny_rule(
+        self,
+        namespace: str,
+        comment: str = "",
+    ) -> dict[str, Any]:
+        """
+        Create an admission rule to deny all resources in a specific namespace.
+
+        Args:
+            namespace: Namespace to block
+            comment: Rule description
+
+        Returns:
+            Created rule object
+
+        Raises:
+            NeuVectorAPIError: If request fails
+        """
+        criteria = [
+            {
+                "name": "namespace",
+                "op": "=",
+                "value": namespace,
+            }
+        ]
+
+        if not comment:
+            comment = f"Deny all resources in namespace '{namespace}'"
+
+        return await self.create_admission_rule(
+            rule_type="deny",
+            comment=comment,
+            criteria=criteria,
+            disable=False,
+        )
+
+    async def get_admission_events(
+        self,
+        limit: int = 10,
+    ) -> list[dict[str, Any]]:
+        """
+        Get recent admission control events (from audit logs).
+
+        Args:
+            limit: Maximum number of events to return
+
+        Returns:
+            List of admission event objects
+
+        Raises:
+            NeuVectorAPIError: If request fails
+        """
+        client = await self._get_client()
+
+        try:
+            response = await client.get(
+                "/v1/log/audit",
+                headers=self._auth_headers(),
+            )
+
+            if response.status_code != 200:
+                raise NeuVectorAPIError(f"Failed to get audit logs: {response.status_code}")
+
+            data = response.json()
+            audits = data.get("audits", [])
+
+            # Filter for admission-related events
+            admission_events = [
+                a for a in audits
+                if "admission" in a.get("name", "").lower()
+                or a.get("name", "") in ["Admission.Control.Denied", "Admission.Control.Allowed"]
+            ]
+
+            # Sort by time (most recent first) and limit
+            admission_events = sorted(
+                admission_events,
+                key=lambda x: x.get("reported_at", ""),
+                reverse=True
+            )
+
+            return admission_events[:limit]
+
+        except httpx.RequestError as e:
+            raise NeuVectorAPIError(f"Connection error: {str(e)}")

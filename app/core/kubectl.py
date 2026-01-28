@@ -319,3 +319,99 @@ class Kubectl:
             namespace=namespace,
             timeout=timeout + 10,
         )
+
+    async def apply_from_stdin(
+        self,
+        yaml_content: str,
+        namespace: Optional[str] = None,
+    ) -> AsyncGenerator[str, None]:
+        """
+        Apply a YAML manifest from stdin.
+
+        Args:
+            yaml_content: YAML manifest content
+            namespace: Namespace to apply to
+
+        Yields:
+            Lines of output
+        """
+        ns = namespace or self.default_namespace
+        if ns and not validate_namespace(ns):
+            raise KubectlValidationError(f"Namespace '{ns}' is not allowed")
+
+        cmd = self._build_base_command()
+        cmd.extend(["apply", "-f", "-"])
+        if ns:
+            cmd.extend(["-n", ns])
+
+        try:
+            process = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+            )
+
+            stdout, _ = await asyncio.wait_for(
+                process.communicate(input=yaml_content.encode("utf-8")),
+                timeout=KUBECTL_TIMEOUT,
+            )
+
+            output = stdout.decode("utf-8") if stdout else ""
+            for line in output.strip().split("\n"):
+                if line:
+                    yield line
+
+            if process.returncode != 0:
+                raise KubectlError(f"Apply failed with exit code {process.returncode}")
+
+        except asyncio.TimeoutError:
+            raise KubectlError(f"Command timed out after {KUBECTL_TIMEOUT}s")
+
+    async def delete_pod(
+        self,
+        pod_name: str,
+        namespace: Optional[str] = None,
+    ) -> AsyncGenerator[str, None]:
+        """
+        Delete a pod.
+
+        Args:
+            pod_name: Name of the pod to delete
+            namespace: Pod namespace
+
+        Yields:
+            Lines of output
+        """
+        if not validate_pod_name(pod_name):
+            raise KubectlValidationError(f"Invalid pod name: {pod_name}")
+
+        async for line in self.run_streaming(
+            "delete", "pod", pod_name, "--ignore-not-found",
+            namespace=namespace,
+        ):
+            yield line
+
+    async def get_pod_status(
+        self,
+        pod_name: str,
+        namespace: Optional[str] = None,
+    ) -> AsyncGenerator[str, None]:
+        """
+        Get pod status.
+
+        Args:
+            pod_name: Name of the pod
+            namespace: Pod namespace
+
+        Yields:
+            Lines of status output
+        """
+        if not validate_pod_name(pod_name):
+            raise KubectlValidationError(f"Invalid pod name: {pod_name}")
+
+        async for line in self.run_streaming(
+            "get", "pod", pod_name, "-o", "wide",
+            namespace=namespace,
+        ):
+            yield line

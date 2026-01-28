@@ -15,6 +15,7 @@ Application web interactive pour executer des demonstrations NeuVector sur un cl
 |------|-------------|
 | **Interception de Process** | Test d'execution de commandes (curl) avec visualisation du blocage par NeuVector |
 | **DLP Detection** | Test d'envoi de donnees sensibles (carte credit, SSN) avec blocage DLP |
+| **Admission Control** | Test de creation de pods dans un namespace interdit avec blocage par admission control |
 
 ### Interface
 
@@ -308,6 +309,31 @@ Cette demo teste la detection et le blocage de donnees sensibles :
    - Si non bloque : la visualization passe en vert, reponse recue
    - Les events DLP apparaissent dans le panel NeuVector Events
 
+### Demo : Admission Control
+
+Cette demo teste le blocage de creation de ressources par NeuVector Admission Control :
+
+1. **Prerequis** :
+   - Admission Control doit etre active dans NeuVector
+   - Une regle d'admission doit exister pour bloquer le namespace `forbidden-namespace1`
+
+2. **Interface** :
+   - Selecteur de namespace (allowed ou forbidden)
+   - Champ de nom de pod personnalisable
+   - Boutons d'action : Create Pod, Delete Pod, Check Status
+   - Affichage de l'etat d'Admission Control (Enabled/Disabled, Mode)
+   - Liste des regles d'admission actives
+   - Panel d'evenements d'admission
+
+3. **Test** :
+   - Selectionner le namespace **Allowed** → creer un pod → succes
+   - Selectionner le namespace **Forbidden** → creer un pod → bloque par Admission Control
+   - Observer les evenements dans le panel "Admission Events"
+
+4. **Resultat** :
+   - Si autorise : le pod est cree avec succes
+   - Si bloque : erreur "Admission control DENIED" affichee
+
 ---
 
 ## API Endpoints
@@ -325,6 +351,12 @@ Cette demo teste la detection et le blocage de donnees sensibles :
 | `/api/neuvector/add-process` | POST | Ajouter un process autorise |
 | `/api/neuvector/delete-process` | POST | Supprimer un process autorise |
 | `/api/neuvector/recent-events` | POST | Evenements recents (incidents, violations, DLP) |
+| `/api/neuvector/admission-state` | POST | Etat de l'Admission Control (enabled, mode) |
+| `/api/neuvector/update-admission-state` | POST | Activer/desactiver l'Admission Control |
+| `/api/neuvector/admission-rules` | POST | Liste des regles d'admission |
+| `/api/neuvector/create-admission-rule` | POST | Creer une regle d'admission |
+| `/api/neuvector/delete-admission-rule` | POST | Supprimer une regle d'admission |
+| `/api/neuvector/admission-events` | POST | Evenements d'admission recents |
 
 ---
 
