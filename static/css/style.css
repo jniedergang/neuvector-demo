@@ -1658,15 +1658,31 @@ select.form-control {
     position: relative;
 }
 
+.viz-box.intercepted::before {
+    content: 'INTERCEPTED !';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-15deg);
+    font-size: 1.2rem;
+    font-weight: 900;
+    color: var(--error-color);
+    text-shadow: 1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff;
+    z-index: 10;
+    white-space: nowrap;
+    letter-spacing: 2px;
+}
+
 .viz-box.intercepted::after {
     content: '';
     position: absolute;
     width: 150%;
-    height: 3px;
+    height: 4px;
     background: var(--error-color);
     transform: rotate(-45deg);
     top: 50%;
     left: -25%;
+    z-index: 5;
 }
 
 @keyframes vizPulse {
