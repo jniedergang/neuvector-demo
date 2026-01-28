@@ -42,12 +42,19 @@ body {
     z-index: 100;
 }
 
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
 .header h1 {
     font-size: 1.5rem;
     font-weight: 500;
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    margin: 0;
 }
 
 .header-actions {
@@ -58,16 +65,104 @@ body {
 /* Main Layout */
 .main-container {
     display: grid;
-    grid-template-columns: 300px 1fr;
+    grid-template-columns: 1fr;
     min-height: calc(100vh - 60px);
+    position: relative;
 }
 
 /* Sidebar */
 .sidebar {
+    position: fixed;
+    top: 60px;
+    left: 0;
+    bottom: 0;
+    width: 300px;
     background-color: var(--card-bg);
     border-right: 1px solid var(--border-color);
     padding: 1rem;
     overflow-y: auto;
+    z-index: 200;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+}
+
+.sidebar.open {
+    transform: translateX(0);
+}
+
+/* Sidebar overlay backdrop */
+.sidebar-backdrop {
+    position: fixed;
+    top: 60px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.3);
+    z-index: 150;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.sidebar-backdrop.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Sidebar toggle button */
+.btn-sidebar-toggle {
+    background: none;
+    border: none;
+    padding: 0.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-color);
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.btn-sidebar-toggle:hover {
+    background-color: var(--bg-color);
+}
+
+.btn-sidebar-toggle svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* Sidebar close button */
+.sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.sidebar-header h2 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.btn-sidebar-close {
+    background: none;
+    border: none;
+    font-size: 1.25rem;
+    cursor: pointer;
+    color: var(--text-secondary);
+    padding: 0.25rem;
+    line-height: 1;
+    border-radius: 4px;
+}
+
+.btn-sidebar-close:hover {
+    background-color: var(--bg-color);
+    color: var(--text-color);
 }
 
 .sidebar-section {
@@ -154,6 +249,49 @@ body {
 .card-header h2 {
     font-size: 1rem;
     font-weight: 500;
+}
+
+/* Demo Selector Dropdown */
+.demo-title-container {
+    flex: 1;
+}
+
+.demo-selector {
+    font-size: 1.1rem;
+    font-weight: 500;
+    padding: 0.5rem 2rem 0.5rem 0.75rem;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    background-color: var(--card-bg);
+    color: var(--text-color);
+    cursor: pointer;
+    min-width: 280px;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%235f6368' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.demo-selector:hover {
+    border-color: var(--primary-color);
+}
+
+.demo-selector:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.15);
+}
+
+.demo-selector option {
+    font-size: 1rem;
+    padding: 0.5rem;
+}
+
+.demo-selector optgroup {
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
 }
 
 .card-body {
@@ -761,6 +899,10 @@ select.form-control {
     animation: modalSlideIn 0.2s ease-out;
 }
 
+.modal.modal-large {
+    max-width: 520px;
+}
+
 @keyframes modalSlideIn {
     from {
         opacity: 0;
@@ -848,12 +990,138 @@ select.form-control {
     color: var(--primary-color);
 }
 
+/* Settings Sections */
+.settings-section {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.settings-section:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.settings-section-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-color);
+    margin-bottom: 0.75rem;
+}
+
+.settings-actions {
+    margin-top: 0.75rem;
+}
+
+/* Logo Upload */
+.logo-upload-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.logo-preview {
+    width: 100%;
+    height: 80px;
+    border: 2px dashed var(--border-color);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--bg-color);
+    overflow: hidden;
+}
+
+.logo-preview img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.logo-placeholder {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.logo-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-file {
+    cursor: pointer;
+}
+
+/* Header Logo */
+.header-logo {
+    height: 32px;
+    width: auto;
+    margin-right: 0.5rem;
+    vertical-align: middle;
+}
+
+/* Header Status Group */
+.header-status-group {
+    display: flex;
+    gap: 0.5rem;
+    margin-right: 0.5rem;
+}
+
+.header-status-box {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    background-color: var(--bg-color);
+    border: 1px solid var(--border-color);
+}
+
+.header-status-box.ok {
+    background-color: #e6f4ea;
+    border-color: #34a853;
+}
+
+.header-status-box.error {
+    background-color: #fce8e6;
+    border-color: #ea4335;
+}
+
+.header-status-box.checking {
+    background-color: #e8f0fe;
+    border-color: var(--primary-color);
+}
+
+.header-status-label {
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.header-status-value {
+    font-weight: 600;
+}
+
+.header-status-box.ok .header-status-value {
+    color: #1e7e34;
+}
+
+.header-status-box.error .header-status-value {
+    color: #c5221f;
+}
+
+.header-status-box.checking .header-status-value {
+    color: var(--primary-color);
+}
+
 /* Demo Visualization Row */
 .demo-viz-row {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     gap: 1rem;
     margin-bottom: 1rem;
+    align-items: stretch;
 }
 
 /* Demo Visualization - Large centered */
@@ -864,9 +1132,27 @@ select.form-control {
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    max-width: 700px;
-    margin: 0 auto;
-    width: 100%;
+    flex: 1;
+    min-width: 0;
+}
+
+/* Events panel in viz row */
+.demo-viz-row .nv-logs-container {
+    width: 280px;
+    flex-shrink: 0;
+    max-height: 400px;
+    display: flex;
+    flex-direction: column;
+}
+
+.demo-viz-row .nv-logs-container .nv-logs-header {
+    flex-shrink: 0;
+}
+
+.demo-viz-row .nv-logs-container .nv-logs-list {
+    flex: 1;
+    overflow-y: auto;
+    max-height: none;
 }
 
 .viz-header {
@@ -890,47 +1176,414 @@ select.form-control {
 }
 
 .viz-box {
-    width: 160px;
-    min-height: 120px;
+    width: 360px;
+    min-height: 180px;
     border: 3px solid var(--border-color);
     border-radius: 12px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    padding: 1rem 0.5rem;
+    padding: 0.75rem;
     background: var(--bg-color);
     transition: all 0.3s ease;
     position: relative;
 }
 
-.viz-box .viz-icon {
-    font-size: 2.5rem;
+.viz-box-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     margin-bottom: 0.5rem;
 }
 
+.viz-box .viz-icon {
+    font-size: 1.75rem;
+}
+
 .viz-box .viz-label {
-    font-size: 0.75rem;
+    font-size: 0.8rem;
     font-weight: 600;
     text-align: center;
     color: var(--text-color);
-    max-width: 140px;
 }
 
 .viz-box .viz-select {
-    margin-top: 0.5rem;
-    font-size: 0.75rem;
-    padding: 0.25rem 0.5rem;
+    font-size: 0.7rem;
+    padding: 0.2rem 0.4rem;
     border-radius: 4px;
     border: 1px solid var(--border-color);
     background: var(--card-bg);
-    max-width: 140px;
     cursor: pointer;
+    width: 100%;
+    max-width: 200px;
 }
 
 .viz-box .viz-select:focus {
     outline: none;
     border-color: var(--primary-color);
+}
+
+/* Viz Pod Settings */
+.viz-pod-settings {
+    width: 100%;
+    margin-top: 0.5rem;
+    background: var(--card-bg);
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    font-size: 0.65rem;
+    overflow: hidden;
+}
+
+.viz-pod-settings .viz-setting-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.25rem 0.4rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.viz-pod-settings .viz-setting-row:last-child {
+    border-bottom: none;
+}
+
+.viz-pod-settings .viz-setting-label {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.viz-pod-settings .viz-setting-select {
+    font-size: 0.6rem;
+    padding: 0.15rem 0.3rem;
+    border-radius: 3px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-color);
+    cursor: pointer;
+    max-width: 80px;
+}
+
+.viz-pod-settings .viz-setting-select:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+.viz-pod-settings .viz-setting-select.mode-protect {
+    background-color: #fce8e6;
+    color: #c5221f;
+    border-color: #ea4335;
+}
+
+.viz-pod-settings .viz-setting-select.mode-monitor {
+    background-color: #fef7e0;
+    color: #e37400;
+    border-color: #fbbc04;
+}
+
+.viz-pod-settings .viz-setting-select.mode-discover {
+    background-color: #e8f0fe;
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+/* Viz Process List */
+.viz-process-list {
+    width: 100%;
+    margin-top: 0.25rem;
+    background: var(--card-bg);
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    font-size: 0.6rem;
+    max-height: 80px;
+    overflow-y: auto;
+}
+
+.viz-process-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.2rem 0.4rem;
+    background: var(--bg-color);
+    border-bottom: 1px solid var(--border-color);
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.viz-process-items {
+    padding: 0.2rem;
+}
+
+.viz-process-items.loading,
+.viz-process-items.empty {
+    padding: 0.5rem;
+    text-align: center;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+.viz-process-item {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.15rem 0.25rem;
+    border-radius: 3px;
+    background: var(--bg-color);
+    margin-bottom: 0.15rem;
+}
+
+.viz-process-item:last-child {
+    margin-bottom: 0;
+}
+
+.viz-process-name {
+    font-family: monospace;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.viz-process-type {
+    font-size: 0.5rem;
+    padding: 0.05rem 0.2rem;
+    border-radius: 2px;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+.viz-process-type.learned {
+    background-color: #e8f0fe;
+    color: var(--primary-color);
+}
+
+.viz-process-type.user_created {
+    background-color: #e6f4ea;
+    color: #1e7e34;
+}
+
+/* Delete button for viz process rules */
+.viz-btn-delete {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.7rem;
+    padding: 0.1rem 0.2rem;
+    margin-left: 0.15rem;
+    border-radius: 2px;
+    transition: all 0.2s;
+    opacity: 0;
+    flex-shrink: 0;
+}
+
+.viz-process-item:hover .viz-btn-delete {
+    opacity: 1;
+}
+
+.viz-btn-delete:hover {
+    background-color: #fce8e6;
+    color: var(--error-color);
+}
+
+.viz-btn-delete:disabled {
+    cursor: wait;
+    opacity: 0.5;
+}
+
+.viz-process-item.deleting {
+    opacity: 0.5;
+    background-color: #f5f5f5;
+}
+
+/* DLP Settings in viz box */
+.viz-dlp-settings {
+    width: 100%;
+    margin-top: 0.5rem;
+    background: var(--card-bg);
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    font-size: 0.65rem;
+    overflow: hidden;
+}
+
+.viz-dlp-settings .viz-setting-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.25rem 0.4rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.viz-dlp-settings .viz-setting-row:last-child {
+    border-bottom: none;
+}
+
+.viz-dlp-select {
+    max-width: 100px;
+}
+
+.viz-setting-input {
+    font-size: 0.6rem;
+    padding: 0.15rem 0.3rem;
+    border-radius: 3px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-color);
+    max-width: 100px;
+    width: 100%;
+}
+
+.viz-setting-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+/* Run button for DLP demo */
+.btn-run-demo {
+    padding: 0.4rem 1rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+/* DLP Sensors section */
+.viz-dlp-sensors {
+    width: 100%;
+    margin-top: 0.5rem;
+    background: var(--card-bg);
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    font-size: 0.65rem;
+    overflow: hidden;
+}
+
+.viz-dlp-sensors-header {
+    font-weight: 600;
+    padding: 0.3rem 0.4rem;
+    background: var(--bg-color);
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.viz-dlp-sensor-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.3rem 0.4rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.viz-dlp-sensor-row:last-child {
+    border-bottom: none;
+}
+
+.viz-dlp-sensor-name {
+    font-size: 0.65rem;
+    color: var(--text-primary);
+}
+
+/* Toggle switch */
+.viz-toggle {
+    position: relative;
+    display: inline-block;
+    width: 32px;
+    height: 18px;
+}
+
+.viz-toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.viz-toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: 0.3s;
+    border-radius: 18px;
+}
+
+.viz-toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 14px;
+    width: 14px;
+    left: 2px;
+    bottom: 2px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+}
+
+.viz-toggle input:checked + .viz-toggle-slider {
+    background-color: var(--success-color);
+}
+
+.viz-toggle input:disabled + .viz-toggle-slider {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.viz-toggle input:checked + .viz-toggle-slider:before {
+    transform: translateX(14px);
+}
+
+/* DLP Action Toggle (Alert/Block) */
+.viz-dlp-action-toggle {
+    display: flex;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-left: auto;
+}
+
+.viz-action-btn {
+    padding: 0.15rem 0.4rem;
+    font-size: 0.55rem;
+    border: none;
+    background: var(--bg-color);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 500;
+}
+
+.viz-action-btn:first-child {
+    border-right: 1px solid var(--border-color);
+}
+
+.viz-action-btn.active[data-action="allow"] {
+    background: #e6f4ea;
+    color: var(--success-color);
+}
+
+.viz-action-btn.active[data-action="deny"] {
+    background: #fce8e6;
+    color: var(--error-color);
+}
+
+.viz-action-btn:hover:not(.active) {
+    background: var(--card-bg);
+}
+
+.viz-action-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Target settings hidden by default */
+.viz-target .viz-pod-settings,
+.viz-target .viz-process-list {
+    display: none;
+}
+
+.viz-target.show-pod-settings .viz-pod-settings,
+.viz-target.show-pod-settings .viz-process-list {
+    display: block;
 }
 
 /* Visualization States */
@@ -1145,7 +1798,7 @@ select.form-control {
 .nv-logs-container {
     background: var(--card-bg);
     border: 1px solid var(--border-color);
-    border-radius: 8px;
+    border-radius: 12px;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -1235,6 +1888,11 @@ select.form-control {
     color: #e37400;
 }
 
+.nv-log-type.threat {
+    background-color: #e8f0fe;
+    color: #1a73e8;
+}
+
 .nv-log-info {
     flex: 1;
     min-width: 0;
@@ -1259,21 +1917,20 @@ select.form-control {
 
 /* Responsive */
 @media (max-width: 900px) {
-    .demo-compact-row,
-    .demo-viz-row {
+    .demo-compact-row {
         grid-template-columns: 1fr;
+    }
+
+    .demo-viz-row {
+        flex-direction: column;
+    }
+
+    .demo-viz-row .nv-logs-container {
+        width: 100%;
     }
 }
 
 @media (max-width: 768px) {
-    .main-container {
-        grid-template-columns: 1fr;
-    }
-
-    .sidebar {
-        display: none;
-    }
-
     .header {
         padding: 1rem;
     }
@@ -1296,8 +1953,11 @@ select.form-control {
         min-width: 60px;
     }
 
-    .demo-compact-row,
-    .demo-viz-row {
+    .demo-compact-row {
         grid-template-columns: 1fr;
+    }
+
+    .header-status-group {
+        display: none;
     }
 }

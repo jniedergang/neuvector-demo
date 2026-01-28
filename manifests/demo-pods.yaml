@@ -46,6 +46,26 @@ spec:
         memory: "64Mi"
         cpu: "100m"
 ---
+# Service for production1 pod (for internal cluster access)
+apiVersion: v1
+kind: Service
+metadata:
+  name: production1
+  namespace: neuvector-demo
+  labels:
+    app: demo-test
+    component: production
+spec:
+  selector:
+    app: demo-test
+    component: production
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: http
+  type: ClusterIP
+---
 # Service for web1 pod (for internal cluster access)
 apiVersion: v1
 kind: Service

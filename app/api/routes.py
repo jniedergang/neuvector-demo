@@ -334,9 +334,16 @@ async def update_group_settings(request: UpdateGroupRequest):
         if response.status_code in (200, 204):
             return UpdateGroupResponse(success=True, message="Settings updated")
         else:
+            # Get error details
+            error_detail = ""
+            try:
+                error_data = response.json()
+                error_detail = str(error_data)
+            except Exception:
+                error_detail = response.text
             return UpdateGroupResponse(
                 success=False,
-                message=f"Failed: {response.status_code}"
+                message=f"Failed ({response.status_code}): {error_detail}"
             )
 
     except NeuVectorAPIError as e:
@@ -408,7 +415,7 @@ class RecentEventsResponse(BaseModel):
 
 @router.post("/neuvector/recent-events", response_model=RecentEventsResponse)
 async def get_recent_events(request: RecentEventsRequest):
-    """Get recent NeuVector incidents and violations for a workload."""
+    """Get recent NeuVector incidents, violations, and DLP threats for a workload."""
     api = NeuVectorAPI(
         base_url=NEUVECTOR_API_URL,
         username=request.username,
@@ -418,12 +425,16 @@ async def get_recent_events(request: RecentEventsRequest):
     try:
         await api.authenticate()
 
-        # Get both incidents and violations
+        # Get incidents, violations, and DLP threats
         incidents = await api.get_recent_incidents(
             group_name=request.group_name,
             limit=request.limit,
         )
         violations = await api.get_recent_violations(
+            group_name=request.group_name,
+            limit=request.limit,
+        )
+        threats = await api.get_recent_threats(
             group_name=request.group_name,
             limit=request.limit,
         )
@@ -465,6 +476,24 @@ async def get_recent_events(request: RecentEventsRequest):
                 level=vio.get("level", "Warning"),
             ))
 
+        for threat in threats:
+            # Build details from threat info
+            sensor = threat.get("sensor", "")
+            client = threat.get("client_workload_name", "Unknown")
+            server = threat.get("server_workload_name", "Unknown")
+            details = f"{client} -> {server}"
+            if sensor:
+                details += f" [{sensor}]"
+
+            events.append(NeuVectorEvent(
+                event_type="threat",
+                name=threat.get("name", "DLP Threat"),
+                message=f"DLP: {threat.get('name', 'Unknown')}",
+                details=details,
+                reported_at=threat.get("reported_at", ""),
+                level=threat.get("level", "Warning"),
+            ))
+
         # Sort all events by time (most recent first)
         events = sorted(events, key=lambda x: x.reported_at, reverse=True)
 
@@ -485,6 +514,138 @@ async def get_recent_events(request: RecentEventsRequest):
     except Exception as e:
         await api.close()
         return RecentEventsResponse(
+            success=False,
+            message=f"Unexpected error: {str(e)}",
+        )
+
+
+class DLPSensorInfo(BaseModel):
+    """DLP sensor info model."""
+    name: str
+    enabled: bool
+    action: str = "allow"  # "allow" = Alert, "deny" = Block
+
+
+class DLPConfigRequest(BaseModel):
+    """Request model for getting DLP configuration."""
+    username: str
+    password: str
+    group_name: str
+
+
+class DLPConfigResponse(BaseModel):
+    """Response model for DLP configuration."""
+    success: bool
+    group_name: str
+    sensors: list[DLPSensorInfo] = []
+    message: str = ""
+
+
+@router.post("/neuvector/dlp-config", response_model=DLPConfigResponse)
+async def get_dlp_config(request: DLPConfigRequest):
+    """Get DLP sensor configuration for a group."""
+    api = NeuVectorAPI(
+        base_url=NEUVECTOR_API_URL,
+        username=request.username,
+        password=request.password,
+    )
+
+    try:
+        await api.authenticate()
+        dlp_config = await api.get_group_dlp_config(request.group_name)
+        await api.logout()
+        await api.close()
+
+        # Build map of enabled sensors with their actions
+        sensor_map = {
+            s.get("name"): s.get("action", "allow")
+            for s in dlp_config.get("sensors", [])
+        }
+
+        # Define the sensors we want to show
+        known_sensors = ["sensor.creditcard", "sensor.ssn"]
+
+        sensors = [
+            DLPSensorInfo(
+                name=sensor_name,
+                enabled=sensor_name in sensor_map,
+                action=sensor_map.get(sensor_name, "allow"),
+            )
+            for sensor_name in known_sensors
+        ]
+
+        return DLPConfigResponse(
+            success=True,
+            group_name=request.group_name,
+            sensors=sensors,
+        )
+    except NeuVectorAPIError as e:
+        await api.close()
+        return DLPConfigResponse(
+            success=False,
+            group_name=request.group_name,
+            message=str(e),
+        )
+    except Exception as e:
+        await api.close()
+        return DLPConfigResponse(
+            success=False,
+            group_name=request.group_name,
+            message=f"Unexpected error: {str(e)}",
+        )
+
+
+class UpdateDLPSensorRequest(BaseModel):
+    """Request model for updating DLP sensor."""
+    username: str
+    password: str
+    group_name: str
+    sensor_name: str
+    enabled: bool
+    action: str = "allow"  # "allow" = Alert, "deny" = Block
+
+
+class UpdateDLPSensorResponse(BaseModel):
+    """Response model for DLP sensor update."""
+    success: bool
+    message: str = ""
+
+
+@router.post("/neuvector/update-dlp-sensor", response_model=UpdateDLPSensorResponse)
+async def update_dlp_sensor(request: UpdateDLPSensorRequest):
+    """Enable or disable a DLP sensor for a group."""
+    api = NeuVectorAPI(
+        base_url=NEUVECTOR_API_URL,
+        username=request.username,
+        password=request.password,
+    )
+
+    try:
+        await api.authenticate()
+        await api.set_group_dlp_sensor(
+            group_name=request.group_name,
+            sensor_name=request.sensor_name,
+            enabled=request.enabled,
+            action=request.action,
+        )
+        await api.logout()
+        await api.close()
+
+        status = "enabled" if request.enabled else "disabled"
+        action_label = "Alert" if request.action == "allow" else "Block"
+        return UpdateDLPSensorResponse(
+            success=True,
+            message=f"Sensor '{request.sensor_name}' {status} ({action_label})",
+        )
+    except NeuVectorAPIError as e:
+        await api.close()
+        return UpdateDLPSensorResponse(
+            success=False,
+            message=str(e),
+        )
+    except Exception as e:
+        await api.close()
+        return UpdateDLPSensorResponse(
             success=False,
             message=f"Unexpected error: {str(e)}",
         )

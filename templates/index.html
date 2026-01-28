@@ -9,9 +9,32 @@
 <body>
     <!-- Header -->
     <header class="header">
-        <h1>NeuVector Demo Platform</h1>
+        <div class="header-left">
+            <button class="btn-sidebar-toggle" id="btn-sidebar-toggle" title="Open menu">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+            </button>
+            <h1>
+                <img src="" alt="" id="header-logo" class="header-logo" style="display: none;">
+                <span id="header-title">NeuVector Demo Platform</span>
+            </h1>
+        </div>
         <div class="header-actions">
-            <button class="btn btn-icon" id="btn-settings" title="NeuVector API Settings">
+            <!-- Status Boxes -->
+            <div class="header-status-group">
+                <div class="header-status-box" id="cluster-status-box">
+                    <span class="header-status-label">K8s:</span>
+                    <span class="header-status-value" id="cluster-status-value">...</span>
+                </div>
+                <div class="header-status-box" id="api-status-box">
+                    <span class="header-status-label">NV API:</span>
+                    <span class="header-status-value" id="api-status-value">...</span>
+                </div>
+            </div>
+            <button class="btn btn-icon" id="btn-settings" title="Parameters">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="12" cy="12" r="3"></circle>
                     <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
@@ -24,36 +47,17 @@
         </div>
     </header>
 
+    <!-- Sidebar Backdrop -->
+    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
     <!-- Main Container -->
     <div class="main-container">
         <!-- Sidebar -->
-        <aside class="sidebar">
-            <!-- Lifecycle Actions -->
-            <div class="sidebar-section">
-                <h3>Platform Actions</h3>
-                <div class="lifecycle-actions">
-                    <button class="btn btn-success" id="btn-prepare" title="Deploy demo namespace and pods">
-                        Prepare
-                    </button>
-                    <button class="btn btn-outline" id="btn-status" title="Check platform status">
-                        Status
-                    </button>
-                    <button class="btn btn-danger" id="btn-reset" title="Remove all demo resources">
-                        Reset
-                    </button>
-                </div>
-                <!-- NeuVector API Status -->
-                <div class="api-status-box" id="api-status-box">
-                    <span class="api-status-label">NeuVector API:</span>
-                    <span class="api-status-value" id="api-status-value">Not configured</span>
-                </div>
-                <!-- Cluster Status -->
-                <div class="api-status-box" id="cluster-status-box">
-                    <span class="api-status-label">K8s Cluster:</span>
-                    <span class="api-status-value" id="cluster-status-value">Checking...</span>
-                </div>
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h2>Demos</h2>
+                <button class="btn-sidebar-close" id="btn-sidebar-close" title="Close menu">&times;</button>
             </div>
-
             <!-- Demo List -->
             {% for category, demo_list in categories.items() %}
             <div class="sidebar-section">
@@ -78,7 +82,18 @@
             <!-- Demo Configuration Card -->
             <div class="card">
                 <div class="card-header">
-                    <h2 id="demo-title">Select a Demo</h2>
+                    <div class="demo-title-container">
+                        <select id="demo-selector" class="demo-selector">
+                            <option value="">Select a Demo...</option>
+                            {% for category, demo_list in categories.items() %}
+                            <optgroup label="{{ category }}">
+                                {% for demo in demo_list %}
+                                <option value="{{ demo.id }}" data-icon="{{ demo.icon }}">{{ demo.icon }} {{ demo.name }}</option>
+                                {% endfor %}
+                            </optgroup>
+                            {% endfor %}
+                        </select>
+                    </div>
                 </div>
                 <div class="card-body">
                     <div id="demo-description" class="demo-description">
@@ -116,31 +131,77 @@
         </main>
     </div>
 
-    <!-- Settings Modal -->
+    <!-- Parameters Modal -->
     <div class="modal-overlay" id="settings-modal">
-        <div class="modal">
+        <div class="modal modal-large">
             <div class="modal-header">
-                <h3>NeuVector API Settings</h3>
+                <h3>Parameters</h3>
                 <button class="btn-close" id="btn-close-settings">&times;</button>
             </div>
             <div class="modal-body">
-                <div class="form-group">
-                    <label for="settings-username">Username</label>
-                    <input type="text" class="form-control" id="settings-username" placeholder="admin" value="admin">
+                <!-- Platform Actions Section -->
+                <div class="settings-section">
+                    <h4 class="settings-section-title">Platform Actions</h4>
+                    <div class="lifecycle-actions">
+                        <button class="btn btn-success" id="btn-prepare" title="Deploy demo namespace and pods">
+                            Prepare
+                        </button>
+                        <button class="btn btn-outline" id="btn-status" title="Check platform status">
+                            Status
+                        </button>
+                        <button class="btn btn-danger" id="btn-reset" title="Remove all demo resources">
+                            Reset
+                        </button>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="settings-password">Password</label>
-                    <input type="password" class="form-control" id="settings-password" placeholder="Enter password">
+
+                <!-- API Settings Section -->
+                <div class="settings-section">
+                    <h4 class="settings-section-title">API Settings</h4>
+                    <div class="form-group">
+                        <label for="settings-username">Username</label>
+                        <input type="text" class="form-control" id="settings-username" placeholder="admin" value="admin">
+                    </div>
+                    <div class="form-group">
+                        <label for="settings-password">Password</label>
+                        <input type="password" class="form-control" id="settings-password" placeholder="Enter password">
+                    </div>
+                    <div class="form-group">
+                        <label>API URL</label>
+                        <div class="api-url-display" id="settings-api-url">Loading...</div>
+                    </div>
+                    <div class="settings-status" id="settings-status"></div>
+                    <div class="settings-actions">
+                        <button class="btn btn-outline" id="btn-test-connection">Test Connection</button>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>API URL</label>
-                    <div class="api-url-display" id="settings-api-url">Loading...</div>
+
+                <!-- Appearance Section -->
+                <div class="settings-section">
+                    <h4 class="settings-section-title">Appearance</h4>
+                    <div class="form-group">
+                        <label for="settings-title">Page Title</label>
+                        <input type="text" class="form-control" id="settings-title" placeholder="NeuVector Demo Platform" value="NeuVector Demo Platform">
+                    </div>
+                    <div class="form-group">
+                        <label>Logo</label>
+                        <div class="logo-upload-container">
+                            <div class="logo-preview" id="logo-preview">
+                                <span class="logo-placeholder">No logo</span>
+                            </div>
+                            <div class="logo-actions">
+                                <label class="btn btn-outline btn-file">
+                                    Upload Image
+                                    <input type="file" id="logo-file-input" accept="image/*" style="display: none;">
+                                </label>
+                                <button class="btn btn-outline" id="btn-remove-logo" style="display: none;">Remove</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="settings-status" id="settings-status"></div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-outline" id="btn-test-connection">Test Connection</button>
-                <button class="btn btn-primary" id="btn-save-settings">Save</button>
+                <button class="btn btn-primary" id="btn-save-settings">Save & Close</button>
             </div>
         </div>
     </div>

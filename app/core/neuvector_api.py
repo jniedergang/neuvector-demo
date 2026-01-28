@@ -400,13 +400,16 @@ class NeuVectorAPI:
             data = response.json()
             incidents = data.get("incidents", [])
 
-            # Filter by group name if provided
+            # Filter by group name if provided - use flexible matching
             if group_name:
                 # Extract service name from group (nv.opensuse.neuvector-demo -> opensuse)
                 service = group_name.replace("nv.", "").split(".")[0] if group_name.startswith("nv.") else group_name
+                # Also filter for neuvector-demo namespace
                 incidents = [
                     i for i in incidents
-                    if service in i.get("workload_name", "") or service in i.get("group", "")
+                    if (service in i.get("workload_name", "") or
+                        service in i.get("group", "") or
+                        "neuvector-demo" in i.get("workload_domain", ""))
                 ]
 
             # Sort by time (most recent first) and limit
@@ -448,13 +451,17 @@ class NeuVectorAPI:
             data = response.json()
             violations = data.get("violations", [])
 
-            # Filter by group name if provided
+            # Filter by group name if provided - use flexible matching
             if group_name:
                 # Extract service name from group
                 service = group_name.replace("nv.", "").split(".")[0] if group_name.startswith("nv.") else group_name
                 violations = [
                     v for v in violations
-                    if service in v.get("client_name", "") or service in v.get("server_name", "") or service in v.get("group", "")
+                    if (service in v.get("client_name", "") or
+                        service in v.get("server_name", "") or
+                        service in v.get("group", "") or
+                        "neuvector-demo" in v.get("client_domain", "") or
+                        "neuvector-demo" in v.get("server_domain", ""))
                 ]
 
             # Sort by time (most recent first) and limit
@@ -463,3 +470,230 @@ class NeuVectorAPI:
 
         except httpx.RequestError as e:
             raise NeuVectorAPIError(f"Connection error: {str(e)}")
+
+    async def get_dlp_sensors(self) -> list[dict[str, Any]]:
+        """
+        Get all DLP sensors.
+
+        Returns:
+            List of DLP sensor objects
+
+        Raises:
+            NeuVectorAPIError: If request fails
+        """
+        client = await self._get_client()
+
+        try:
+            response = await client.get(
+                "/v1/dlp/sensor",
+                headers=self._auth_headers(),
+            )
+
+            if response.status_code != 200:
+                raise NeuVectorAPIError(f"Failed to get DLP sensors: {response.status_code}")
+
+            data = response.json()
+            return data.get("sensors", [])
+
+        except httpx.RequestError as e:
+            raise NeuVectorAPIError(f"Connection error: {str(e)}")
+
+    async def get_group_dlp_config(self, group_name: str) -> dict[str, Any]:
+        """
+        Get DLP configuration for a group.
+
+        Args:
+            group_name: Name of the group (e.g., "nv.production1.neuvector-demo")
+
+        Returns:
+            DLP configuration object with sensors list
+
+        Raises:
+            NeuVectorAPIError: If request fails
+        """
+        client = await self._get_client()
+
+        try:
+            response = await client.get(
+                f"/v1/dlp/group/{group_name}",
+                headers=self._auth_headers(),
+            )
+
+            if response.status_code == 404:
+                # Group has no DLP config yet, return empty
+                return {"sensors": [], "status": True}
+            if response.status_code != 200:
+                raise NeuVectorAPIError(f"Failed to get DLP config: {response.status_code}")
+
+            data = response.json()
+            return data.get("dlp_group", {})
+
+        except httpx.RequestError as e:
+            raise NeuVectorAPIError(f"Connection error: {str(e)}")
+
+    async def update_group_dlp_sensors(
+        self,
+        group_name: str,
+        sensors: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        """
+        Update DLP sensors configuration for a group.
+
+        Args:
+            group_name: Name of the group
+            sensors: List of sensor configs [{"name": "sensor.creditcard", "action": "allow"}]
+
+        Returns:
+            Updated DLP configuration
+
+        Raises:
+            NeuVectorAPIError: If request fails
+        """
+        client = await self._get_client()
+
+        try:
+            # Format the sensors correctly for NeuVector API
+            # RESTDlpSetting format: {"name": "sensor.xxx", "action": "allow"}
+            formatted_sensors = []
+            for s in sensors:
+                formatted_sensors.append({
+                    "name": s.get("name"),
+                    "action": s.get("action", "allow"),
+                })
+
+            # NeuVector API uses "replace" field for GUI-style full replacement
+            # "sensors" is for adding/changing, "delete" is for removing
+            payload = {
+                "config": {
+                    "name": group_name,
+                    "status": True,
+                    "replace": formatted_sensors,  # Use "replace" to replace entire list
+                }
+            }
+
+            response = await client.patch(
+                f"/v1/dlp/group/{group_name}",
+                json=payload,
+                headers=self._auth_headers(),
+            )
+
+            if response.status_code not in (200, 204):
+                error_msg = f"Failed to update DLP config: {response.status_code}"
+                try:
+                    error_data = response.json()
+                    if "error" in error_data:
+                        error_msg = f"Failed to update DLP config: {error_data['error']}"
+                    elif "message" in error_data:
+                        error_msg = f"Failed to update DLP config: {error_data['message']}"
+                    else:
+                        error_msg = f"Failed to update DLP config: {response.status_code} - {error_data}"
+                except Exception:
+                    error_msg = f"Failed to update DLP config: {response.status_code} - {response.text}"
+                raise NeuVectorAPIError(error_msg)
+
+            return {"success": True, "group": group_name, "sensors": formatted_sensors}
+
+        except httpx.RequestError as e:
+            raise NeuVectorAPIError(f"Connection error: {str(e)}")
+
+    async def get_recent_threats(
+        self,
+        group_name: Optional[str] = None,
+        limit: int = 10,
+    ) -> list[dict[str, Any]]:
+        """
+        Get recent DLP/WAF threat events.
+
+        Args:
+            group_name: Optional group name to filter
+            limit: Maximum number of threats to return
+
+        Returns:
+            List of threat objects
+
+        Raises:
+            NeuVectorAPIError: If request fails
+        """
+        client = await self._get_client()
+
+        try:
+            response = await client.get(
+                "/v1/log/threat",
+                headers=self._auth_headers(),
+            )
+
+            if response.status_code != 200:
+                raise NeuVectorAPIError(f"Failed to get threats: {response.status_code}")
+
+            data = response.json()
+            threats = data.get("threats", [])
+
+            # Filter by group name if provided - use flexible matching
+            if group_name:
+                # Extract service name from group
+                service = group_name.replace("nv.", "").split(".")[0] if group_name.startswith("nv.") else group_name
+                threats = [
+                    t for t in threats
+                    if (service in t.get("client_workload_name", "") or
+                        service in t.get("server_workload_name", "") or
+                        service in t.get("group", "") or
+                        "neuvector-demo" in t.get("client_workload_domain", "") or
+                        "neuvector-demo" in t.get("server_workload_domain", ""))
+                ]
+
+            # Sort by time (most recent first) and limit
+            threats = sorted(threats, key=lambda x: x.get("reported_at", ""), reverse=True)
+            return threats[:limit]
+
+        except httpx.RequestError as e:
+            raise NeuVectorAPIError(f"Connection error: {str(e)}")
+
+    async def set_group_dlp_sensor(
+        self,
+        group_name: str,
+        sensor_name: str,
+        enabled: bool,
+        action: str = "allow",
+    ) -> dict[str, Any]:
+        """
+        Enable or disable a specific DLP sensor for a group.
+
+        Args:
+            group_name: Name of the group
+            sensor_name: Name of the sensor (e.g., "sensor.creditcard")
+            enabled: True to enable, False to disable
+            action: "allow" for Alert, "deny" for Block
+
+        Returns:
+            Result of the operation
+
+        Raises:
+            NeuVectorAPIError: If request fails
+        """
+        # First, get current DLP config
+        current_config = await self.get_group_dlp_config(group_name)
+        current_sensors = current_config.get("sensors", [])
+
+        # Build new sensor list
+        # Find if sensor already exists
+        sensor_exists = False
+        new_sensors = []
+
+        for sensor in current_sensors:
+            if sensor.get("name") == sensor_name:
+                sensor_exists = True
+                if enabled:
+                    # Update with new action
+                    new_sensors.append({"name": sensor_name, "action": action})
+                # If disabled, don't add it to the list
+            else:
+                # Keep other sensors as-is
+                sensor_data = {"name": sensor.get("name"), "action": sensor.get("action", "allow")}
+                new_sensors.append(sensor_data)
+
+        # If sensor didn't exist and we want to enable it
+        if not sensor_exists and enabled:
+            new_sensors.append({"name": sensor_name, "action": action})
+
+        # Update the group with new sensors list
+        return await self.update_group_dlp_sensors(group_name, new_sensors)
