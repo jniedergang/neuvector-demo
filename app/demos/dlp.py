@@ -74,7 +74,9 @@ class DLPDemo(DemoModule):
                 default="credit_card",
                 required=True,
                 options=[
-                    {"value": "credit_card", "label": "Matricule"},
+                    {"value": "credit_card", "label": "Matricule (Amex)"},
+                    {"value": "visa", "label": "Matricule (Visa)"},
+                    {"value": "passport", "label": "Passeport"},
                     {"value": "ssn", "label": "Social Security Number"},
                     {"value": "custom", "label": "Custom Pattern"},
                 ],
@@ -95,8 +97,16 @@ class DLPDemo(DemoModule):
         # NeuVector DLP regex excludes repetitive patterns like 4242-4242-4242-4242
         # Use realistic-looking test numbers that will trigger DLP blocking
         test_patterns = {
-            "credit_card": ("4532-0151-1283-0366", "Test Matricule pattern"),
+            # Short names (legacy)
+            "credit_card": ("3782-822463-10005", "Test Matricule Amex"),
+            "visa": ("4532-0151-2839-0472", "Test Matricule Visa"),
+            "passport": ("12AB34567", "Test Passeport"),
             "ssn": ("078-05-1120", "Test SSN pattern"),
+            # Full sensor names (from NeuVector API)
+            "sensor.creditcard": ("3782-822463-10005", "Test Matricule Amex"),
+            "sensor.visa": ("4532-0151-2839-0472", "Test Matricule Visa"),
+            "sensor.passeport": ("12AB34567", "Test Passeport"),
+            "sensor.ssn": ("078-05-1120", "Test SSN"),
         }
 
         if data_type == "custom" and custom_data:

@@ -507,6 +507,158 @@ class DemoApp {
         this.vizContainer = null;
         this.currentDemoType = null;  // 'connectivity', 'dlp', or other
         this.detectedResult = null;   // Store detected result until execution completes
+        this.dlpSensors = null;       // Cached DLP sensors from NeuVector
+        this.dlpSensorsLoading = false;
+    }
+
+    /**
+     * Fetch DLP sensors from NeuVector API
+     */
+    async fetchDLPSensors() {
+        if (this.dlpSensors !== null || this.dlpSensorsLoading) {
+            return this.dlpSensors;
+        }
+
+        this.dlpSensorsLoading = true;
+        try {
+            const response = await fetch('/api/dlp/sensors', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: localStorage.getItem('nv_username') || 'admin',
+                    password: localStorage.getItem('nv_password') || 'Admin@123456'
+                })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success) {
+                    this.dlpSensors = data.sensors;
+                    console.log('DLP sensors loaded:', this.dlpSensors);
+                } else {
+                    console.warn('Failed to load DLP sensors:', data.message);
+                    this.dlpSensors = [];
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching DLP sensors:', error);
+            this.dlpSensors = [];
+        }
+        this.dlpSensorsLoading = false;
+        return this.dlpSensors;
+    }
+
+    /**
+     * Refresh DLP sensors (force reload)
+     */
+    async refreshDLPSensors() {
+        this.dlpSensors = null;
+        return this.fetchDLPSensors();
+    }
+
+    /**
+     * Populate DLP sensors UI (data type dropdown and sensors list)
+     */
+    async populateDLPSensorsUI() {
+        const sensors = await this.fetchDLPSensors();
+        if (!sensors || sensors.length === 0) {
+            console.warn('No DLP sensors available');
+            return;
+        }
+
+        // Update data type dropdown
+        const dataTypeSelect = document.getElementById('viz-data-type');
+        if (dataTypeSelect) {
+            const currentValue = dataTypeSelect.value;
+            dataTypeSelect.innerHTML = sensors.map(s =>
+                `<option value="${s.value}" data-test="${s.test_data}">${s.label}</option>`
+            ).join('');
+            // Restore selection if possible
+            if (sensors.find(s => s.value === currentValue)) {
+                dataTypeSelect.value = currentValue;
+            }
+        }
+
+        // Update hidden form field with data type options
+        const paramDataType = document.getElementById('param-data_type');
+        if (paramDataType && dataTypeSelect) {
+            paramDataType.value = dataTypeSelect.value;
+        }
+
+        // Update sensors list in visualization (exclude 'custom')
+        const sensorsListContainer = document.getElementById('viz-dlp-sensors-list');
+        if (sensorsListContainer) {
+            const realSensors = sensors.filter(s => s.value !== 'custom');
+            if (realSensors.length === 0) {
+                sensorsListContainer.innerHTML = '<div class="viz-no-sensors">No DLP sensors configured</div>';
+            } else {
+                sensorsListContainer.innerHTML = realSensors.map(sensor => {
+                    const sensorKey = sensor.value.replace('sensor.', '');
+                    return `
+                        <div class="viz-dlp-sensor-row">
+                            <label class="viz-toggle">
+                                <input type="checkbox" id="viz-sensor-${sensorKey}" data-sensor="${sensor.value}">
+                                <span class="viz-toggle-slider"></span>
+                            </label>
+                            <span class="viz-dlp-sensor-name">${sensor.label}</span>
+                            <div class="viz-dlp-action-toggle" id="viz-action-${sensorKey}" data-sensor="${sensor.value}">
+                                <button type="button" class="viz-action-btn active" data-action="allow">Alert</button>
+                                <button type="button" class="viz-action-btn" data-action="deny">Block</button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                // Re-attach event listeners for new checkboxes and buttons
+                this.attachDLPSensorListeners();
+            }
+        }
+    }
+
+    /**
+     * Attach event listeners for DLP sensor controls
+     */
+    attachDLPSensorListeners() {
+        // Sensor enable/disable toggles
+        document.querySelectorAll('#viz-dlp-sensors-list input[type="checkbox"]').forEach(checkbox => {
+            checkbox.addEventListener('change', () => {
+                const sensorName = checkbox.dataset.sensor;
+                const enabled = checkbox.checked;
+                const sourceSelect = document.getElementById('viz-source');
+                const podName = sourceSelect?.value || 'production1';
+
+                // Get current action from action buttons
+                const sensorKey = sensorName.replace('sensor.', '');
+                const actionToggle = document.getElementById(`viz-action-${sensorKey}`);
+                const activeBtn = actionToggle?.querySelector('.viz-action-btn.active');
+                const action = activeBtn?.dataset.action || 'allow';
+
+                this.updateDLPSensor(podName, sensorName, enabled, action, checkbox);
+            });
+        });
+
+        // Action button toggles (Alert/Block)
+        document.querySelectorAll('#viz-dlp-sensors-list .viz-dlp-action-toggle').forEach(toggle => {
+            toggle.querySelectorAll('.viz-action-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const sensorName = toggle.dataset.sensor;
+                    const action = btn.dataset.action;
+                    const sensorKey = sensorName.replace('sensor.', '');
+                    const checkbox = document.getElementById(`viz-sensor-${sensorKey}`);
+
+                    if (!checkbox?.checked) return; // Only update if sensor is enabled
+
+                    // Update UI
+                    toggle.querySelectorAll('.viz-action-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+
+                    // Update in NeuVector
+                    const sourceSelect = document.getElementById('viz-source');
+                    const podName = sourceSelect?.value || 'production1';
+                    this.updateDLPSensor(podName, sensorName, true, action, checkbox);
+                });
+            });
+        });
     }
 
     init() {
@@ -528,6 +680,52 @@ class DemoApp {
 
         // Set up event listeners
         this.setupEventListeners();
+
+        // Restore demo from URL hash on page load
+        this.restoreFromHash();
+
+        // Listen for hash changes (browser back/forward)
+        window.addEventListener('hashchange', () => this.restoreFromHash());
+    }
+
+    /**
+     * Restore selected demo from URL hash
+     */
+    restoreFromHash() {
+        const hash = window.location.hash.slice(1); // Remove '#'
+        if (hash && this.demoSelector) {
+            // Check if this demo exists in the selector
+            const option = this.demoSelector.querySelector(`option[value="${hash}"]`);
+            if (option) {
+                this.selectDemoWithoutHash(hash);
+            }
+        }
+    }
+
+    /**
+     * Select a demo without updating hash (to avoid loops)
+     */
+    selectDemoWithoutHash(demoId) {
+        // Update active state in sidebar
+        document.querySelectorAll('.demo-item').forEach(item => {
+            item.classList.toggle('active', item.dataset.demoId === demoId);
+        });
+
+        // Update dropdown selector
+        if (this.demoSelector && this.demoSelector.value !== demoId) {
+            this.demoSelector.value = demoId;
+        }
+
+        // Close sidebar on mobile after selection
+        const sidebar = document.getElementById('sidebar');
+        const backdrop = document.getElementById('sidebar-backdrop');
+        if (sidebar?.classList.contains('open')) {
+            sidebar.classList.remove('open');
+            backdrop?.classList.remove('visible');
+        }
+
+        // Load demo details
+        this.loadDemo(demoId);
     }
 
     setupEventListeners() {
@@ -611,8 +809,15 @@ class DemoApp {
         }
 
         // Check if it's a curl success (contains HTTP status)
+        // For DLP demos, HTTP response means data was NOT blocked (Alert mode)
         if (text.includes('HTTP/1') || text.includes('HTTP/2') || text.includes(' 200 ') || text.includes(' 301 ') || text.includes(' 302 ')) {
-            this.detectedResult = { state: 'success', message: 'HTTP request successful' };
+            // For DLP demos, check if it's really a success or just "not blocked"
+            if (this.currentDemoType === 'dlp') {
+                // In DLP Alert mode, data passes through - show warning state
+                this.detectedResult = { state: 'success', message: 'Data sent (DLP in Alert mode - check NeuVector logs)' };
+            } else {
+                this.detectedResult = { state: 'success', message: 'HTTP request successful' };
+            }
             return;
         }
 
@@ -765,12 +970,19 @@ class DemoApp {
             this.detectedResult = null;
         }
 
-        // Always fetch events and refresh process rules after demo completes
+        // Always fetch events after demo completes
         if (this.vizContainer) {
-            setTimeout(() => this.fetchNeuVectorEvents(), 1000);
-            setTimeout(() => this.fetchNeuVectorEvents(), 3000);
-            // Refresh process rules (new processes may have been learned)
-            setTimeout(() => this.refreshAllProcessRules(), 2000);
+            if (this.currentDemoType === 'admission') {
+                // For admission demos, fetch admission events
+                setTimeout(() => this.fetchAdmissionEvents(), 1000);
+                setTimeout(() => this.fetchAdmissionEvents(), 3000);
+            } else {
+                // For connectivity/DLP demos, fetch general events
+                setTimeout(() => this.fetchNeuVectorEvents(), 1000);
+                setTimeout(() => this.fetchNeuVectorEvents(), 3000);
+                // Refresh process rules (new processes may have been learned)
+                setTimeout(() => this.refreshAllProcessRules(), 2000);
+            }
         }
     }
 
@@ -821,6 +1033,9 @@ class DemoApp {
         if (this.demoSelector && this.demoSelector.value !== demoId) {
             this.demoSelector.value = demoId;
         }
+
+        // Update URL hash for persistence on refresh
+        window.location.hash = demoId;
 
         // Close sidebar on mobile after selection
         const sidebar = document.getElementById('sidebar');
@@ -1380,28 +1595,9 @@ class DemoApp {
                     </div>
                 </div>
                 <div class="viz-dlp-sensors" id="viz-dlp-sensors">
-                    <div class="viz-dlp-sensors-header">DLP Sensors</div>
-                    <div class="viz-dlp-sensor-row">
-                        <label class="viz-toggle">
-                            <input type="checkbox" id="viz-sensor-creditcard" data-sensor="sensor.creditcard">
-                            <span class="viz-toggle-slider"></span>
-                        </label>
-                        <span class="viz-dlp-sensor-name">Matricule</span>
-                        <div class="viz-dlp-action-toggle" id="viz-action-creditcard" data-sensor="sensor.creditcard">
-                            <button type="button" class="viz-action-btn active" data-action="allow">Alert</button>
-                            <button type="button" class="viz-action-btn" data-action="deny">Block</button>
-                        </div>
-                    </div>
-                    <div class="viz-dlp-sensor-row">
-                        <label class="viz-toggle">
-                            <input type="checkbox" id="viz-sensor-ssn" data-sensor="sensor.ssn">
-                            <span class="viz-toggle-slider"></span>
-                        </label>
-                        <span class="viz-dlp-sensor-name">SSN</span>
-                        <div class="viz-dlp-action-toggle" id="viz-action-ssn" data-sensor="sensor.ssn">
-                            <button type="button" class="viz-action-btn active" data-action="allow">Alert</button>
-                            <button type="button" class="viz-action-btn" data-action="deny">Block</button>
-                        </div>
+                    <div class="viz-dlp-sensors-header">DLP Sensors <button type="button" class="viz-refresh-btn" id="viz-refresh-sensors" title="Refresh sensors">↻</button></div>
+                    <div id="viz-dlp-sensors-list">
+                        <div class="viz-loading">Loading sensors...</div>
                     </div>
                 </div>
             `;
@@ -1792,7 +1988,24 @@ class DemoApp {
 
         // Load initial DLP sensor status for DLP demos
         if (isDLPDemo) {
-            this.loadDLPSensors(initialSourcePod);
+            // Populate sensors UI from NeuVector, then load their status
+            this.populateDLPSensorsUI().then(() => {
+                this.loadDLPSensors(initialSourcePod);
+            });
+
+            // Set up refresh sensors button
+            const refreshBtn = document.getElementById('viz-refresh-sensors');
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', async () => {
+                    refreshBtn.disabled = true;
+                    refreshBtn.textContent = '...';
+                    await this.refreshDLPSensors();
+                    await this.populateDLPSensorsUI();
+                    await this.loadDLPSensors(initialSourcePod);
+                    refreshBtn.disabled = false;
+                    refreshBtn.textContent = '↻';
+                });
+            }
         }
     }
 
@@ -2497,6 +2710,7 @@ class DemoApp {
         // Initial load
         this.loadAdmissionState();
         this.loadAdmissionRules();
+        this.fetchAdmissionEvents();
     }
 
     /**
@@ -2693,10 +2907,12 @@ class DemoApp {
                 logsList.innerHTML = result.events.map(event => {
                     const time = event.reported_at ? new Date(event.reported_at).toLocaleTimeString() : '';
                     const levelClass = event.level?.toLowerCase() || 'info';
+                    const isDenied = event.name?.toLowerCase().includes('denied');
+                    const typeClass = isDenied ? 'denied' : 'allowed';
                     return `
                         <div class="nv-log-item ${levelClass}">
                             <div class="nv-log-header">
-                                <span class="nv-log-type admission">${event.name}</span>
+                                <span class="nv-log-type admission ${typeClass}">${event.name}</span>
                                 <span class="nv-log-time">${time}</span>
                             </div>
                             <div class="nv-log-message">${this.escapeHtml(event.message)}</div>

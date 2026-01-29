@@ -1,9 +1,53 @@
 """Platform preparation - deploy demo namespace and pods."""
 
+import os
 from typing import AsyncGenerator
 
 from app.core.kubectl import Kubectl
-from app.config import NAMESPACE, MANIFESTS_DIR
+from app.core.neuvector_api import NeuVectorAPI, NeuVectorAPIError
+from app.config import NAMESPACE, MANIFESTS_DIR, NEUVECTOR_API_URL
+
+# NeuVector credentials (from environment or defaults)
+NV_USERNAME = os.environ.get("NEUVECTOR_USERNAME", "admin")
+NV_PASSWORD = os.environ.get("NEUVECTOR_PASSWORD", "Admin@123456")
+
+# DLP Sensors to create during preparation
+DLP_SENSORS = [
+    {
+        "name": "sensor.ssn",
+        "comment": "Social Security Number detection",
+        "rules": [
+            {
+                "name": "SSN",
+                "patterns": [
+                    {
+                        "key": "pattern",
+                        "op": "regex",
+                        "value": r"\b\d{3}-\d{2}-\d{4}\b",
+                        "context": "packet",
+                    }
+                ],
+            }
+        ],
+    },
+    {
+        "name": "sensor.passeport",
+        "comment": "French passport number detection",
+        "rules": [
+            {
+                "name": "Passeport",
+                "patterns": [
+                    {
+                        "key": "pattern",
+                        "op": "regex",
+                        "value": r"[0-9]{2}[A-Z]{2}[0-9]{5}",
+                        "context": "packet",
+                    }
+                ],
+            }
+        ],
+    },
+]
 
 
 async def prepare_platform(kubectl: Kubectl) -> AsyncGenerator[str, None]:
@@ -79,8 +123,46 @@ async def prepare_platform(kubectl: Kubectl) -> AsyncGenerator[str, None]:
 
     yield ""
 
-    # Step 4: Show final status
-    yield "[STEP 4/4] Final status check..."
+    # Step 4: Create DLP sensors in NeuVector
+    yield "[STEP 4/5] Creating DLP sensors in NeuVector..."
+    try:
+        nv_api = NeuVectorAPI(
+            base_url=NEUVECTOR_API_URL,
+            username=NV_USERNAME,
+            password=NV_PASSWORD,
+        )
+        await nv_api.authenticate()
+
+        # Get existing sensors
+        existing_sensors = await nv_api.get_dlp_sensors()
+        existing_names = {s.get("name") for s in existing_sensors}
+
+        for sensor_config in DLP_SENSORS:
+            sensor_name = sensor_config["name"]
+            if sensor_name in existing_names:
+                yield f"[OK] DLP sensor '{sensor_name}' already exists"
+            else:
+                try:
+                    await nv_api.create_dlp_sensor(
+                        name=sensor_name,
+                        comment=sensor_config.get("comment", ""),
+                        rules=sensor_config.get("rules", []),
+                    )
+                    yield f"[OK] DLP sensor '{sensor_name}' created"
+                except NeuVectorAPIError as e:
+                    yield f"[WARNING] Failed to create sensor '{sensor_name}': {e}"
+
+        await nv_api.logout()
+        await nv_api.close()
+    except NeuVectorAPIError as e:
+        yield f"[WARNING] Could not configure DLP sensors: {e}"
+    except Exception as e:
+        yield f"[WARNING] DLP sensor setup error: {e}"
+
+    yield ""
+
+    # Step 5: Show final status
+    yield "[STEP 5/5] Final status check..."
     try:
         stdout, stderr, rc = await kubectl.run(
             "get", "pods", "-o", "wide",
