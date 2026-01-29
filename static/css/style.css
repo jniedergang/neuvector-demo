@@ -1503,6 +1503,44 @@ select.form-control {
     font-size: 0.6rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.viz-refresh-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0.1rem 0.3rem;
+    font-size: 0.7rem;
+    border-radius: 3px;
+}
+
+.viz-refresh-btn:hover {
+    background: var(--border-color);
+    color: var(--text-primary);
+}
+
+.viz-refresh-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.viz-loading {
+    padding: 0.5rem;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 0.65rem;
+    font-style: italic;
+}
+
+.viz-no-sensors {
+    padding: 0.5rem;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 0.65rem;
 }
 
 .viz-dlp-sensor-row {
@@ -1948,8 +1986,8 @@ select.form-control {
 }
 
 .nv-log-type.threat {
-    background-color: #e8f0fe;
-    color: #1a73e8;
+    background-color: #fce8e6;
+    color: var(--error-color);
 }
 
 .nv-log-info {
@@ -2256,6 +2294,16 @@ select.form-control {
 .nv-log-type.admission {
     background-color: #e8f0fe;
     color: var(--primary-color);
+}
+
+.nv-log-type.admission.denied {
+    background-color: #fce8e6;
+    color: var(--error-color);
+}
+
+.nv-log-type.admission.allowed {
+    background-color: #e6f4ea;
+    color: var(--success-color);
 }
 
 /* Mobile responsive for admission */

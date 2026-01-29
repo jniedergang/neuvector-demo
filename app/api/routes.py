@@ -526,6 +526,96 @@ class DLPSensorInfo(BaseModel):
     action: str = "allow"  # "allow" = Alert, "deny" = Block
 
 
+class DLPSensorOption(BaseModel):
+    """DLP sensor option for dropdown."""
+    value: str  # sensor name
+    label: str  # display name
+    test_data: str = ""  # test data pattern for this sensor
+
+
+class DLPSensorsRequest(BaseModel):
+    """Request model for getting available DLP sensors."""
+    username: str
+    password: str
+
+
+class DLPSensorsResponse(BaseModel):
+    """Response model for available DLP sensors."""
+    success: bool
+    sensors: list[DLPSensorOption] = []
+    message: str = ""
+
+
+# Mapping of sensor names to test data and display labels
+DLP_SENSOR_TEST_DATA = {
+    "sensor.creditcard": {"label": "Matricule (Amex)", "test_data": "3782-822463-10005"},
+    "sensor.visa": {"label": "Matricule (Visa)", "test_data": "4532-0151-2839-0472"},
+    "sensor.ssn": {"label": "SSN", "test_data": "078-05-1120"},
+    "sensor.passeport": {"label": "Passeport", "test_data": "12AB34567"},
+}
+
+
+@router.post("/dlp/sensors", response_model=DLPSensorsResponse)
+async def get_dlp_sensors(request: DLPSensorsRequest):
+    """Get all available DLP sensors from NeuVector."""
+    import os
+    username = request.username or os.environ.get("NEUVECTOR_USERNAME", "admin")
+    password = request.password or os.environ.get("NEUVECTOR_PASSWORD", "Admin@123456")
+
+    api = NeuVectorAPI(
+        base_url=NEUVECTOR_API_URL,
+        username=username,
+        password=password,
+    )
+
+    try:
+        await api.authenticate()
+        sensors = await api.get_dlp_sensors()
+        await api.logout()
+        await api.close()
+
+        sensor_options = []
+        for sensor in sensors:
+            name = sensor.get("name", "")
+            if not name:
+                continue
+
+            # Get label and test data from mapping, or generate defaults
+            sensor_info = DLP_SENSOR_TEST_DATA.get(name, {})
+            label = sensor_info.get("label", name.replace("sensor.", "").title())
+            test_data = sensor_info.get("test_data", "test-data-12345")
+
+            sensor_options.append(DLPSensorOption(
+                value=name,
+                label=label,
+                test_data=test_data,
+            ))
+
+        # Always add custom option at the end
+        sensor_options.append(DLPSensorOption(
+            value="custom",
+            label="Custom Pattern",
+            test_data="",
+        ))
+
+        return DLPSensorsResponse(
+            success=True,
+            sensors=sensor_options,
+        )
+    except NeuVectorAPIError as e:
+        await api.close()
+        return DLPSensorsResponse(
+            success=False,
+            message=str(e),
+        )
+    except Exception as e:
+        await api.close()
+        return DLPSensorsResponse(
+            success=False,
+            message=f"Unexpected error: {str(e)}",
+        )
+
+
 class DLPConfigRequest(BaseModel):
     """Request model for getting DLP configuration."""
     username: str

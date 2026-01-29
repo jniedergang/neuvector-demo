@@ -498,6 +498,92 @@ class NeuVectorAPI:
         except httpx.RequestError as e:
             raise NeuVectorAPIError(f"Connection error: {str(e)}")
 
+    async def create_dlp_sensor(
+        self,
+        name: str,
+        comment: str = "",
+        rules: list[dict[str, Any]] = None,
+    ) -> dict[str, Any]:
+        """
+        Create a new DLP sensor.
+
+        Args:
+            name: Sensor name (will be prefixed with "sensor." if not already)
+            comment: Sensor description
+            rules: List of rule objects with "name" and "patterns" fields
+                   Each pattern has: "key", "op" (regex), "value" (regex pattern), "context" (packet)
+
+        Returns:
+            Created sensor object
+
+        Raises:
+            NeuVectorAPIError: If request fails
+        """
+        client = await self._get_client()
+
+        # Ensure sensor name has proper prefix
+        if not name.startswith("sensor."):
+            name = f"sensor.{name}"
+
+        try:
+            payload = {
+                "config": {
+                    "name": name,
+                    "comment": comment,
+                    "rules": rules or [],
+                }
+            }
+
+            response = await client.post(
+                "/v1/dlp/sensor",
+                json=payload,
+                headers=self._auth_headers(),
+            )
+
+            if response.status_code not in (200, 201):
+                error_msg = f"Failed to create DLP sensor: {response.status_code}"
+                try:
+                    error_data = response.json()
+                    if "error" in error_data:
+                        error_msg = f"Failed to create DLP sensor: {error_data['error']}"
+                except Exception:
+                    pass
+                raise NeuVectorAPIError(error_msg)
+
+            return {"success": True, "name": name}
+
+        except httpx.RequestError as e:
+            raise NeuVectorAPIError(f"Connection error: {str(e)}")
+
+    async def delete_dlp_sensor(self, name: str) -> dict[str, Any]:
+        """
+        Delete a DLP sensor.
+
+        Args:
+            name: Sensor name
+
+        Returns:
+            Result of the operation
+
+        Raises:
+            NeuVectorAPIError: If request fails
+        """
+        client = await self._get_client()
+
+        try:
+            response = await client.delete(
+                f"/v1/dlp/sensor/{name}",
+                headers=self._auth_headers(),
+            )
+
+            if response.status_code not in (200, 204):
+                raise NeuVectorAPIError(f"Failed to delete DLP sensor: {response.status_code}")
+
+            return {"success": True, "deleted": name}
+
+        except httpx.RequestError as e:
+            raise NeuVectorAPIError(f"Connection error: {str(e)}")
+
     async def get_group_dlp_config(self, group_name: str) -> dict[str, Any]:
         """
         Get DLP configuration for a group.
@@ -827,11 +913,10 @@ class NeuVectorAPI:
         try:
             payload = {
                 "config": {
-                    "category": "Kubernetes",
-                    "rule_type": rule_type,
                     "comment": comment,
                     "criteria": criteria or [],
                     "disable": disable,
+                    "rule_type": rule_type,
                 }
             }
 
@@ -906,7 +991,7 @@ class NeuVectorAPI:
         criteria = [
             {
                 "name": "namespace",
-                "op": "=",
+                "op": "containsAny",
                 "value": namespace,
             }
         ]
