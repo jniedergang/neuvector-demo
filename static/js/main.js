@@ -789,14 +789,23 @@ class DemoApp {
         // Store detected result but don't update visualization yet - wait for onComplete
         // This prevents premature green/red display before the command finishes
 
+        // Detect attack blocked (for attack demo)
+        if (text.includes('[BLOCKED]')) {
+            this.detectedResult = { state: 'blocked', message: 'Attack blocked by SUSE Security' };
+            return;
+        }
+
         // Detect process interception (check first - exit code 137 = SIGKILL from NeuVector)
         if (lowerText.includes('exit code 137') ||
             lowerText.includes('exit code 9') ||
+            lowerText.includes('exit code 126') ||
+            lowerText.includes('exit code 127') ||
             lowerText.includes('command terminated') ||
             lowerText.includes('killed') ||
             lowerText.includes('sigkill') ||
             lowerText.includes('permission denied') ||
             lowerText.includes('operation not permitted') ||
+            lowerText.includes('not found') ||
             (text.includes('[ERROR]') && (lowerText.includes('process') || lowerText.includes('terminated')))) {
             this.detectedResult = { state: 'intercepted', message: 'Process blocked by SUSE Security' };
             return;
@@ -805,6 +814,12 @@ class DemoApp {
         // Detect success
         if (text.includes('[OK]') || lowerText.includes('success')) {
             this.detectedResult = { state: 'success', message: 'Command executed successfully' };
+            return;
+        }
+
+        // Detect warning (attack succeeded - not blocked)
+        if (text.includes('[WARNING]') && this.currentDemoType === 'attack') {
+            this.detectedResult = { state: 'success', message: 'Attack succeeded - consider enabling Protect mode' };
             return;
         }
 
@@ -823,7 +838,12 @@ class DemoApp {
 
         // Detect ping success
         if (lowerText.includes('bytes from') || (lowerText.includes('time=') && lowerText.includes('ms'))) {
-            this.detectedResult = { state: 'success', message: 'Ping successful' };
+            // For attack demo, ping success means attack was NOT blocked
+            if (this.currentDemoType === 'attack') {
+                this.detectedResult = { state: 'success', message: 'Attack succeeded - consider enabling Protect mode' };
+            } else {
+                this.detectedResult = { state: 'success', message: 'Ping successful' };
+            }
             return;
         }
 
@@ -847,8 +867,8 @@ class DemoApp {
         }
 
         // Detect running/connecting - only update if no result detected yet
-        if (!this.detectedResult && (text.includes('[CMD]') || lowerText.includes('executing') || lowerText.includes('connecting'))) {
-            this.updateVisualization('running', 'Connecting...');
+        if (!this.detectedResult && (text.includes('[CMD]') || lowerText.includes('executing') || lowerText.includes('connecting') || lowerText.includes('simulating'))) {
+            this.updateVisualization('running', 'Running attack simulation...');
         }
     }
 
@@ -1080,7 +1100,8 @@ class DemoApp {
         const isConnectivityDemo = paramNames.includes('pod_name') && paramNames.includes('target_type');
         const isDLPDemo = paramNames.includes('pod_name') && paramNames.includes('data_type') && paramNames.includes('target');
         const isAdmissionDemo = paramNames.includes('action') && paramNames.includes('namespace') && paramNames.includes('pod_name');
-        const hasVisualization = isConnectivityDemo || isDLPDemo || isAdmissionDemo;
+        const isAttackDemo = paramNames.includes('pod_name') && paramNames.includes('attack_type') && paramNames.includes('target');
+        const hasVisualization = isConnectivityDemo || isDLPDemo || isAdmissionDemo || isAttackDemo;
 
         if (this.demoParams) {
             if (isConnectivityDemo) {
@@ -1092,6 +1113,9 @@ class DemoApp {
             } else if (isAdmissionDemo) {
                 // Render compact layout for admission demos
                 this.demoParams.innerHTML = this.renderAdmissionDemoParams(demo);
+            } else if (isAttackDemo) {
+                // Render compact layout for attack demos
+                this.demoParams.innerHTML = this.renderAttackDemoParams(demo);
             } else {
                 // Standard layout for other demos
                 this.demoParams.innerHTML = demo.parameters.map(param => this.renderParameter(param)).join('');
@@ -1169,6 +1193,23 @@ class DemoApp {
             <input type="hidden" name="action" id="param-action" value="${actionParam?.default || 'create'}">
             <input type="hidden" name="namespace" id="param-namespace" value="${namespaceParam?.default || 'neuvector-demo'}">
             <input type="hidden" name="pod_name" id="param-pod_name" value="${podNameParam?.default || 'test-admission-pod'}">
+        `;
+    }
+
+    /**
+     * Render compact demo parameters for attack simulation demos
+     */
+    renderAttackDemoParams(demo) {
+        const podParam = demo.parameters.find(p => p.name === 'pod_name');
+        const attackTypeParam = demo.parameters.find(p => p.name === 'attack_type');
+        const targetParam = demo.parameters.find(p => p.name === 'target');
+
+        // Hidden form fields only - synced from visualization
+        return `
+            <!-- Hidden form fields synced from visualization -->
+            <input type="hidden" name="pod_name" id="param-pod_name" value="${podParam?.default || 'production1'}">
+            <input type="hidden" name="attack_type" id="param-attack_type" value="${attackTypeParam?.default || 'dos_ping'}">
+            <input type="hidden" name="target" id="param-target" value="${targetParam?.default || 'web1'}">
         `;
     }
 
@@ -1501,18 +1542,25 @@ class DemoApp {
         const isConnectivityDemo = paramNames.includes('pod_name') && paramNames.includes('target_type');
         const isDLPDemo = paramNames.includes('pod_name') && paramNames.includes('data_type') && paramNames.includes('target');
         const isAdmissionDemo = paramNames.includes('action') && paramNames.includes('namespace') && paramNames.includes('pod_name');
+        const isAttackDemo = paramNames.includes('pod_name') && paramNames.includes('attack_type') && paramNames.includes('target');
 
-        if (!isConnectivityDemo && !isDLPDemo && !isAdmissionDemo) {
+        if (!isConnectivityDemo && !isDLPDemo && !isAdmissionDemo && !isAttackDemo) {
             this.removeVisualization();
             return;
         }
 
         // Store demo type for later use
-        this.currentDemoType = isAdmissionDemo ? 'admission' : (isDLPDemo ? 'dlp' : 'connectivity');
+        this.currentDemoType = isAdmissionDemo ? 'admission' : (isAttackDemo ? 'attack' : (isDLPDemo ? 'dlp' : 'connectivity'));
 
         // Handle admission demo separately
         if (isAdmissionDemo) {
             this.createAdmissionVisualization(demo);
+            return;
+        }
+
+        // Handle attack demo separately
+        if (isAttackDemo) {
+            this.createAttackVisualization(demo);
             return;
         }
 
@@ -2568,6 +2616,280 @@ class DemoApp {
             } catch (e) {
                 return custom.substring(0, 20);
             }
+        }
+    }
+
+    /**
+     * Create visualization for Attack Simulation demo
+     */
+    createAttackVisualization(demo) {
+        const podParam = demo.parameters.find(p => p.name === 'pod_name');
+        const attackTypeParam = demo.parameters.find(p => p.name === 'attack_type');
+        const targetParam = demo.parameters.find(p => p.name === 'target');
+
+        // Build source options
+        const sourceOptions = podParam.options.map(opt =>
+            `<option value="${opt.value}" ${opt.value === podParam.default ? 'selected' : ''}>${opt.label}</option>`
+        ).join('');
+
+        // Build target options
+        const targetOptions = targetParam.options.map(opt =>
+            `<option value="${opt.value}" ${opt.value === targetParam.default ? 'selected' : ''}>${opt.label}</option>`
+        ).join('');
+
+        // Mode options for settings
+        const modeOptions = `
+            <option value="Discover">Discover</option>
+            <option value="Monitor">Monitor</option>
+            <option value="Protect">Protect</option>
+        `;
+        const baselineOptions = `
+            <option value="basic">basic</option>
+            <option value="zero-drift">zero-drift</option>
+        `;
+
+        const vizHtml = `
+            <div class="demo-viz-row">
+                <div class="demo-visualization attack-viz" id="demo-visualization">
+                    <div class="viz-content">
+                        <div class="viz-box viz-source pending" id="viz-source">
+                            <div class="viz-box-header">
+                                <div class="viz-icon">🦹</div>
+                                <div class="viz-label">Attacker</div>
+                                <div class="viz-mode-icons" id="viz-src-mode-icons">
+                                    <span class="viz-mode-icon network" id="viz-src-icon-network" title="Network Policy">🔍</span>
+                                    <span class="viz-mode-icon process" id="viz-src-icon-process" title="Process Profile">🔍</span>
+                                </div>
+                            </div>
+                            <select class="viz-select" id="viz-source-select" name="pod_name">${sourceOptions}</select>
+                            <div class="viz-pod-settings" id="viz-source-settings">
+                                <div class="viz-setting-row">
+                                    <span class="viz-setting-label">Network Policy</span>
+                                    <select class="viz-setting-select" id="viz-src-policy-mode" data-field="policy_mode" data-target="source">${modeOptions}</select>
+                                </div>
+                                <div class="viz-setting-row">
+                                    <span class="viz-setting-label">Process Profile</span>
+                                    <select class="viz-setting-select" id="viz-src-profile-mode" data-field="profile_mode" data-target="source">${modeOptions}</select>
+                                </div>
+                                <div class="viz-setting-row">
+                                    <span class="viz-setting-label">Baseline</span>
+                                    <select class="viz-setting-select" id="viz-src-baseline" data-field="baseline_profile" data-target="source">${baselineOptions}</select>
+                                </div>
+                            </div>
+                            <div class="viz-process-list" id="viz-source-processes">
+                                <div class="viz-process-header">
+                                    <span>Allowed Processes</span>
+                                    <span id="viz-src-process-count"></span>
+                                </div>
+                                <div class="viz-process-items loading" id="viz-src-process-items">Loading...</div>
+                            </div>
+                        </div>
+                        <div class="viz-arrow attack-arrow pending" id="viz-arrow">
+                            <div class="viz-arrow-line"></div>
+                            <div class="viz-arrow-label" id="viz-arrow-label">🔥 FLOOD</div>
+                        </div>
+                        <div class="viz-box viz-target pending" id="viz-target">
+                            <div class="viz-box-header">
+                                <div class="viz-icon" id="viz-target-icon">🎯</div>
+                                <div class="viz-label">Target</div>
+                                <div class="viz-mode-icons" id="viz-tgt-mode-icons" style="display: none;">
+                                    <span class="viz-mode-icon network" id="viz-tgt-icon-network" title="Network Policy">🔍</span>
+                                    <span class="viz-mode-icon process" id="viz-tgt-icon-process" title="Process Profile">🔍</span>
+                                </div>
+                            </div>
+                            <select class="viz-select" id="viz-attack-target" name="target">${targetOptions}</select>
+                            <div class="viz-pod-settings" id="viz-target-settings" style="display: none;">
+                                <div class="viz-setting-row">
+                                    <span class="viz-setting-label">Network Policy</span>
+                                    <select class="viz-setting-select" id="viz-tgt-policy-mode" data-field="policy_mode" data-target="target">${modeOptions}</select>
+                                </div>
+                                <div class="viz-setting-row">
+                                    <span class="viz-setting-label">Process Profile</span>
+                                    <select class="viz-setting-select" id="viz-tgt-profile-mode" data-field="profile_mode" data-target="target">${modeOptions}</select>
+                                </div>
+                                <div class="viz-setting-row">
+                                    <span class="viz-setting-label">Baseline</span>
+                                    <select class="viz-setting-select" id="viz-tgt-baseline" data-field="baseline_profile" data-target="target">${baselineOptions}</select>
+                                </div>
+                            </div>
+                            <div class="viz-process-list" id="viz-target-processes" style="display: none;">
+                                <div class="viz-process-header">
+                                    <span>Allowed Processes</span>
+                                    <span id="viz-tgt-process-count"></span>
+                                </div>
+                                <div class="viz-process-items loading" id="viz-tgt-process-items">Loading...</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="viz-status pending" id="viz-status">
+                        <span class="viz-status-dot"></span>
+                        <span class="viz-status-text">Ready - Select an attack type</span>
+                    </div>
+                    <div class="viz-commands attack-commands" id="viz-commands">
+                        <button type="button" class="btn btn-danger btn-cmd attack-btn active" data-attack="dos_ping" title="DoS Ping Flood (40KB payload)">🔥 FLOOD</button>
+                        <button type="button" class="btn btn-outline btn-cmd attack-btn" data-attack="zypper_install" title="Package Install (zypper)">📦 INSTALL</button>
+                        <button type="button" class="btn btn-outline btn-cmd attack-btn" data-attack="scp_transfer" title="File Transfer (scp)">📁 SCP</button>
+                        <button type="button" class="btn btn-outline btn-cmd attack-btn" data-attack="reverse_shell" title="Reverse Shell">🐚 SHELL</button>
+                    </div>
+                </div>
+                <div class="nv-logs-container" id="nv-logs-container">
+                    <div class="nv-logs-header">
+                        <span>SUSE Security Events</span>
+                        <button type="button" class="btn-refresh" id="btn-refresh-logs" title="Refresh events">↻</button>
+                    </div>
+                    <div class="nv-logs-list empty" id="nv-logs-list">
+                        Click refresh to load events
+                    </div>
+                </div>
+                <input type="hidden" id="param-attack_type" name="attack_type" value="dos_ping">
+            </div>
+        `;
+
+        // Find the card-body to insert before
+        const demoParams = document.getElementById('demo-params');
+        if (!demoParams) return;
+
+        // Remove existing visualization
+        this.removeVisualization();
+
+        // Insert visualization BEFORE the params (at the top)
+        const vizWrapper = document.createElement('div');
+        vizWrapper.id = 'viz-wrapper';
+        vizWrapper.innerHTML = vizHtml;
+        demoParams.parentNode.insertBefore(vizWrapper, demoParams);
+
+        this.vizContainer = document.getElementById('demo-visualization');
+        this.vizState = 'pending';
+
+        // Set up source select listener
+        const sourceSelect = document.getElementById('viz-source-select');
+        if (sourceSelect) {
+            sourceSelect.addEventListener('change', () => {
+                this.syncAttackFormFromViz();
+                this.updateVizPodStatus('source', sourceSelect.value);
+                this.updateVizProcessRules('source', sourceSelect.value);
+            });
+        }
+
+        // Set up target select listener
+        const targetSelect = document.getElementById('viz-attack-target');
+        const targetIcon = document.getElementById('viz-target-icon');
+        const targetSettings = document.getElementById('viz-target-settings');
+        const targetProcesses = document.getElementById('viz-target-processes');
+        const targetModeIcons = document.getElementById('viz-tgt-mode-icons');
+
+        if (targetSelect) {
+            targetSelect.addEventListener('change', () => {
+                this.syncAttackFormFromViz();
+                const isInternalPod = targetSelect.value === 'web1';
+                if (targetIcon) targetIcon.textContent = isInternalPod ? '🐳' : '🌐';
+                if (targetSettings) targetSettings.style.display = isInternalPod ? 'block' : 'none';
+                if (targetProcesses) targetProcesses.style.display = isInternalPod ? 'block' : 'none';
+                if (targetModeIcons) targetModeIcons.style.display = isInternalPod ? '' : 'none';
+                if (isInternalPod) {
+                    this.updateVizPodStatus('target', 'web1');
+                    this.updateVizProcessRules('target', 'web1');
+                }
+            });
+            // Trigger initial state
+            const isInternalPod = targetSelect.value === 'web1';
+            if (targetIcon) targetIcon.textContent = isInternalPod ? '🐳' : '🌐';
+            if (targetSettings) targetSettings.style.display = isInternalPod ? 'block' : 'none';
+            if (targetProcesses) targetProcesses.style.display = isInternalPod ? 'block' : 'none';
+            if (targetModeIcons) targetModeIcons.style.display = isInternalPod ? '' : 'none';
+        }
+
+        // Set up settings change listeners for source
+        ['viz-src-policy-mode', 'viz-src-profile-mode', 'viz-src-baseline'].forEach(id => {
+            const select = document.getElementById(id);
+            if (select) {
+                select.addEventListener('change', () => {
+                    const podName = document.getElementById('viz-source-select')?.value || 'production1';
+                    this.updateVizPodSetting('source', podName, select);
+                });
+            }
+        });
+
+        // Set up settings change listeners for target
+        ['viz-tgt-policy-mode', 'viz-tgt-profile-mode', 'viz-tgt-baseline'].forEach(id => {
+            const select = document.getElementById(id);
+            if (select) {
+                select.addEventListener('change', () => {
+                    const podName = 'web1'; // Target is always web1 for attack demo
+                    this.updateVizPodSetting('target', podName, select);
+                });
+            }
+        });
+
+        // Set up attack command buttons
+        const attackButtons = document.querySelectorAll('.attack-btn');
+        const arrowLabel = document.getElementById('viz-arrow-label');
+        const attackLabels = {
+            'dos_ping': '🔥 FLOOD',
+            'zypper_install': '📦 INSTALL',
+            'scp_transfer': '📁 SCP',
+            'reverse_shell': '🐚 SHELL'
+        };
+
+        attackButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const attack = btn.dataset.attack;
+
+                // Update active state
+                attackButtons.forEach(b => {
+                    b.classList.remove('active', 'btn-danger');
+                    b.classList.add('btn-outline');
+                });
+                btn.classList.add('active', 'btn-danger');
+                btn.classList.remove('btn-outline');
+
+                // Update hidden field and arrow label
+                const hiddenAttackType = document.getElementById('param-attack_type');
+                if (hiddenAttackType) {
+                    hiddenAttackType.value = attack;
+                }
+                if (arrowLabel) {
+                    arrowLabel.textContent = attackLabels[attack] || attack;
+                }
+
+                // Run the attack
+                this.runCurrentDemo();
+            });
+        });
+
+        // Set up refresh button for events
+        const refreshBtn = document.getElementById('btn-refresh-logs');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', () => this.fetchNeuVectorEvents());
+        }
+
+        // Initial load of source pod status
+        const initialSourcePod = sourceSelect?.value || 'production1';
+        this.updateVizPodStatus('source', initialSourcePod);
+        this.updateVizProcessRules('source', initialSourcePod);
+
+        // Load target pod status if internal
+        if (targetSelect?.value === 'web1') {
+            this.updateVizPodStatus('target', 'web1');
+            this.updateVizProcessRules('target', 'web1');
+        }
+    }
+
+    /**
+     * Sync attack form from visualization
+     */
+    syncAttackFormFromViz() {
+        const sourceSelect = document.getElementById('viz-source-select');
+        const targetSelect = document.getElementById('viz-attack-target');
+        const hiddenPodName = document.getElementById('param-pod_name');
+        const hiddenTarget = document.getElementById('param-target');
+
+        if (sourceSelect && hiddenPodName) {
+            hiddenPodName.value = sourceSelect.value;
+        }
+        if (targetSelect && hiddenTarget) {
+            hiddenTarget.value = targetSelect.value;
         }
     }
 
