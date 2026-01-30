@@ -14,7 +14,7 @@ class AttackSimulationDemo(DemoModule):
 
     id = "attack"
     name = "Attack Simulation"
-    description = "Simulate attack scenarios (DoS, package install, file transfer, reverse shell) to test NeuVector blocking capabilities."
+    description = ""
     category = "Security Testing"
     icon = "⚔️"
 
