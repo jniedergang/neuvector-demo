@@ -155,6 +155,74 @@
                     </div>
                 </div>
 
+                <!-- Diagnostics Section -->
+                <div class="settings-section">
+                    <h4 class="settings-section-title">Diagnostics</h4>
+                    <div class="diagnostics-header">
+                        <button class="btn btn-outline" id="btn-run-diagnostics" title="Run all diagnostic checks">
+                            Run All Checks
+                        </button>
+                        <span class="diagnostics-summary" id="diagnostics-summary"></span>
+                    </div>
+
+                    <div class="diagnostics-content" id="diagnostics-content">
+                        <!-- Infrastructure -->
+                        <div class="diagnostics-category">
+                            <div class="diagnostics-category-header">Infrastructure</div>
+                            <div class="diagnostic-item" id="diag-kubernetes">
+                                <span class="diagnostic-icon pending">-</span>
+                                <span class="diagnostic-name">Kubernetes Cluster</span>
+                                <span class="diagnostic-message"></span>
+                            </div>
+                            <div class="diagnostic-item" id="diag-neuvector-api">
+                                <span class="diagnostic-icon pending">-</span>
+                                <span class="diagnostic-name">NeuVector API</span>
+                                <span class="diagnostic-message"></span>
+                            </div>
+                        </div>
+
+                        <!-- Environment -->
+                        <div class="diagnostics-category">
+                            <div class="diagnostics-category-header">Environment</div>
+                            <div class="diagnostic-item" id="diag-demo-namespace">
+                                <span class="diagnostic-icon pending">-</span>
+                                <span class="diagnostic-name">Demo Namespace</span>
+                                <span class="diagnostic-message"></span>
+                            </div>
+                            <div class="diagnostic-item" id="diag-demo-pods">
+                                <span class="diagnostic-icon pending">-</span>
+                                <span class="diagnostic-name">Demo Pods</span>
+                                <span class="diagnostic-message"></span>
+                            </div>
+                        </div>
+
+                        <!-- NeuVector Configuration -->
+                        <div class="diagnostics-category">
+                            <div class="diagnostics-category-header">NeuVector Configuration</div>
+                            <div class="diagnostic-item" id="diag-neuvector-groups">
+                                <span class="diagnostic-icon pending">-</span>
+                                <span class="diagnostic-name">NeuVector Groups</span>
+                                <span class="diagnostic-message"></span>
+                            </div>
+                            <div class="diagnostic-item" id="diag-process-profiles">
+                                <span class="diagnostic-icon pending">-</span>
+                                <span class="diagnostic-name">Process Profiles</span>
+                                <span class="diagnostic-message"></span>
+                            </div>
+                            <div class="diagnostic-item" id="diag-dlp-sensors">
+                                <span class="diagnostic-icon pending">-</span>
+                                <span class="diagnostic-name">DLP Sensors</span>
+                                <span class="diagnostic-message"></span>
+                            </div>
+                            <div class="diagnostic-item" id="diag-admission-control">
+                                <span class="diagnostic-icon pending">-</span>
+                                <span class="diagnostic-name">Admission Control</span>
+                                <span class="diagnostic-message"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- API Settings Section -->
                 <div class="settings-section">
                     <h4 class="settings-section-title">API Settings</h4>

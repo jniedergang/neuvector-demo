@@ -503,6 +503,196 @@ class SettingsManager {
         }
         return null;
     }
+
+    /**
+     * Initialize diagnostics event listeners
+     */
+    initDiagnostics() {
+        const btn = document.getElementById('btn-run-diagnostics');
+        btn?.addEventListener('click', () => this.runDiagnostics());
+    }
+
+    /**
+     * Run all diagnostic checks
+     */
+    async runDiagnostics() {
+        const btn = document.getElementById('btn-run-diagnostics');
+        const summary = document.getElementById('diagnostics-summary');
+        const credentials = this.getCredentials();
+
+        // Disable button and show loading state
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'Running...';
+        }
+
+        // Reset all items to checking state
+        this.resetDiagnosticItems();
+        this.setAllDiagnosticsChecking();
+
+        if (summary) {
+            summary.textContent = 'Checking...';
+            summary.className = 'diagnostics-summary';
+        }
+
+        try {
+            const response = await fetch('/api/diagnostics', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: credentials.username,
+                    password: credentials.password,
+                }),
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                this.displayDiagnosticsResults(result.checks, result.summary);
+            } else {
+                this.showDiagnosticsError(result.message || 'Diagnostics failed');
+            }
+        } catch (error) {
+            console.error('Diagnostics error:', error);
+            this.showDiagnosticsError(`Error: ${error.message}`);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = 'Run All Checks';
+            }
+        }
+    }
+
+    /**
+     * Set all diagnostic items to checking state
+     */
+    setAllDiagnosticsChecking() {
+        const items = document.querySelectorAll('.diagnostic-item');
+        items.forEach(item => {
+            const icon = item.querySelector('.diagnostic-icon');
+            const message = item.querySelector('.diagnostic-message');
+            if (icon) {
+                icon.className = 'diagnostic-icon checking';
+                icon.textContent = '...';
+            }
+            if (message) {
+                message.textContent = 'Checking...';
+            }
+            item.className = 'diagnostic-item';
+        });
+    }
+
+    /**
+     * Reset diagnostic items to pending state
+     */
+    resetDiagnosticItems() {
+        const items = document.querySelectorAll('.diagnostic-item');
+        items.forEach(item => {
+            const icon = item.querySelector('.diagnostic-icon');
+            const message = item.querySelector('.diagnostic-message');
+            if (icon) {
+                icon.className = 'diagnostic-icon pending';
+                icon.textContent = '-';
+            }
+            if (message) {
+                message.textContent = '';
+            }
+            item.className = 'diagnostic-item';
+        });
+
+        const summary = document.getElementById('diagnostics-summary');
+        if (summary) {
+            summary.textContent = '';
+            summary.className = 'diagnostics-summary';
+        }
+    }
+
+    /**
+     * Display diagnostic results
+     */
+    displayDiagnosticsResults(checks, summary) {
+        // Update each check item
+        checks.forEach(check => {
+            const itemId = `diag-${check.id}`;
+            const item = document.getElementById(itemId);
+            if (!item) {
+                console.warn(`Diagnostic item not found: ${itemId}`);
+                return;
+            }
+
+            const icon = item.querySelector('.diagnostic-icon');
+            const message = item.querySelector('.diagnostic-message');
+
+            // Update icon
+            if (icon) {
+                icon.className = `diagnostic-icon ${check.status}`;
+                switch (check.status) {
+                    case 'ok':
+                        icon.textContent = '✓';
+                        break;
+                    case 'warning':
+                        icon.textContent = '!';
+                        break;
+                    case 'error':
+                        icon.textContent = '✗';
+                        break;
+                    default:
+                        icon.textContent = '-';
+                }
+            }
+
+            // Update message
+            if (message) {
+                let msgText = check.message;
+                if (check.details) {
+                    msgText += ` (${check.details})`;
+                }
+                message.textContent = msgText;
+                message.title = msgText; // Tooltip for full text
+            }
+
+            // Update item class for styling
+            item.className = `diagnostic-item ${check.status}`;
+        });
+
+        // Update summary
+        const summaryEl = document.getElementById('diagnostics-summary');
+        if (summaryEl) {
+            const passedCount = summary.ok;
+            const totalCount = summary.total;
+            summaryEl.textContent = `${passedCount}/${totalCount} passed`;
+
+            // Color based on results
+            if (summary.error > 0) {
+                summaryEl.className = 'diagnostics-summary error';
+            } else if (summary.warning > 0) {
+                summaryEl.className = 'diagnostics-summary warning';
+            } else {
+                summaryEl.className = 'diagnostics-summary success';
+            }
+        }
+    }
+
+    /**
+     * Show diagnostics error
+     */
+    showDiagnosticsError(message) {
+        const summaryEl = document.getElementById('diagnostics-summary');
+        if (summaryEl) {
+            summaryEl.textContent = message;
+            summaryEl.className = 'diagnostics-summary error';
+        }
+
+        // Set all items to error state
+        const items = document.querySelectorAll('.diagnostic-item');
+        items.forEach(item => {
+            const icon = item.querySelector('.diagnostic-icon');
+            if (icon && icon.classList.contains('checking')) {
+                icon.className = 'diagnostic-icon error';
+                icon.textContent = '?';
+            }
+        });
+    }
 }
 
 // Global settings manager
@@ -512,6 +702,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const app = new DemoApp();
     app.init();
     settingsManager.init();
+    settingsManager.initDiagnostics();
 
     // Sidebar toggle functionality
     const sidebar = document.getElementById('sidebar');

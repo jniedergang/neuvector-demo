@@ -2747,3 +2747,161 @@ select.form-control {
         min-width: 100%;
     }
 }
+
+/* ========== Diagnostics Section Styles ========== */
+
+.diagnostics-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.diagnostics-summary {
+    font-size: 0.85rem;
+    font-weight: 500;
+    padding: 0.35rem 0.75rem;
+    border-radius: 4px;
+    background-color: var(--bg-color);
+}
+
+.diagnostics-summary.success {
+    background-color: #e6f4ea;
+    color: #1e7e34;
+}
+
+.diagnostics-summary.warning {
+    background-color: #fef7e0;
+    color: #b06000;
+}
+
+.diagnostics-summary.error {
+    background-color: #fce8e6;
+    color: #c5221f;
+}
+
+.diagnostics-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.diagnostics-category {
+    background-color: var(--bg-color);
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+}
+
+.diagnostics-category-header {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+    padding: 0.5rem 0.75rem;
+    background-color: var(--card-bg);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.diagnostic-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--card-bg);
+}
+
+.diagnostic-item:last-child {
+    border-bottom: none;
+}
+
+.diagnostic-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.diagnostic-icon.pending {
+    background-color: #f0f0f0;
+    color: #999;
+}
+
+.diagnostic-icon.ok {
+    background-color: #e6f4ea;
+    color: #1e7e34;
+}
+
+.diagnostic-icon.warning {
+    background-color: #fef7e0;
+    color: #b06000;
+}
+
+.diagnostic-icon.error {
+    background-color: #fce8e6;
+    color: #c5221f;
+}
+
+.diagnostic-icon.checking {
+    background-color: #e8f0fe;
+    color: var(--primary-color);
+    animation: diagPulse 1s infinite;
+}
+
+@keyframes diagPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.diagnostic-name {
+    font-size: 0.85rem;
+    font-weight: 500;
+    min-width: 140px;
+    color: var(--text-color);
+}
+
+.diagnostic-message {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    flex: 1;
+    text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.diagnostic-item.ok .diagnostic-message {
+    color: #1e7e34;
+}
+
+.diagnostic-item.warning .diagnostic-message {
+    color: #b06000;
+}
+
+.diagnostic-item.error .diagnostic-message {
+    color: #c5221f;
+}
+
+/* Responsive for diagnostics */
+@media (max-width: 500px) {
+    .diagnostics-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .diagnostic-name {
+        min-width: 100px;
+        font-size: 0.8rem;
+    }
+
+    .diagnostic-message {
+        font-size: 0.75rem;
+    }
+}
