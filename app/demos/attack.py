@@ -119,7 +119,7 @@ class AttackSimulationDemo(DemoModule):
             yield "[INFO] Simulating DoS attack with oversized ICMP packets (40KB payload)"
         elif attack_type == "nc_backdoor":
             # Netcat backdoor listener - will be blocked in Protect mode
-            cmd_args = ["nc", "-l", "-p", "4444", "-e", "/bin/bash"]
+            cmd_args = ["nc", "-l", "4444"]
             yield "[INFO] Attempting to start netcat backdoor listener on port 4444"
         elif attack_type == "scp_transfer":
             # File transfer of sensitive data
