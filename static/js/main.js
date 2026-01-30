@@ -509,6 +509,8 @@ class DemoApp {
         this.detectedResult = null;   // Store detected result until execution completes
         this.dlpSensors = null;       // Cached DLP sensors from NeuVector
         this.dlpSensorsLoading = false;
+        this.eventsFilterTimestamp = null;  // Filter events after this timestamp (for clear)
+        this.liveClockInterval = null;      // Live clock interval ID
     }
 
     /**
@@ -1145,13 +1147,19 @@ class DemoApp {
         // Create visualization for supported demos
         this.createVisualization(demo);
 
-        // Set up refresh button for events (only for non-admission demos)
+        // Set up refresh and clear buttons for events (only for non-admission demos)
         // Admission demo sets up its own listener in createAdmissionVisualization()
         if (!isAdmissionDemo) {
             const refreshBtn = document.getElementById('btn-refresh-logs');
             if (refreshBtn) {
                 refreshBtn.addEventListener('click', () => this.fetchNeuVectorEvents());
             }
+            const clearBtn = document.getElementById('btn-clear-logs');
+            if (clearBtn) {
+                clearBtn.addEventListener('click', () => this.clearEvents());
+            }
+            // Start live clock
+            this.startLiveClock();
         }
     }
 
@@ -1832,6 +1840,7 @@ class DemoApp {
                     <div class="nv-logs-header">
                         <span>SUSE Security Events</span>
                         <span class="nv-logs-time" id="nv-logs-time"></span>
+                        <button type="button" class="btn-clear-logs" id="btn-clear-logs" title="Clear events">🗑</button>
                         <button type="button" class="btn-refresh" id="btn-refresh-logs" title="Refresh events">↻</button>
                     </div>
                     <div class="nv-logs-list empty" id="nv-logs-list">
@@ -2765,6 +2774,7 @@ class DemoApp {
                     <div class="nv-logs-header">
                         <span>SUSE Security Events</span>
                         <span class="nv-logs-time" id="nv-logs-time"></span>
+                        <button type="button" class="btn-clear-logs" id="btn-clear-logs" title="Clear events">🗑</button>
                         <button type="button" class="btn-refresh" id="btn-refresh-logs" title="Refresh events">↻</button>
                     </div>
                     <div class="nv-logs-list empty" id="nv-logs-list">
@@ -2888,11 +2898,17 @@ class DemoApp {
             });
         });
 
-        // Set up refresh button for events
+        // Set up refresh and clear buttons for events
         const refreshBtn = document.getElementById('btn-refresh-logs');
         if (refreshBtn) {
             refreshBtn.addEventListener('click', () => this.fetchNeuVectorEvents());
         }
+        const clearBtn = document.getElementById('btn-clear-logs');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => this.clearEvents());
+        }
+        // Start live clock
+        this.startLiveClock();
 
         // Initial load of source pod status
         const initialSourcePod = sourceSelect?.value || 'espion1';
@@ -3379,6 +3395,41 @@ class DemoApp {
     }
 
     /**
+     * Start the live clock that shows current time with seconds
+     */
+    startLiveClock() {
+        // Clear any existing interval
+        if (this.liveClockInterval) {
+            clearInterval(this.liveClockInterval);
+        }
+
+        const updateClock = () => {
+            const timeSpan = document.getElementById('nv-logs-time');
+            if (timeSpan) {
+                const now = new Date();
+                timeSpan.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            }
+        };
+
+        // Update immediately
+        updateClock();
+        // Then update every second
+        this.liveClockInterval = setInterval(updateClock, 1000);
+    }
+
+    /**
+     * Clear events and set filter timestamp
+     */
+    clearEvents() {
+        this.eventsFilterTimestamp = new Date().toISOString();
+        const logsList = document.getElementById('nv-logs-list');
+        if (logsList) {
+            logsList.innerHTML = 'Events cleared - showing new events only';
+            logsList.className = 'nv-logs-list empty';
+        }
+    }
+
+    /**
      * Fetch NeuVector events for current pod
      */
     async fetchNeuVectorEvents() {
@@ -3430,22 +3481,36 @@ class DemoApp {
             console.log('[NV Events] API response:', result);
 
             if (result.success && result.events.length > 0) {
-                logsList.innerHTML = result.events.map(event => {
-                    const timeStr = event.reported_at ? this.formatEventTime(event.reported_at) : '';
-                    return `
-                        <div class="nv-log-item">
-                            <span class="nv-log-type ${event.event_type}">${event.event_type}</span>
-                            <div class="nv-log-info">
-                                <div class="nv-log-message">${this.escapeHtml(event.message)}</div>
-                                <div class="nv-log-details">${this.escapeHtml(event.details)}</div>
+                // Filter events by timestamp if set
+                let filteredEvents = result.events;
+                if (this.eventsFilterTimestamp) {
+                    filteredEvents = result.events.filter(event => {
+                        if (!event.reported_at) return true;
+                        return new Date(event.reported_at) > new Date(this.eventsFilterTimestamp);
+                    });
+                }
+
+                if (filteredEvents.length > 0) {
+                    logsList.innerHTML = filteredEvents.map(event => {
+                        const timeStr = event.reported_at ? this.formatEventTime(event.reported_at) : '';
+                        return `
+                            <div class="nv-log-item">
+                                <span class="nv-log-type ${event.event_type}">${event.event_type}</span>
+                                <div class="nv-log-info">
+                                    <div class="nv-log-message">${this.escapeHtml(event.message)}</div>
+                                    <div class="nv-log-details">${this.escapeHtml(event.details)}</div>
+                                </div>
+                                <span class="nv-log-time">${timeStr}</span>
                             </div>
-                            <span class="nv-log-time">${timeStr}</span>
-                        </div>
-                    `;
-                }).join('');
-                logsList.className = 'nv-logs-list';
+                        `;
+                    }).join('');
+                    logsList.className = 'nv-logs-list';
+                } else {
+                    logsList.innerHTML = 'No new events since clear';
+                    logsList.className = 'nv-logs-list empty';
+                }
             } else if (result.success) {
-                logsList.innerHTML = 'No recent events';
+                logsList.innerHTML = this.eventsFilterTimestamp ? 'No new events since clear' : 'No recent events';
                 logsList.className = 'nv-logs-list empty';
             } else {
                 console.error('[NV Events] API error:', result.message);
@@ -3456,13 +3521,6 @@ class DemoApp {
             console.error('[NV Events] Failed to fetch events:', error);
             logsList.innerHTML = 'Error loading events';
             logsList.className = 'nv-logs-list empty';
-        }
-
-        // Update refresh timestamp
-        const timeSpan = document.getElementById('nv-logs-time');
-        if (timeSpan) {
-            const now = new Date();
-            timeSpan.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         }
 
         if (refreshBtn) refreshBtn.classList.remove('loading');

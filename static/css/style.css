@@ -2050,10 +2050,28 @@ select.form-control {
     animation: spin 1s linear infinite;
 }
 
-.nv-logs-time {
-    font-size: 0.7rem;
+.nv-logs-header .btn-clear-logs {
+    background: none;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 0.25rem 0.5rem;
+    cursor: pointer;
+    font-size: 0.75rem;
     color: var(--text-secondary);
-    font-weight: 400;
+    transition: all 0.2s;
+    margin-right: 0.25rem;
+}
+
+.nv-logs-header .btn-clear-logs:hover {
+    background: var(--card-bg);
+    color: var(--danger-color, #dc3545);
+}
+
+.nv-logs-time {
+    font-size: 0.75rem;
+    color: var(--accent-color);
+    font-weight: 500;
+    font-family: monospace;
     margin-left: auto;
     margin-right: 0.5rem;
 }
