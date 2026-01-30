@@ -892,15 +892,19 @@ class NeuVectorAPI:
         comment: str = "",
         criteria: list[dict[str, Any]] = None,
         disable: bool = False,
+        category: str = "Kubernetes",
+        critical: bool = False,
     ) -> dict[str, Any]:
         """
         Create a new admission control rule.
 
         Args:
-            rule_type: "deny" or "allow"
+            rule_type: "deny", "allow", or "exception"
             comment: Rule description
             criteria: List of criteria objects
             disable: Whether to create the rule as disabled
+            category: Rule category (default: "Kubernetes")
+            critical: Whether this is a critical rule
 
         Returns:
             Created rule object
@@ -913,9 +917,15 @@ class NeuVectorAPI:
         try:
             payload = {
                 "config": {
+                    "id": 0,
+                    "category": category,
+                    "cfg_type": "user_created",
                     "comment": comment,
+                    "containers": ["containers"],
                     "criteria": criteria or [],
+                    "critical": critical,
                     "disable": disable,
+                    "rule_mode": "",
                     "rule_type": rule_type,
                 }
             }
@@ -925,6 +935,9 @@ class NeuVectorAPI:
                 json=payload,
                 headers=self._auth_headers(),
             )
+
+            print(f"[DEBUG] Response status: {response.status_code}")
+            print(f"[DEBUG] Response body: {response.text}")
 
             if response.status_code not in (200, 201):
                 error_msg = f"Failed to create admission rule: {response.status_code}"
