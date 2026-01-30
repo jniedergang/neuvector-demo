@@ -60,6 +60,7 @@ class SettingsManager {
         document.getElementById('btn-settings')?.addEventListener('click', () => this.openModal());
         document.getElementById('btn-close-settings')?.addEventListener('click', () => this.closeModal());
         document.getElementById('btn-test-connection')?.addEventListener('click', () => this.testConnection());
+        document.getElementById('btn-debug-credentials')?.addEventListener('click', () => this.debugCredentials());
         document.getElementById('btn-save-settings')?.addEventListener('click', () => this.saveSettings());
 
         // Logo event listeners
@@ -225,6 +226,36 @@ class SettingsManager {
         return { username: 'admin', password: '' };
     }
 
+    debugCredentials() {
+        const rawStorage = localStorage.getItem(this.STORAGE_KEY);
+        const credentials = this.getCredentials();
+
+        let debugInfo = '';
+        debugInfo += `📦 Storage Key: ${this.STORAGE_KEY}\n`;
+        debugInfo += `📄 Raw localStorage: ${rawStorage ? 'EXISTS' : 'NULL'}\n`;
+
+        if (rawStorage) {
+            try {
+                const parsed = JSON.parse(rawStorage);
+                debugInfo += `\n👤 Username: "${parsed.username || '(empty)'}"\n`;
+                debugInfo += `🔑 Password: ${parsed.password ? `"${parsed.password.substring(0, 3)}${'*'.repeat(Math.max(0, parsed.password.length - 3))}" (${parsed.password.length} chars)` : '(empty)'}\n`;
+            } catch (e) {
+                debugInfo += `⚠️ Parse error: ${e.message}\n`;
+            }
+        } else {
+            debugInfo += `\n⚠️ No saved credentials - using defaults\n`;
+            debugInfo += `👤 Default Username: "admin"\n`;
+            debugInfo += `🔑 Default Password: (empty)\n`;
+        }
+
+        debugInfo += `\n📍 getCredentials() returns:\n`;
+        debugInfo += `   username: "${credentials.username}"\n`;
+        debugInfo += `   password: ${credentials.password ? `(${credentials.password.length} chars)` : '(empty)'}`;
+
+        this.showStatus(debugInfo, 'info');
+        console.log('Debug Credentials:', { rawStorage, credentials: { ...credentials, password: credentials.password ? '***' : '' } });
+    }
+
     async testConnection() {
         const username = this.usernameInput?.value || 'admin';
         const password = this.passwordInput?.value || '';
@@ -259,7 +290,13 @@ class SettingsManager {
 
     showStatus(message, type) {
         if (this.statusDiv) {
-            this.statusDiv.textContent = message;
+            // Use innerHTML for multi-line messages, converting newlines to <br>
+            if (message.includes('\n')) {
+                this.statusDiv.innerHTML = '<pre style="margin:0;white-space:pre-wrap;font-size:0.8rem;">' +
+                    message.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</pre>';
+            } else {
+                this.statusDiv.textContent = message;
+            }
             this.statusDiv.className = 'settings-status ' + type;
         }
     }
