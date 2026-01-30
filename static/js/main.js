@@ -2802,7 +2802,7 @@ class DemoApp {
                     </div>
                     <div class="viz-commands attack-commands" id="viz-commands">
                         <button type="button" class="btn btn-danger btn-cmd attack-btn active" data-attack="dos_ping" title="DoS Ping Flood (40KB payload)">🔥 FLOOD</button>
-                        <button type="button" class="btn btn-outline btn-cmd attack-btn" data-attack="zypper_install" title="Package Install (zypper)">📦 INSTALL</button>
+                        <button type="button" class="btn btn-outline btn-cmd attack-btn" data-attack="nc_backdoor" title="NC Backdoor (netcat listener)">🚪 BACKDOOR</button>
                         <button type="button" class="btn btn-outline btn-cmd attack-btn" data-attack="scp_transfer" title="File Transfer (scp)">📁 SCP</button>
                         <button type="button" class="btn btn-outline btn-cmd attack-btn" data-attack="reverse_shell" title="Reverse Shell">🐚 SHELL</button>
                     </div>
@@ -2903,7 +2903,7 @@ class DemoApp {
         const arrowLabel = document.getElementById('viz-arrow-label');
         const attackLabels = {
             'dos_ping': '🔥 FLOOD',
-            'zypper_install': '📦 INSTALL',
+            'nc_backdoor': '🚪 BACKDOOR',
             'scp_transfer': '📁 SCP',
             'reverse_shell': '🐚 SHELL'
         };
