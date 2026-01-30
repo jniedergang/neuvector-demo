@@ -71,11 +71,11 @@ class DLPDemo(DemoModule):
                 name="data_type",
                 label="Sensitive Data Type",
                 type="select",
-                default="credit_card",
+                default="passport",
                 required=True,
                 options=[
-                    {"value": "credit_card", "label": "Matricule (Amex)"},
-                    {"value": "visa", "label": "Matricule (Visa)"},
+                    {"value": "credit_card", "label": "Credit Card (Amex)"},
+                    {"value": "visa", "label": "Credit Card (Visa)"},
                     {"value": "passport", "label": "Passeport"},
                     {"value": "ssn", "label": "Social Security Number"},
                     {"value": "custom", "label": "Custom Pattern"},
@@ -98,13 +98,13 @@ class DLPDemo(DemoModule):
         # Use realistic-looking test numbers that will trigger DLP blocking
         test_patterns = {
             # Short names (legacy)
-            "credit_card": ("3782-822463-10005", "Test Matricule Amex"),
-            "visa": ("4532-0151-2839-0472", "Test Matricule Visa"),
+            "credit_card": ("3782-822463-10005", "Test Credit Card Amex"),
+            "visa": ("4532-0151-2839-0472", "Test Credit Card Visa"),
             "passport": ("12AB34567", "Test Passeport"),
             "ssn": ("078-05-1120", "Test SSN pattern"),
             # Full sensor names (from NeuVector API)
-            "sensor.creditcard": ("3782-822463-10005", "Test Matricule Amex"),
-            "sensor.visa": ("4532-0151-2839-0472", "Test Matricule Visa"),
+            "sensor.creditcard": ("3782-822463-10005", "Test Credit Card Amex"),
+            "sensor.visa": ("4532-0151-2839-0472", "Test Credit Card Visa"),
             "sensor.passeport": ("12AB34567", "Test Passeport"),
             "sensor.ssn": ("078-05-1120", "Test SSN"),
         }
