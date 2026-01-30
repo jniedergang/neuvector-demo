@@ -8,15 +8,15 @@ metadata:
     demo: admission-control
     policy: forbidden
 ---
-# Production1 pod - OpenSUSE for running curl and network tests
+# Espion1 pod - OpenSUSE for running curl and network tests
 apiVersion: v1
 kind: Pod
 metadata:
-  name: production1
+  name: espion1
   namespace: neuvector-demo
   labels:
     app: demo-test
-    component: production
+    component: espion
 spec:
   containers:
   - name: opensuse
@@ -30,15 +30,15 @@ spec:
         memory: "128Mi"
         cpu: "200m"
 ---
-# Web1 pod - Nginx for receiving HTTP requests
+# Cible1 pod - Nginx for receiving HTTP requests
 apiVersion: v1
 kind: Pod
 metadata:
-  name: web1
+  name: cible1
   namespace: neuvector-demo
   labels:
     app: demo-test
-    component: web
+    component: cible
 spec:
   containers:
   - name: nginx
@@ -55,19 +55,19 @@ spec:
         memory: "64Mi"
         cpu: "100m"
 ---
-# Service for production1 pod (for internal cluster access)
+# Service for espion1 pod (for internal cluster access)
 apiVersion: v1
 kind: Service
 metadata:
-  name: production1
+  name: espion1
   namespace: neuvector-demo
   labels:
     app: demo-test
-    component: production
+    component: espion
 spec:
   selector:
     app: demo-test
-    component: production
+    component: espion
   ports:
   - port: 80
     targetPort: 80
@@ -75,19 +75,19 @@ spec:
     name: http
   type: ClusterIP
 ---
-# Service for web1 pod (for internal cluster access)
+# Service for cible1 pod (for internal cluster access)
 apiVersion: v1
 kind: Service
 metadata:
-  name: web1
+  name: cible1
   namespace: neuvector-demo
   labels:
     app: demo-test
-    component: web
+    component: cible
 spec:
   selector:
     app: demo-test
-    component: web
+    component: cible
   ports:
   - port: 80
     targetPort: 80

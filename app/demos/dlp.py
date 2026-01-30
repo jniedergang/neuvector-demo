@@ -48,10 +48,10 @@ class DLPDemo(DemoModule):
                 name="pod_name",
                 label="Source Pod",
                 type="select",
-                default="production1",
+                default="espion1",
                 required=True,
                 options=[
-                    {"value": "production1", "label": "Espion1"},
+                    {"value": "espion1", "label": "Espion1"},
                 ],
                 help_text="Pod from which to send test data",
             ),
@@ -119,7 +119,7 @@ class DLPDemo(DemoModule):
         kubectl: Kubectl,
         params: dict[str, Any],
     ) -> AsyncGenerator[str, None]:
-        pod_name = params.get("pod_name", "production1")
+        pod_name = params.get("pod_name", "espion1")
         target = params.get("target", "nginx")
         data_type = params.get("data_type", "credit_card")
         custom_data = params.get("custom_data", "")
@@ -133,7 +133,7 @@ class DLPDemo(DemoModule):
 
         # Determine target URL
         if target == "nginx":
-            target_url = f"http://web1.{NAMESPACE}.svc.cluster.local"
+            target_url = f"http://cible1.{NAMESPACE}.svc.cluster.local"
         else:
             target_url = "http://example.com"
 

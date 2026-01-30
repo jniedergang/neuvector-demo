@@ -632,7 +632,7 @@ class DemoApp {
                 const sensorName = checkbox.dataset.sensor;
                 const enabled = checkbox.checked;
                 const sourceSelect = document.getElementById('viz-source');
-                const podName = sourceSelect?.value || 'production1';
+                const podName = sourceSelect?.value || 'espion1';
 
                 // Get current action from action buttons
                 const sensorKey = sensorName.replace('sensor.', '');
@@ -661,7 +661,7 @@ class DemoApp {
 
                     // Update in NeuVector
                     const sourceSelect = document.getElementById('viz-source');
-                    const podName = sourceSelect?.value || 'production1';
+                    const podName = sourceSelect?.value || 'espion1';
                     this.updateDLPSensor(podName, sensorName, true, action, checkbox);
                 });
             });
@@ -1179,7 +1179,7 @@ class DemoApp {
         // Hidden form fields only - synced from visualization
         return `
             <!-- Hidden form fields synced from visualization -->
-            <input type="hidden" name="pod_name" id="param-pod_name" value="${podParam?.default || 'production1'}">
+            <input type="hidden" name="pod_name" id="param-pod_name" value="${podParam?.default || 'espion1'}">
             <input type="hidden" name="target" id="param-target" value="${targetParam?.default || 'nginx'}">
             <input type="hidden" name="data_type" id="param-data_type" value="${dataTypeParam?.default || 'credit_card'}">
             <input type="hidden" name="custom_data" id="param-custom_data" value="">
@@ -1214,9 +1214,9 @@ class DemoApp {
         // Hidden form fields only - synced from visualization
         return `
             <!-- Hidden form fields synced from visualization -->
-            <input type="hidden" name="pod_name" id="param-pod_name" value="${podParam?.default || 'production1'}">
+            <input type="hidden" name="pod_name" id="param-pod_name" value="${podParam?.default || 'espion1'}">
             <input type="hidden" name="attack_type" id="param-attack_type" value="${attackTypeParam?.default || 'dos_ping'}">
-            <input type="hidden" name="target" id="param-target" value="${targetParam?.default || 'web1'}">
+            <input type="hidden" name="target" id="param-target" value="${targetParam?.default || 'cible1'}">
         `;
     }
 
@@ -1246,7 +1246,7 @@ class DemoApp {
         const targetType = document.getElementById('param-target_type')?.value || 'public';
 
         if (targetType === 'pod') {
-            const pod = document.getElementById('param-target_pod')?.value || 'web1';
+            const pod = document.getElementById('param-target_pod')?.value || 'cible1';
             return `${pod}.neuvector-demo.svc.cluster.local`;
         } else if (targetType === 'public') {
             return document.getElementById('param-target_public')?.value || 'https://www.google.com';
@@ -1490,7 +1490,7 @@ class DemoApp {
                 setTimeout(() => {
                     // Refresh from API to get accurate state
                     const podSelect = document.getElementById('viz-source-select') || document.getElementById('param-pod_name');
-                    const podName = podSelect?.value || 'production1';
+                    const podName = podSelect?.value || 'espion1';
                     this.updateProcessRules(podName);
                 }, 400);
             } else {
@@ -1884,7 +1884,7 @@ class DemoApp {
             const select = document.getElementById(id);
             if (select) {
                 select.addEventListener('change', () => {
-                    const podName = document.getElementById('viz-source-select')?.value || 'production1';
+                    const podName = document.getElementById('viz-source-select')?.value || 'espion1';
                     this.updateVizPodSetting('source', podName, select);
                 });
             }
@@ -1898,8 +1898,8 @@ class DemoApp {
                     // For DLP demo, use web1 when target is nginx
                     const dlpTarget = document.getElementById('viz-dlp-target');
                     const podName = dlpTarget
-                        ? (dlpTarget.value === 'nginx' ? 'web1' : null)
-                        : (document.getElementById('viz-target-pod')?.value || 'web1');
+                        ? (dlpTarget.value === 'nginx' ? 'cible1' : null)
+                        : (document.getElementById('viz-target-pod')?.value || 'cible1');
                     if (podName) {
                         this.updateVizPodSetting('target', podName, select);
                     }
@@ -1959,9 +1959,9 @@ class DemoApp {
                     if (targetModeIcons) targetModeIcons.style.display = isInternalPod ? '' : 'none';
                     // Load target pod status if internal
                     if (isInternalPod) {
-                        this.updateVizPodStatus('target', 'web1');
-                        this.loadDLPSensors('web1', 'target');
-                        this.updateVizProcessRules('target', 'web1');
+                        this.updateVizPodStatus('target', 'cible1');
+                        this.loadDLPSensors('cible1', 'target');
+                        this.updateVizProcessRules('target', 'cible1');
                     }
                 });
                 // Trigger initial state
@@ -1973,9 +1973,9 @@ class DemoApp {
                 if (targetModeIcons) targetModeIcons.style.display = isInternalPod ? '' : 'none';
                 // Load initial target data if internal pod
                 if (isInternalPod) {
-                    this.updateVizPodStatus('target', 'web1');
-                    this.loadDLPSensors('web1', 'target');
-                    this.updateVizProcessRules('target', 'web1');
+                    this.updateVizPodStatus('target', 'cible1');
+                    this.loadDLPSensors('cible1', 'target');
+                    this.updateVizProcessRules('target', 'cible1');
                 }
             }
 
@@ -1996,8 +1996,8 @@ class DemoApp {
                     const enabled = checkbox.checked;
                     const isTarget = checkbox.dataset.target === 'target';
                     const podName = isTarget
-                        ? 'web1'
-                        : (document.getElementById('viz-source-select')?.value || 'production1');
+                        ? 'cible1'
+                        : (document.getElementById('viz-source-select')?.value || 'espion1');
                     // Get current action for this sensor (in the same container)
                     const container = checkbox.closest('.viz-dlp-sensors');
                     const actionToggle = container?.querySelector(`.viz-dlp-action-toggle[data-sensor="${sensorName}"]`);
@@ -2015,8 +2015,8 @@ class DemoApp {
                         const action = btn.dataset.action;
                         const isTarget = toggle.dataset.target === 'target';
                         const podName = isTarget
-                            ? 'web1'
-                            : (document.getElementById('viz-source-select')?.value || 'production1');
+                            ? 'cible1'
+                            : (document.getElementById('viz-source-select')?.value || 'espion1');
 
                         // Check if sensor is enabled (in the same container)
                         const container = toggle.closest('.viz-dlp-sensors');
@@ -2037,7 +2037,7 @@ class DemoApp {
         }
 
         // Initial load of source pod status
-        const initialSourcePod = sourceSelect?.value || 'production1';
+        const initialSourcePod = sourceSelect?.value || 'espion1';
         this.updateVizPodStatus('source', initialSourcePod);
         this.updateVizProcessRules('source', initialSourcePod);
 
@@ -2091,7 +2091,7 @@ class DemoApp {
                 if (type === 'pod') {
                     targetBox.classList.add('show-pod-settings');
                     // Load target pod status
-                    const podName = targetPod?.value || 'web1';
+                    const podName = targetPod?.value || 'cible1';
                     this.updateVizPodStatus('target', podName);
                     this.updateVizProcessRules('target', podName);
                 } else {
@@ -2788,18 +2788,18 @@ class DemoApp {
         if (targetSelect) {
             targetSelect.addEventListener('change', () => {
                 this.syncAttackFormFromViz();
-                const isInternalPod = targetSelect.value === 'web1';
+                const isInternalPod = targetSelect.value === 'cible1';
                 if (targetIcon) targetIcon.textContent = isInternalPod ? '🐳' : '🌐';
                 if (targetSettings) targetSettings.style.display = isInternalPod ? 'block' : 'none';
                 if (targetProcesses) targetProcesses.style.display = isInternalPod ? 'block' : 'none';
                 if (targetModeIcons) targetModeIcons.style.display = isInternalPod ? '' : 'none';
                 if (isInternalPod) {
-                    this.updateVizPodStatus('target', 'web1');
-                    this.updateVizProcessRules('target', 'web1');
+                    this.updateVizPodStatus('target', 'cible1');
+                    this.updateVizProcessRules('target', 'cible1');
                 }
             });
             // Trigger initial state
-            const isInternalPod = targetSelect.value === 'web1';
+            const isInternalPod = targetSelect.value === 'cible1';
             if (targetIcon) targetIcon.textContent = isInternalPod ? '🐳' : '🌐';
             if (targetSettings) targetSettings.style.display = isInternalPod ? 'block' : 'none';
             if (targetProcesses) targetProcesses.style.display = isInternalPod ? 'block' : 'none';
@@ -2811,7 +2811,7 @@ class DemoApp {
             const select = document.getElementById(id);
             if (select) {
                 select.addEventListener('change', () => {
-                    const podName = document.getElementById('viz-source-select')?.value || 'production1';
+                    const podName = document.getElementById('viz-source-select')?.value || 'espion1';
                     this.updateVizPodSetting('source', podName, select);
                 });
             }
@@ -2822,7 +2822,7 @@ class DemoApp {
             const select = document.getElementById(id);
             if (select) {
                 select.addEventListener('change', () => {
-                    const podName = 'web1'; // Target is always web1 for attack demo
+                    const podName = 'cible1'; // Target is always web1 for attack demo
                     this.updateVizPodSetting('target', podName, select);
                 });
             }
@@ -2872,14 +2872,14 @@ class DemoApp {
         }
 
         // Initial load of source pod status
-        const initialSourcePod = sourceSelect?.value || 'production1';
+        const initialSourcePod = sourceSelect?.value || 'espion1';
         this.updateVizPodStatus('source', initialSourcePod);
         this.updateVizProcessRules('source', initialSourcePod);
 
         // Load target pod status if internal
-        if (targetSelect?.value === 'web1') {
-            this.updateVizPodStatus('target', 'web1');
-            this.updateVizProcessRules('target', 'web1');
+        if (targetSelect?.value === 'cible1') {
+            this.updateVizPodStatus('target', 'cible1');
+            this.updateVizProcessRules('target', 'cible1');
         }
     }
 
@@ -3380,7 +3380,7 @@ class DemoApp {
         // Get group name from pod selection - use null to fetch all events
         let groupName = null;
         if (podSelect) {
-            const podName = podSelect.value || 'production1';
+            const podName = podSelect.value || 'espion1';
             const serviceName = podName.replace(/-test$/, '');
             groupName = `nv.${serviceName}.neuvector-demo`;
         }

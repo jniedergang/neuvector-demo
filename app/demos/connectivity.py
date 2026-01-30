@@ -26,11 +26,11 @@ class ConnectivityDemo(DemoModule):
                 name="pod_name",
                 label="Source Pod",
                 type="select",
-                default="production1",
+                default="espion1",
                 required=True,
                 options=[
-                    {"value": "production1", "label": "Espion1"},
-                    {"value": "web1", "label": "Cible1"},
+                    {"value": "espion1", "label": "Espion1"},
+                    {"value": "cible1", "label": "Cible1"},
                 ],
                 help_text="Pod from which to run the test",
             ),
@@ -51,10 +51,10 @@ class ConnectivityDemo(DemoModule):
                 name="target_pod",
                 label="Target Pod",
                 type="select",
-                default="web1",
+                default="cible1",
                 options=[
-                    {"value": "production1", "label": "Espion1"},
-                    {"value": "web1", "label": "Cible1"},
+                    {"value": "espion1", "label": "Espion1"},
+                    {"value": "cible1", "label": "Cible1"},
                 ],
                 help_text="Target pod (when Target Type is Pod)",
             ),
@@ -99,7 +99,7 @@ class ConnectivityDemo(DemoModule):
         target_type = params.get("target_type", "public")
 
         if target_type == "pod":
-            pod = params.get("target_pod", "web1")
+            pod = params.get("target_pod", "cible1")
             return f"{pod}.{NAMESPACE}.svc.cluster.local"
         elif target_type == "public":
             return params.get("target_public", "https://www.google.com")
@@ -124,7 +124,7 @@ class ConnectivityDemo(DemoModule):
         kubectl: Kubectl,
         params: dict[str, Any],
     ) -> AsyncGenerator[str, None]:
-        pod_name = params.get("pod_name", "production1")
+        pod_name = params.get("pod_name", "espion1")
         command = params.get("command", "curl")
         target = self._resolve_target(params)
         host = self._extract_host(target)
