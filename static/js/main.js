@@ -472,6 +472,37 @@ class SettingsManager {
         }
         return null;
     }
+
+    /**
+     * Get combined pod info (group status + process profile) in one API call.
+     * This is more efficient as it authenticates once and makes parallel requests.
+     */
+    async getPodInfo(groupName) {
+        const credentials = this.getCredentials();
+        if (!credentials.password) {
+            return null;
+        }
+
+        try {
+            const response = await fetch('/api/neuvector/pod-info', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: credentials.username,
+                    password: credentials.password,
+                    group_name: groupName,
+                }),
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                return result;
+            }
+        } catch (error) {
+            console.error('Failed to get pod info:', error);
+        }
+        return null;
+    }
 }
 
 // Global settings manager
@@ -1915,8 +1946,7 @@ class DemoApp {
         if (sourceSelect) {
             sourceSelect.addEventListener('change', () => {
                 this.syncFormFromViz();
-                this.updateVizPodStatus('source', sourceSelect.value);
-                this.updateVizProcessRules('source', sourceSelect.value);
+                this.updateVizPodInfo('source', sourceSelect.value);
                 // Reload DLP sensors if this is a DLP demo
                 if (this.currentDemoType === 'dlp') {
                     this.loadDLPSensors(sourceSelect.value);
@@ -1931,8 +1961,7 @@ class DemoApp {
                 this.syncFormFromViz();
                 const targetType = document.getElementById('viz-target-type')?.value;
                 if (targetType === 'pod') {
-                    this.updateVizPodStatus('target', targetPodSelect.value);
-                    this.updateVizProcessRules('target', targetPodSelect.value);
+                    this.updateVizPodInfo('target', targetPodSelect.value);
                 }
             });
         }
@@ -2017,9 +2046,8 @@ class DemoApp {
                     if (targetModeIcons) targetModeIcons.style.display = isInternalPod ? '' : 'none';
                     // Load target pod status if internal
                     if (isInternalPod) {
-                        this.updateVizPodStatus('target', 'cible1');
+                        this.updateVizPodInfo('target', 'cible1');
                         this.loadDLPSensors('cible1', 'target');
-                        this.updateVizProcessRules('target', 'cible1');
                     }
                 });
                 // Trigger initial state
@@ -2031,9 +2059,8 @@ class DemoApp {
                 if (targetModeIcons) targetModeIcons.style.display = isInternalPod ? '' : 'none';
                 // Load initial target data if internal pod
                 if (isInternalPod) {
-                    this.updateVizPodStatus('target', 'cible1');
+                    this.updateVizPodInfo('target', 'cible1');
                     this.loadDLPSensors('cible1', 'target');
-                    this.updateVizProcessRules('target', 'cible1');
                 }
             }
 
@@ -2094,10 +2121,14 @@ class DemoApp {
             });
         }
 
-        // Initial load of source pod status
+        // Initial sync of form values from visualization dropdowns
+        this.syncFormFromViz();
+
+        // Load pod status asynchronously (non-blocking) so UI appears immediately
         const initialSourcePod = sourceSelect?.value || 'espion1';
-        this.updateVizPodStatus('source', initialSourcePod);
-        this.updateVizProcessRules('source', initialSourcePod);
+        setTimeout(() => {
+            this.updateVizPodInfo('source', initialSourcePod);
+        }, 0);
 
         // Load initial DLP sensor status for DLP demos
         if (isDLPDemo) {
@@ -2150,8 +2181,7 @@ class DemoApp {
                     targetBox.classList.add('show-pod-settings');
                     // Load target pod status
                     const podName = targetPod?.value || 'cible1';
-                    this.updateVizPodStatus('target', podName);
-                    this.updateVizProcessRules('target', podName);
+                    this.updateVizPodInfo('target', podName);
                 } else {
                     targetBox.classList.remove('show-pod-settings');
                 }
@@ -2409,6 +2439,118 @@ class DemoApp {
     }
 
     /**
+     * Update both pod status and process rules in one optimized API call.
+     * This reduces HTTP requests from ~6 to ~4 per pod by:
+     * - Authenticating once instead of twice
+     * - Making parallel API calls for group status and process profile
+     * - Logging out once instead of twice
+     */
+    async updateVizPodInfo(target, podName) {
+        const prefix = target === 'source' ? 'viz-src' : 'viz-tgt';
+
+        // Get DOM elements for status
+        const policyMode = document.getElementById(`${prefix}-policy-mode`);
+        const profileMode = document.getElementById(`${prefix}-profile-mode`);
+        const baseline = document.getElementById(`${prefix}-baseline`);
+
+        // Get DOM elements for process rules
+        const list = document.getElementById(`${prefix}-process-items`);
+        const count = document.getElementById(`${prefix}-process-count`);
+
+        // Map pod name to NeuVector group name
+        const serviceName = podName.replace(/-test$/, '');
+        const groupName = `nv.${serviceName}.neuvector-demo`;
+
+        // Show loading states
+        if (policyMode) policyMode.disabled = true;
+        if (profileMode) profileMode.disabled = true;
+        if (baseline) baseline.disabled = true;
+        if (list) {
+            list.innerHTML = 'Loading...';
+            list.className = 'viz-process-items loading';
+        }
+        if (count) count.textContent = '';
+
+        // Fetch combined pod info
+        const result = await settingsManager.getPodInfo(groupName);
+
+        if (result) {
+            // Update status selects
+            if (policyMode) {
+                const policy = result.policy_mode || 'Discover';
+                policyMode.value = policy;
+                policyMode.className = 'viz-setting-select mode-' + policy.toLowerCase();
+                policyMode.disabled = false;
+            }
+
+            if (profileMode) {
+                const profile = result.profile_mode || 'Discover';
+                profileMode.value = profile;
+                profileMode.className = 'viz-setting-select mode-' + profile.toLowerCase();
+                profileMode.disabled = false;
+            }
+
+            if (baseline) {
+                const baselineVal = result.baseline_profile || 'zero-drift';
+                baseline.value = baselineVal;
+                baseline.className = 'viz-setting-select';
+                baseline.disabled = false;
+            }
+
+            // Update mode icons
+            this.updateModeIcons(target, result.policy_mode || 'Discover', result.profile_mode || 'Discover');
+
+            // Update process rules list
+            if (list) {
+                if (result.process_list && result.process_list.length > 0) {
+                    if (count) count.textContent = `(${result.process_list.length})`;
+
+                    // Store groupName for delete operations
+                    list.dataset.groupName = groupName;
+                    list.dataset.target = target;
+                    list.dataset.podName = podName;
+
+                    list.innerHTML = result.process_list.map(p => `
+                        <div class="viz-process-item" data-name="${this.escapeHtml(p.name)}" data-path="${this.escapeHtml(p.path)}">
+                            <span class="viz-process-name">${this.escapeHtml(p.name)}</span>
+                            <span class="viz-process-type ${p.cfg_type}">${p.cfg_type}</span>
+                            <button type="button" class="viz-btn-delete" title="Delete">&times;</button>
+                        </div>
+                    `).join('');
+                    list.className = 'viz-process-items';
+
+                    // Add event listeners for delete buttons
+                    list.querySelectorAll('.viz-btn-delete').forEach(btn => {
+                        btn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            const item = e.target.closest('.viz-process-item');
+                            if (item) {
+                                this.deleteVizProcessRule(
+                                    groupName,
+                                    item.dataset.name,
+                                    item.dataset.path,
+                                    item,
+                                    target,
+                                    podName
+                                );
+                            }
+                        });
+                    });
+                } else {
+                    list.innerHTML = 'No rules';
+                    list.className = 'viz-process-items empty';
+                }
+            }
+        } else {
+            // Error or not configured
+            if (list) {
+                list.innerHTML = 'Not configured';
+                list.className = 'viz-process-items empty';
+            }
+        }
+    }
+
+    /**
      * Load DLP sensor status for a pod
      * @param {string} podName - The pod name
      * @param {string} target - 'source' or 'target' to determine element IDs
@@ -2577,13 +2719,12 @@ class DemoApp {
                 }
                 // Verify by reloading status and process rules after a short delay
                 setTimeout(() => {
-                    this.updateVizPodStatus(target, podName);
-                    this.updateVizProcessRules(target, podName);
+                    this.updateVizPodInfo(target, podName);
                 }, 500);
             } else {
                 console.error('Failed to update setting:', result.message);
                 // Revert on error
-                this.updateVizPodStatus(target, podName);
+                this.updateVizPodInfo(target, podName);
             }
         } catch (error) {
             console.error('Failed to update setting:', error);
@@ -2849,8 +2990,7 @@ class DemoApp {
         if (sourceSelect) {
             sourceSelect.addEventListener('change', () => {
                 this.syncAttackFormFromViz();
-                this.updateVizPodStatus('source', sourceSelect.value);
-                this.updateVizProcessRules('source', sourceSelect.value);
+                this.updateVizPodInfo('source', sourceSelect.value);
             });
         }
 
@@ -2870,8 +3010,7 @@ class DemoApp {
                 if (targetProcesses) targetProcesses.style.display = isInternalPod ? 'block' : 'none';
                 if (targetModeIcons) targetModeIcons.style.display = isInternalPod ? '' : 'none';
                 if (isInternalPod) {
-                    this.updateVizPodStatus('target', 'cible1');
-                    this.updateVizProcessRules('target', 'cible1');
+                    this.updateVizPodInfo('target', 'cible1');
                 }
             });
             // Trigger initial state
@@ -2964,16 +3103,17 @@ class DemoApp {
         // Start live clock
         this.startLiveClock();
 
-        // Initial load of source pod status
-        const initialSourcePod = sourceSelect?.value || 'espion1';
-        this.updateVizPodStatus('source', initialSourcePod);
-        this.updateVizProcessRules('source', initialSourcePod);
+        // Initial sync of form values from visualization dropdowns
+        this.syncAttackFormFromViz();
 
-        // Load target pod status if internal
-        if (targetSelect?.value === 'cible1') {
-            this.updateVizPodStatus('target', 'cible1');
-            this.updateVizProcessRules('target', 'cible1');
-        }
+        // Load pod status asynchronously (non-blocking) so UI appears immediately
+        const initialSourcePod = sourceSelect?.value || 'espion1';
+        setTimeout(() => {
+            this.updateVizPodInfo('source', initialSourcePod);
+            if (targetSelect?.value === 'cible1') {
+                this.updateVizPodInfo('target', 'cible1');
+            }
+        }, 0);
     }
 
     /**
