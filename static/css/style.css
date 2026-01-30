@@ -1049,6 +1049,14 @@ select.form-control {
     color: var(--primary-color);
 }
 
+.settings-status.info {
+    display: block;
+    background-color: #f0f4f8;
+    color: var(--text-color);
+    font-family: monospace;
+    text-align: left;
+}
+
 /* Settings Sections */
 .settings-section {
     margin-bottom: 1.5rem;
