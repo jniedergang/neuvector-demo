@@ -2113,7 +2113,108 @@ select.form-control {
     .modal {
         margin: 1rem;
         max-width: calc(100% - 2rem);
+        max-height: calc(100vh - 2rem);
     }
+
+    .modal-body {
+        padding: 1rem;
+    }
+
+    .settings-section {
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+    }
+
+    .settings-section-title {
+        font-size: 0.85rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .form-group {
+        margin-bottom: 0.75rem;
+    }
+}
+
+/* Small height screens */
+@media (max-height: 700px) {
+    .modal {
+        max-height: calc(100vh - 1rem);
+        margin: 0.5rem;
+    }
+
+    .modal-header {
+        padding: 0.75rem 1rem;
+    }
+
+    .modal-body {
+        padding: 1rem;
+    }
+
+    .modal-footer {
+        padding: 0.75rem 1rem;
+    }
+
+    .settings-section {
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.75rem;
+    }
+
+    .logo-preview {
+        height: 60px;
+    }
+}
+
+@media (max-height: 500px) {
+    .modal {
+        max-height: calc(100vh - 0.5rem);
+        margin: 0.25rem;
+        border-radius: 8px;
+    }
+
+    .modal-header {
+        padding: 0.5rem 1rem;
+    }
+
+    .modal-header h3 {
+        font-size: 1rem;
+    }
+
+    .modal-body {
+        padding: 0.75rem;
+    }
+
+    .modal-footer {
+        padding: 0.5rem 1rem;
+    }
+
+    .settings-section {
+        margin-bottom: 0.5rem;
+        padding-bottom: 0.5rem;
+    }
+
+    .settings-section-title {
+        font-size: 0.8rem;
+        margin-bottom: 0.4rem;
+    }
+
+    .form-group label {
+        font-size: 0.8rem;
+    }
+
+    .form-control {
+        padding: 0.4rem 0.6rem;
+        font-size: 0.85rem;
+    }
+
+    .logo-preview {
+        height: 50px;
+    }
+
+    .lifecycle-actions .btn {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.8rem;
+    }
+}
 
     .viz-content {
         flex-direction: column;
