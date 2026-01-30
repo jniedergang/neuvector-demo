@@ -190,9 +190,18 @@ async def prepare_platform(kubectl: Kubectl) -> AsyncGenerator[str, None]:
         if rule_exists:
             yield f"[OK] Admission rule for '{forbidden_ns}' already exists"
         else:
-            await nv_api.create_admission_rule_deny_namespace(
-                namespace=forbidden_ns,
+            criteria = [
+                {
+                    "name": "namespace",
+                    "op": "containsAny",
+                    "value": forbidden_ns,
+                }
+            ]
+            await nv_api.create_admission_rule(
+                rule_type="deny",
                 comment="Demo: Deny all deployments in forbidden-namespace1",
+                criteria=criteria,
+                disable=False,
             )
             yield f"[OK] Admission rule created: deny deployments in '{forbidden_ns}'"
 
