@@ -2268,6 +2268,8 @@ select.form-control {
     }
 }
 
+/* Mobile responsive for visualization */
+@media (max-width: 900px) {
     .viz-content {
         flex-direction: column;
     }
@@ -2280,7 +2282,9 @@ select.form-control {
     .demo-compact-row {
         grid-template-columns: 1fr;
     }
+}
 
+@media (max-width: 768px) {
     .header-status-group {
         display: none;
     }
