@@ -1823,6 +1823,7 @@ class DemoApp {
                 <div class="nv-logs-container" id="nv-logs-container">
                     <div class="nv-logs-header">
                         <span>SUSE Security Events</span>
+                        <span class="nv-logs-time" id="nv-logs-time"></span>
                         <button type="button" class="btn-refresh" id="btn-refresh-logs" title="Refresh events">↻</button>
                     </div>
                     <div class="nv-logs-list empty" id="nv-logs-list">
@@ -2742,6 +2743,7 @@ class DemoApp {
                 <div class="nv-logs-container" id="nv-logs-container">
                     <div class="nv-logs-header">
                         <span>SUSE Security Events</span>
+                        <span class="nv-logs-time" id="nv-logs-time"></span>
                         <button type="button" class="btn-refresh" id="btn-refresh-logs" title="Refresh events">↻</button>
                     </div>
                     <div class="nv-logs-list empty" id="nv-logs-list">
@@ -3433,6 +3435,13 @@ class DemoApp {
             console.error('[NV Events] Failed to fetch events:', error);
             logsList.innerHTML = 'Error loading events';
             logsList.className = 'nv-logs-list empty';
+        }
+
+        // Update refresh timestamp
+        const timeSpan = document.getElementById('nv-logs-time');
+        if (timeSpan) {
+            const now = new Date();
+            timeSpan.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         }
 
         if (refreshBtn) refreshBtn.classList.remove('loading');

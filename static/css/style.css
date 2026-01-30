@@ -2025,6 +2025,14 @@ select.form-control {
     animation: spin 1s linear infinite;
 }
 
+.nv-logs-time {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    font-weight: 400;
+    margin-left: auto;
+    margin-right: 0.5rem;
+}
+
 @keyframes spin {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
