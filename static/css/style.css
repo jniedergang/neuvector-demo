@@ -139,25 +139,27 @@ body {
 
 /* Sidebar toggle button */
 .btn-sidebar-toggle {
-    background: none;
+    background-color: var(--primary-color);
     border: none;
     padding: 0.5rem;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--text-color);
-    border-radius: 4px;
-    transition: background-color 0.2s;
+    color: white;
+    border-radius: 6px;
+    transition: background-color 0.2s, transform 0.1s;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
 }
 
 .btn-sidebar-toggle:hover {
-    background-color: var(--bg-color);
+    background-color: var(--primary-hover);
+    transform: scale(1.05);
 }
 
 .btn-sidebar-toggle svg {
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
 }
 
 /* Sidebar close button */
@@ -280,48 +282,29 @@ body {
     font-weight: 500;
 }
 
-/* Demo Selector Dropdown */
-.demo-title-container {
+/* Demo Title Display */
+.demo-title-display {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
     flex: 1;
 }
 
-.demo-selector {
+.demo-title-icon {
+    font-size: 1.5rem;
+    line-height: 1;
+}
+
+.demo-title-text {
     font-size: 1.1rem;
-    font-weight: 500;
-    padding: 0.5rem 2rem 0.5rem 0.75rem;
-    border: 2px solid var(--border-color);
-    border-radius: 8px;
-    background-color: var(--card-bg);
-    color: var(--text-color);
-    cursor: pointer;
-    min-width: 280px;
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%234a4a4a' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 0.75rem center;
-    transition: border-color 0.2s, box-shadow 0.2s;
-    box-shadow: var(--shadow-sm);
-}
-
-.demo-selector:hover {
-    border-color: var(--primary-color);
-}
-
-.demo-selector:focus {
-    outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.15);
-}
-
-.demo-selector option {
-    font-size: 1rem;
-    padding: 0.5rem;
-}
-
-.demo-selector optgroup {
     font-weight: 600;
+    color: var(--text-color);
+}
+
+.demo-title-text.placeholder {
     color: var(--text-secondary);
-    font-size: 0.85rem;
+    font-weight: 400;
+    font-style: italic;
 }
 
 .card-body {
@@ -870,18 +853,6 @@ select.form-control {
 .demo-params {
     display: grid;
     gap: 1rem;
-}
-
-.demo-description {
-    padding: 1rem;
-    background-color: var(--bg-color);
-    border-radius: 8px;
-    margin-bottom: 1rem;
-}
-
-.demo-description p {
-    color: var(--text-secondary);
-    font-size: 0.875rem;
 }
 
 /* Empty State */

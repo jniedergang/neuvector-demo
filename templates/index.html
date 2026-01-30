@@ -80,26 +80,14 @@
         <!-- Content Area -->
         <main class="content">
             <!-- Demo Configuration Card -->
-            <div class="card">
+            <div class="card" id="demo-card">
                 <div class="card-header">
-                    <div class="demo-title-container">
-                        <select id="demo-selector" class="demo-selector">
-                            <option value="">Select a Demo...</option>
-                            {% for category, demo_list in categories.items() %}
-                            <optgroup label="{{ category }}">
-                                {% for demo in demo_list %}
-                                <option value="{{ demo.id }}" data-icon="{{ demo.icon }}">{{ demo.icon }} {{ demo.name }}</option>
-                                {% endfor %}
-                            </optgroup>
-                            {% endfor %}
-                        </select>
+                    <div class="demo-title-display" id="demo-title-display">
+                        <span class="demo-title-icon" id="demo-title-icon"></span>
+                        <span class="demo-title-text" id="demo-title-text">Select a demo from the menu</span>
                     </div>
                 </div>
                 <div class="card-body">
-                    <div id="demo-description" class="demo-description">
-                        <p>Select a demo from the sidebar to configure and run it. Use the Platform Actions to prepare or reset the demo environment.</p>
-                    </div>
-
                     <form id="demo-form">
                         <div id="demo-params" class="demo-params">
                             <!-- Parameters will be rendered here -->
