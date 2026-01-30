@@ -25,11 +25,11 @@ class AttackSimulationDemo(DemoModule):
                 name="pod_name",
                 label="Source Pod",
                 type="select",
-                default="production1",
+                default="espion1",
                 required=True,
                 options=[
-                    {"value": "production1", "label": "Espion1"},
-                    {"value": "web1", "label": "Cible1"},
+                    {"value": "espion1", "label": "Espion1"},
+                    {"value": "cible1", "label": "Cible1"},
                 ],
                 help_text="Pod from which to run the attack simulation",
             ),
@@ -51,10 +51,10 @@ class AttackSimulationDemo(DemoModule):
                 name="target",
                 label="Target",
                 type="select",
-                default="web1",
+                default="cible1",
                 required=True,
                 options=[
-                    {"value": "web1", "label": "Cible1 (web1)"},
+                    {"value": "cible1", "label": "Cible1"},
                     {"value": "external", "label": "External (example.com)"},
                 ],
                 help_text="Target of the attack",
@@ -63,12 +63,12 @@ class AttackSimulationDemo(DemoModule):
 
     async def _resolve_target(self, kubectl: Kubectl, target: str) -> str:
         """Resolve the target address based on target selection."""
-        if target == "web1":
-            # Get the pod IP for web1
+        if target == "cible1":
+            # Get the pod IP for cible1
             try:
                 ip_output = []
                 async for line in kubectl.run_command([
-                    "get", "pod", "web1",
+                    "get", "pod", "cible1",
                     "-n", NAMESPACE,
                     "-o", "jsonpath={.status.podIP}"
                 ]):
@@ -79,7 +79,7 @@ class AttackSimulationDemo(DemoModule):
             except Exception:
                 pass
             # Fallback to service DNS name
-            return f"web1.{NAMESPACE}.svc.cluster.local"
+            return f"cible1.{NAMESPACE}.svc.cluster.local"
         else:
             # External target
             return "example.com"
@@ -90,8 +90,8 @@ class AttackSimulationDemo(DemoModule):
         params: dict[str, Any],
     ) -> AsyncGenerator[str, None]:
         attack_type = params.get("attack_type", "dos_ping")
-        pod_name = params.get("pod_name", "production1")
-        target = params.get("target", "web1")
+        pod_name = params.get("pod_name", "espion1")
+        target = params.get("target", "cible1")
 
         # Get attack type label for display
         attack_labels = {
