@@ -519,14 +519,21 @@ class DemoApp {
             return this.dlpSensors;
         }
 
+        const credentials = settingsManager.getCredentials();
+        if (!credentials.password) {
+            console.warn('No NeuVector credentials configured');
+            this.dlpSensors = [];
+            return this.dlpSensors;
+        }
+
         this.dlpSensorsLoading = true;
         try {
             const response = await fetch('/api/dlp/sensors', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    username: localStorage.getItem('nv_username') || 'admin',
-                    password: localStorage.getItem('nv_password') || 'Admin@123456'
+                    username: credentials.username,
+                    password: credentials.password
                 })
             });
 
