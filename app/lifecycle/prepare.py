@@ -50,13 +50,25 @@ DLP_SENSORS = [
 ]
 
 
-async def prepare_platform(kubectl: Kubectl) -> AsyncGenerator[str, None]:
+async def prepare_platform(
+    kubectl: Kubectl,
+    nv_username: str = None,
+    nv_password: str = None,
+) -> AsyncGenerator[str, None]:
     """
     Prepare the demo platform by creating namespace and deploying test pods.
+
+    Args:
+        kubectl: Kubectl instance
+        nv_username: Optional NeuVector username (uses env/default if not provided)
+        nv_password: Optional NeuVector password (uses env/default if not provided)
 
     Yields:
         Status messages during preparation
     """
+    # Use provided credentials or fall back to env/defaults
+    username = nv_username or NV_USERNAME
+    password = nv_password or NV_PASSWORD
     yield "[PREPARE] Starting platform preparation..."
     yield ""
 
@@ -128,8 +140,8 @@ async def prepare_platform(kubectl: Kubectl) -> AsyncGenerator[str, None]:
     try:
         nv_api = NeuVectorAPI(
             base_url=NEUVECTOR_API_URL,
-            username=NV_USERNAME,
-            password=NV_PASSWORD,
+            username=username,
+            password=password,
         )
         await nv_api.authenticate()
 
@@ -167,8 +179,8 @@ async def prepare_platform(kubectl: Kubectl) -> AsyncGenerator[str, None]:
     try:
         nv_api = NeuVectorAPI(
             base_url=NEUVECTOR_API_URL,
-            username=NV_USERNAME,
-            password=NV_PASSWORD,
+            username=username,
+            password=password,
         )
         await nv_api.authenticate()
 

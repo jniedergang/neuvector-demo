@@ -112,8 +112,8 @@ class WebSocketManager {
     /**
      * Execute a lifecycle action
      */
-    executeAction(action) {
-        return this.send({ action });
+    executeAction(action, params = {}) {
+        return this.send({ action, params });
     }
 
     /**

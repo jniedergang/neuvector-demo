@@ -1044,7 +1044,15 @@ class DemoApp {
         this.appendOutput(`Starting ${action}...`, 'info');
         this.appendOutput('');
 
-        wsManager.executeAction(action);
+        // For prepare action, pass NeuVector credentials
+        const params = {};
+        if (action === 'prepare') {
+            const credentials = settingsManager.getCredentials();
+            params.nv_username = credentials.username;
+            params.nv_password = credentials.password;
+        }
+
+        wsManager.executeAction(action, params);
     }
 
     /**
