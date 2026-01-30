@@ -2485,13 +2485,26 @@ class DemoApp {
 
         console.log(`Updating ${field} to ${value} for service ${serviceName}`);
 
+        // Get current values for both policy_mode and profile_mode to preserve them
+        const prefix = target === 'source' ? 'viz-src' : 'viz-tgt';
+        const policySelect = document.getElementById(`${prefix}-policy-mode`);
+        const profileSelect = document.getElementById(`${prefix}-profile-mode`);
+        const currentPolicy = policySelect?.value || 'Discover';
+        const currentProfile = profileSelect?.value || 'Discover';
+
         try {
+            // Always send both policy_mode and profile_mode to prevent NeuVector from resetting the other
             const body = {
                 username: credentials.username,
                 password: credentials.password,
                 service_name: serviceName,
+                policy_mode: field === 'policy_mode' ? value : currentPolicy,
+                profile_mode: field === 'profile_mode' ? value : currentProfile,
             };
-            body[field] = value;
+            // Add baseline if that's what's being changed
+            if (field === 'baseline_profile') {
+                body.baseline_profile = value;
+            }
 
             const response = await fetch('/api/neuvector/update-group', {
                 method: 'POST',
