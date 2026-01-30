@@ -942,8 +942,8 @@ class DemoApp {
         this.statusText = document.getElementById('status-text');
         this.demoForm = document.getElementById('demo-form');
         this.demoParams = document.getElementById('demo-params');
-        this.demoSelector = document.getElementById('demo-selector');
-        this.demoDescription = document.getElementById('demo-description');
+        this.demoTitleIcon = document.getElementById('demo-title-icon');
+        this.demoTitleText = document.getElementById('demo-title-text');
         this.runButton = document.getElementById('run-demo-btn');
 
         // Set up event listeners
@@ -961,10 +961,10 @@ class DemoApp {
      */
     restoreFromHash() {
         const hash = window.location.hash.slice(1); // Remove '#'
-        if (hash && this.demoSelector) {
-            // Check if this demo exists in the selector
-            const option = this.demoSelector.querySelector(`option[value="${hash}"]`);
-            if (option) {
+        if (hash) {
+            // Check if this demo exists in the sidebar
+            const demoItem = document.querySelector(`.demo-item[data-demo-id="${hash}"]`);
+            if (demoItem) {
                 this.selectDemoWithoutHash(hash);
             }
         }
@@ -979,12 +979,7 @@ class DemoApp {
             item.classList.toggle('active', item.dataset.demoId === demoId);
         });
 
-        // Update dropdown selector
-        if (this.demoSelector && this.demoSelector.value !== demoId) {
-            this.demoSelector.value = demoId;
-        }
-
-        // Close sidebar on mobile after selection
+        // Close sidebar after selection
         const sidebar = document.getElementById('sidebar');
         const backdrop = document.getElementById('sidebar-backdrop');
         if (sidebar?.classList.contains('open')) {
@@ -1002,14 +997,6 @@ class DemoApp {
         document.getElementById('btn-reset')?.addEventListener('click', () => this.runAction('reset'));
         document.getElementById('btn-status')?.addEventListener('click', () => this.runAction('status'));
         document.getElementById('btn-clear')?.addEventListener('click', () => this.clearConsole());
-
-        // Demo selector dropdown
-        this.demoSelector?.addEventListener('change', (e) => {
-            const demoId = e.target.value;
-            if (demoId) {
-                this.selectDemo(demoId);
-            }
-        });
 
         // Demo items in sidebar
         document.querySelectorAll('.demo-item').forEach(item => {
@@ -1325,15 +1312,10 @@ class DemoApp {
             item.classList.toggle('active', item.dataset.demoId === demoId);
         });
 
-        // Update dropdown selector
-        if (this.demoSelector && this.demoSelector.value !== demoId) {
-            this.demoSelector.value = demoId;
-        }
-
         // Update URL hash for persistence on refresh
         window.location.hash = demoId;
 
-        // Close sidebar on mobile after selection
+        // Close sidebar after selection
         const sidebar = document.getElementById('sidebar');
         const backdrop = document.getElementById('sidebar-backdrop');
         if (sidebar?.classList.contains('open')) {
@@ -1368,10 +1350,13 @@ class DemoApp {
         // Clean up previous visualization first
         this.removeVisualization();
 
-        // Dropdown is already updated in selectDemo()
-
-        if (this.demoDescription) {
-            this.demoDescription.innerHTML = `<p>${demo.description}</p>`;
+        // Update demo title display
+        if (this.demoTitleIcon) {
+            this.demoTitleIcon.textContent = demo.icon || '';
+        }
+        if (this.demoTitleText) {
+            this.demoTitleText.textContent = demo.name || 'Unknown Demo';
+            this.demoTitleText.classList.remove('placeholder');
         }
 
         // Check demo type for visualization
