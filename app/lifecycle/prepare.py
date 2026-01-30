@@ -123,8 +123,8 @@ async def prepare_platform(kubectl: Kubectl) -> AsyncGenerator[str, None]:
 
     yield ""
 
-    # Step 4: Create DLP sensors in NeuVector
-    yield "[STEP 4/5] Creating DLP sensors in NeuVector..."
+    # Step 4: Configure NeuVector (DLP sensors + Admission rule)
+    yield "[STEP 4/6] Configuring NeuVector..."
     try:
         nv_api = NeuVectorAPI(
             base_url=NEUVECTOR_API_URL,
@@ -133,7 +133,8 @@ async def prepare_platform(kubectl: Kubectl) -> AsyncGenerator[str, None]:
         )
         await nv_api.authenticate()
 
-        # Get existing sensors
+        # Create DLP sensors
+        yield "[INFO] Creating DLP sensors..."
         existing_sensors = await nv_api.get_dlp_sensors()
         existing_names = {s.get("name") for s in existing_sensors}
 
@@ -161,8 +162,51 @@ async def prepare_platform(kubectl: Kubectl) -> AsyncGenerator[str, None]:
 
     yield ""
 
-    # Step 5: Show final status
-    yield "[STEP 5/5] Final status check..."
+    # Step 5: Create admission control rule
+    yield "[STEP 5/6] Creating admission control rule..."
+    try:
+        nv_api = NeuVectorAPI(
+            base_url=NEUVECTOR_API_URL,
+            username=NV_USERNAME,
+            password=NV_PASSWORD,
+        )
+        await nv_api.authenticate()
+
+        # Check if rule already exists for forbidden-namespace1
+        existing_rules = await nv_api.get_admission_rules()
+        forbidden_ns = "forbidden-namespace1"
+        rule_exists = False
+
+        for rule in existing_rules:
+            criteria = rule.get("criteria", [])
+            for criterion in criteria:
+                if (criterion.get("name") == "namespace" and
+                    forbidden_ns in criterion.get("value", "")):
+                    rule_exists = True
+                    break
+            if rule_exists:
+                break
+
+        if rule_exists:
+            yield f"[OK] Admission rule for '{forbidden_ns}' already exists"
+        else:
+            await nv_api.create_admission_rule_deny_namespace(
+                namespace=forbidden_ns,
+                comment="Demo: Deny all deployments in forbidden-namespace1",
+            )
+            yield f"[OK] Admission rule created: deny deployments in '{forbidden_ns}'"
+
+        await nv_api.logout()
+        await nv_api.close()
+    except NeuVectorAPIError as e:
+        yield f"[WARNING] Could not create admission rule: {e}"
+    except Exception as e:
+        yield f"[WARNING] Admission rule setup error: {e}"
+
+    yield ""
+
+    # Step 6: Show final status
+    yield "[STEP 6/6] Final status check..."
     try:
         stdout, stderr, rc = await kubectl.run(
             "get", "pods", "-o", "wide",
