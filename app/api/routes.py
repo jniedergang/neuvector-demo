@@ -1,5 +1,6 @@
 """REST API routes."""
 
+import asyncio
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Any, Optional
@@ -182,6 +183,95 @@ class ProcessProfileResponse(BaseModel):
     baseline: Optional[str] = None
     process_list: list[ProcessRule] = []
     message: str = ""
+
+
+class PodInfoRequest(BaseModel):
+    """Request model for getting combined pod info (group status + process profile)."""
+    username: str
+    password: str
+    group_name: str
+
+
+class PodInfoResponse(BaseModel):
+    """Response model for combined pod info."""
+    success: bool
+    group_name: str
+    # Group status
+    policy_mode: Optional[str] = None
+    profile_mode: Optional[str] = None
+    baseline_profile: Optional[str] = None
+    # Process profile
+    process_list: list[ProcessRule] = []
+    message: str = ""
+
+
+@router.post("/neuvector/pod-info", response_model=PodInfoResponse)
+async def get_pod_info(request: PodInfoRequest):
+    """Get NeuVector group status AND process profile in one call.
+
+    This optimizes performance by:
+    - Authenticating once instead of twice
+    - Making parallel API calls for group and process profile
+    - Logging out once instead of twice
+
+    Reduces HTTP requests from ~6 to ~4 per pod.
+    """
+    api = NeuVectorAPI(
+        base_url=NEUVECTOR_API_URL,
+        username=request.username,
+        password=request.password,
+    )
+
+    try:
+        await api.authenticate()
+
+        # Fetch group status and process profile in parallel
+        group_result, profile_result = await asyncio.gather(
+            api.get_group(request.group_name),
+            api.get_process_profile(request.group_name),
+            return_exceptions=True,
+        )
+
+        await api.logout()
+        await api.close()
+
+        # Handle potential exceptions from parallel calls
+        group = group_result if not isinstance(group_result, Exception) else {}
+        profile = profile_result if not isinstance(profile_result, Exception) else {}
+
+        # Build process list
+        process_list = [
+            ProcessRule(
+                name=p.get("name", ""),
+                path=p.get("path", ""),
+                action=p.get("action", "allow"),
+                cfg_type=p.get("cfg_type", "learned"),
+            )
+            for p in profile.get("process_list", [])
+        ]
+
+        return PodInfoResponse(
+            success=True,
+            group_name=request.group_name,
+            policy_mode=group.get("policy_mode"),
+            profile_mode=group.get("profile_mode"),
+            baseline_profile=group.get("baseline_profile"),
+            process_list=process_list,
+        )
+    except NeuVectorAPIError as e:
+        await api.close()
+        return PodInfoResponse(
+            success=False,
+            group_name=request.group_name,
+            message=str(e),
+        )
+    except Exception as e:
+        await api.close()
+        return PodInfoResponse(
+            success=False,
+            group_name=request.group_name,
+            message=f"Unexpected error: {str(e)}",
+        )
 
 
 @router.post("/neuvector/process-profile", response_model=ProcessProfileResponse)
