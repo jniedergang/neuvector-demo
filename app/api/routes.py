@@ -1,6 +1,7 @@
 """REST API routes."""
 
 import asyncio
+from enum import Enum
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Any, Optional
@@ -1164,4 +1165,539 @@ async def get_admission_events(request: AdmissionEventsRequest):
         return AdmissionEventsResponse(
             success=False,
             message=f"Unexpected error: {str(e)}",
+        )
+
+
+# ========== Diagnostics Endpoints ==========
+
+class DiagnosticStatus(str, Enum):
+    """Status for diagnostic checks."""
+    OK = "ok"
+    WARNING = "warning"
+    ERROR = "error"
+    PENDING = "pending"
+
+
+class DiagnosticCheck(BaseModel):
+    """Single diagnostic check result."""
+    id: str
+    name: str
+    category: str
+    status: DiagnosticStatus
+    message: str
+    details: Optional[str] = None
+
+
+class DiagnosticsRequest(BaseModel):
+    """Request model for running diagnostics."""
+    username: str
+    password: str
+
+
+class DiagnosticsSummary(BaseModel):
+    """Summary of diagnostic results."""
+    total: int
+    ok: int
+    warning: int
+    error: int
+
+
+class DiagnosticsResponse(BaseModel):
+    """Response model for diagnostics."""
+    success: bool
+    checks: list[DiagnosticCheck] = []
+    summary: DiagnosticsSummary
+    message: str = ""
+
+
+async def _check_kubernetes_cluster() -> DiagnosticCheck:
+    """Check Kubernetes cluster connectivity."""
+    kubectl = Kubectl()
+    try:
+        info = await kubectl.get_cluster_info()
+        if info.get("connected"):
+            return DiagnosticCheck(
+                id="kubernetes",
+                name="Kubernetes Cluster",
+                category="Infrastructure",
+                status=DiagnosticStatus.OK,
+                message=f"Connected to {info.get('context', 'cluster')}",
+                details=f"{info.get('node_count', 0)} node(s)",
+            )
+        else:
+            return DiagnosticCheck(
+                id="kubernetes",
+                name="Kubernetes Cluster",
+                category="Infrastructure",
+                status=DiagnosticStatus.ERROR,
+                message="Cannot connect to cluster",
+                details=info.get("error", "Connection failed"),
+            )
+    except Exception as e:
+        return DiagnosticCheck(
+            id="kubernetes",
+            name="Kubernetes Cluster",
+            category="Infrastructure",
+            status=DiagnosticStatus.ERROR,
+            message="Cluster check failed",
+            details=str(e),
+        )
+
+
+async def _check_neuvector_api(username: str, password: str) -> tuple[DiagnosticCheck, Optional[NeuVectorAPI]]:
+    """Check NeuVector API connectivity and return authenticated API client."""
+    if not password:
+        return DiagnosticCheck(
+            id="neuvector-api",
+            name="NeuVector API",
+            category="Infrastructure",
+            status=DiagnosticStatus.ERROR,
+            message="No credentials provided",
+            details="Configure API credentials in settings",
+        ), None
+
+    api = NeuVectorAPI(
+        base_url=NEUVECTOR_API_URL,
+        username=username,
+        password=password,
+    )
+
+    try:
+        await api.authenticate()
+        return DiagnosticCheck(
+            id="neuvector-api",
+            name="NeuVector API",
+            category="Infrastructure",
+            status=DiagnosticStatus.OK,
+            message="Connected and authenticated",
+            details=NEUVECTOR_API_URL,
+        ), api
+    except NeuVectorAPIError as e:
+        await api.close()
+        return DiagnosticCheck(
+            id="neuvector-api",
+            name="NeuVector API",
+            category="Infrastructure",
+            status=DiagnosticStatus.ERROR,
+            message="Authentication failed",
+            details=str(e),
+        ), None
+    except Exception as e:
+        await api.close()
+        return DiagnosticCheck(
+            id="neuvector-api",
+            name="NeuVector API",
+            category="Infrastructure",
+            status=DiagnosticStatus.ERROR,
+            message="Connection failed",
+            details=str(e),
+        ), None
+
+
+async def _check_demo_namespace() -> DiagnosticCheck:
+    """Check if demo namespace exists."""
+    kubectl = Kubectl()
+    try:
+        cmd = kubectl._build_base_command()
+        cmd.extend(["get", "namespace", NAMESPACE, "-o", "name"])
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=10)
+
+        if process.returncode == 0:
+            return DiagnosticCheck(
+                id="demo-namespace",
+                name="Demo Namespace",
+                category="Environment",
+                status=DiagnosticStatus.OK,
+                message=f"Namespace '{NAMESPACE}' exists",
+            )
+        else:
+            return DiagnosticCheck(
+                id="demo-namespace",
+                name="Demo Namespace",
+                category="Environment",
+                status=DiagnosticStatus.ERROR,
+                message=f"Namespace '{NAMESPACE}' not found",
+                details="Run 'Prepare' to create it",
+            )
+    except Exception as e:
+        return DiagnosticCheck(
+            id="demo-namespace",
+            name="Demo Namespace",
+            category="Environment",
+            status=DiagnosticStatus.ERROR,
+            message="Namespace check failed",
+            details=str(e),
+        )
+
+
+async def _check_demo_pods() -> DiagnosticCheck:
+    """Check if demo pods are running."""
+    kubectl = Kubectl()
+    expected_pods = ["espion1", "cible1"]
+
+    try:
+        cmd = kubectl._build_base_command()
+        cmd.extend(["-n", NAMESPACE, "get", "pods", "-o", "jsonpath={.items[*].metadata.name}"])
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=10)
+
+        if process.returncode != 0:
+            return DiagnosticCheck(
+                id="demo-pods",
+                name="Demo Pods",
+                category="Environment",
+                status=DiagnosticStatus.ERROR,
+                message="Cannot list pods",
+                details=stderr.decode() if stderr else "Unknown error",
+            )
+
+        pod_names = stdout.decode().strip().split() if stdout else []
+        found_pods = []
+        missing_pods = []
+
+        for expected in expected_pods:
+            found = any(expected in name for name in pod_names)
+            if found:
+                found_pods.append(expected)
+            else:
+                missing_pods.append(expected)
+
+        if len(found_pods) == len(expected_pods):
+            return DiagnosticCheck(
+                id="demo-pods",
+                name="Demo Pods",
+                category="Environment",
+                status=DiagnosticStatus.OK,
+                message=f"All pods found ({len(found_pods)}/{len(expected_pods)})",
+                details=", ".join(found_pods),
+            )
+        elif len(found_pods) > 0:
+            return DiagnosticCheck(
+                id="demo-pods",
+                name="Demo Pods",
+                category="Environment",
+                status=DiagnosticStatus.WARNING,
+                message=f"Some pods missing ({len(found_pods)}/{len(expected_pods)})",
+                details=f"Missing: {', '.join(missing_pods)}",
+            )
+        else:
+            return DiagnosticCheck(
+                id="demo-pods",
+                name="Demo Pods",
+                category="Environment",
+                status=DiagnosticStatus.ERROR,
+                message="No demo pods found",
+                details="Run 'Prepare' to deploy them",
+            )
+    except Exception as e:
+        return DiagnosticCheck(
+            id="demo-pods",
+            name="Demo Pods",
+            category="Environment",
+            status=DiagnosticStatus.ERROR,
+            message="Pod check failed",
+            details=str(e),
+        )
+
+
+async def _check_neuvector_groups(api: NeuVectorAPI) -> DiagnosticCheck:
+    """Check if NeuVector groups exist for demo pods."""
+    expected_groups = [f"nv.espion1.{NAMESPACE}", f"nv.cible1.{NAMESPACE}"]
+
+    try:
+        groups = await api.get_groups()
+        group_names = [g.get("name", "") for g in groups]
+
+        found_groups = []
+        missing_groups = []
+
+        for expected in expected_groups:
+            # Check for exact match or partial match with deployment suffix
+            found = any(expected in name or name.startswith(expected.replace("nv.", "nv.").split(".")[0:2][0]) for name in group_names if NAMESPACE in name)
+            # Simpler check: look for groups containing the pod name and namespace
+            pod_name = expected.split(".")[1]  # Extract espion1 or cible1
+            found = any(pod_name in name and NAMESPACE in name for name in group_names)
+            if found:
+                found_groups.append(pod_name)
+            else:
+                missing_groups.append(pod_name)
+
+        if len(found_groups) == len(expected_groups):
+            return DiagnosticCheck(
+                id="neuvector-groups",
+                name="NeuVector Groups",
+                category="NeuVector Config",
+                status=DiagnosticStatus.OK,
+                message=f"Groups exist ({len(found_groups)}/{len(expected_groups)})",
+                details=", ".join(found_groups),
+            )
+        elif len(found_groups) > 0:
+            return DiagnosticCheck(
+                id="neuvector-groups",
+                name="NeuVector Groups",
+                category="NeuVector Config",
+                status=DiagnosticStatus.WARNING,
+                message=f"Some groups missing ({len(found_groups)}/{len(expected_groups)})",
+                details=f"Missing: {', '.join(missing_groups)}",
+            )
+        else:
+            return DiagnosticCheck(
+                id="neuvector-groups",
+                name="NeuVector Groups",
+                category="NeuVector Config",
+                status=DiagnosticStatus.ERROR,
+                message="No demo groups found",
+                details="Pods may not be detected by NeuVector yet",
+            )
+    except Exception as e:
+        return DiagnosticCheck(
+            id="neuvector-groups",
+            name="NeuVector Groups",
+            category="NeuVector Config",
+            status=DiagnosticStatus.ERROR,
+            message="Groups check failed",
+            details=str(e),
+        )
+
+
+async def _check_process_profiles(api: NeuVectorAPI) -> DiagnosticCheck:
+    """Check if process profiles have learned rules."""
+    try:
+        groups = await api.get_demo_groups(NAMESPACE)
+        if not groups:
+            return DiagnosticCheck(
+                id="process-profiles",
+                name="Process Profiles",
+                category="NeuVector Config",
+                status=DiagnosticStatus.WARNING,
+                message="No groups to check",
+                details="Deploy demo pods first",
+            )
+
+        total_rules = 0
+        groups_with_rules = 0
+
+        for group in groups:
+            group_name = group.get("name", "")
+            try:
+                profile = await api.get_process_profile(group_name)
+                rules = profile.get("process_list", [])
+                if rules:
+                    groups_with_rules += 1
+                    total_rules += len(rules)
+            except Exception:
+                pass
+
+        if groups_with_rules > 0:
+            return DiagnosticCheck(
+                id="process-profiles",
+                name="Process Profiles",
+                category="NeuVector Config",
+                status=DiagnosticStatus.OK,
+                message=f"{total_rules} rules learned",
+                details=f"Across {groups_with_rules} group(s)",
+            )
+        else:
+            return DiagnosticCheck(
+                id="process-profiles",
+                name="Process Profiles",
+                category="NeuVector Config",
+                status=DiagnosticStatus.WARNING,
+                message="No rules learned yet",
+                details="Wait for discovery or trigger activity",
+            )
+    except Exception as e:
+        return DiagnosticCheck(
+            id="process-profiles",
+            name="Process Profiles",
+            category="NeuVector Config",
+            status=DiagnosticStatus.ERROR,
+            message="Profile check failed",
+            details=str(e),
+        )
+
+
+async def _check_dlp_sensors(api: NeuVectorAPI) -> DiagnosticCheck:
+    """Check if DLP sensors are configured."""
+    try:
+        sensors = await api.get_dlp_sensors()
+
+        if not sensors:
+            return DiagnosticCheck(
+                id="dlp-sensors",
+                name="DLP Sensors",
+                category="NeuVector Config",
+                status=DiagnosticStatus.WARNING,
+                message="No DLP sensors found",
+                details="DLP features may not work",
+            )
+
+        sensor_names = [s.get("name", "") for s in sensors]
+        demo_sensors = ["sensor.creditcard", "sensor.ssn"]
+        found = [s for s in demo_sensors if s in sensor_names]
+
+        if found:
+            return DiagnosticCheck(
+                id="dlp-sensors",
+                name="DLP Sensors",
+                category="NeuVector Config",
+                status=DiagnosticStatus.OK,
+                message=f"{len(sensors)} sensors available",
+                details=f"Demo sensors: {', '.join(found)}",
+            )
+        else:
+            return DiagnosticCheck(
+                id="dlp-sensors",
+                name="DLP Sensors",
+                category="NeuVector Config",
+                status=DiagnosticStatus.WARNING,
+                message=f"{len(sensors)} sensors (no demo sensors)",
+                details="Create custom sensors if needed",
+            )
+    except Exception as e:
+        return DiagnosticCheck(
+            id="dlp-sensors",
+            name="DLP Sensors",
+            category="NeuVector Config",
+            status=DiagnosticStatus.ERROR,
+            message="DLP check failed",
+            details=str(e),
+        )
+
+
+async def _check_admission_control(api: NeuVectorAPI) -> DiagnosticCheck:
+    """Check admission control state."""
+    try:
+        state = await api.get_admission_state()
+
+        enabled = state.get("enable", False)
+        mode = state.get("mode", "")
+
+        if enabled:
+            return DiagnosticCheck(
+                id="admission-control",
+                name="Admission Control",
+                category="NeuVector Config",
+                status=DiagnosticStatus.OK,
+                message=f"Enabled ({mode} mode)",
+            )
+        else:
+            return DiagnosticCheck(
+                id="admission-control",
+                name="Admission Control",
+                category="NeuVector Config",
+                status=DiagnosticStatus.WARNING,
+                message="Disabled",
+                details="Enable for admission control demos",
+            )
+    except Exception as e:
+        return DiagnosticCheck(
+            id="admission-control",
+            name="Admission Control",
+            category="NeuVector Config",
+            status=DiagnosticStatus.ERROR,
+            message="Admission check failed",
+            details=str(e),
+        )
+
+
+@router.post("/diagnostics", response_model=DiagnosticsResponse)
+async def run_diagnostics(request: DiagnosticsRequest):
+    """Run all diagnostic checks."""
+    checks: list[DiagnosticCheck] = []
+    api: Optional[NeuVectorAPI] = None
+
+    try:
+        # Phase 1: Infrastructure checks (parallel)
+        k8s_check, (nv_check, api) = await asyncio.gather(
+            _check_kubernetes_cluster(),
+            _check_neuvector_api(request.username, request.password),
+        )
+        checks.append(k8s_check)
+        checks.append(nv_check)
+
+        # Phase 2: Environment checks (only if K8s is OK)
+        if k8s_check.status != DiagnosticStatus.ERROR:
+            ns_check, pods_check = await asyncio.gather(
+                _check_demo_namespace(),
+                _check_demo_pods(),
+            )
+            checks.append(ns_check)
+            checks.append(pods_check)
+        else:
+            checks.append(DiagnosticCheck(
+                id="demo-namespace",
+                name="Demo Namespace",
+                category="Environment",
+                status=DiagnosticStatus.ERROR,
+                message="Skipped (K8s unavailable)",
+            ))
+            checks.append(DiagnosticCheck(
+                id="demo-pods",
+                name="Demo Pods",
+                category="Environment",
+                status=DiagnosticStatus.ERROR,
+                message="Skipped (K8s unavailable)",
+            ))
+
+        # Phase 3: NeuVector config checks (only if NV API is OK)
+        if api is not None:
+            nv_checks = await asyncio.gather(
+                _check_neuvector_groups(api),
+                _check_process_profiles(api),
+                _check_dlp_sensors(api),
+                _check_admission_control(api),
+            )
+            checks.extend(nv_checks)
+
+            # Cleanup
+            await api.logout()
+            await api.close()
+        else:
+            # Add skipped checks
+            for check_id, check_name in [
+                ("neuvector-groups", "NeuVector Groups"),
+                ("process-profiles", "Process Profiles"),
+                ("dlp-sensors", "DLP Sensors"),
+                ("admission-control", "Admission Control"),
+            ]:
+                checks.append(DiagnosticCheck(
+                    id=check_id,
+                    name=check_name,
+                    category="NeuVector Config",
+                    status=DiagnosticStatus.ERROR,
+                    message="Skipped (API unavailable)",
+                ))
+
+        # Build summary
+        summary = DiagnosticsSummary(
+            total=len(checks),
+            ok=sum(1 for c in checks if c.status == DiagnosticStatus.OK),
+            warning=sum(1 for c in checks if c.status == DiagnosticStatus.WARNING),
+            error=sum(1 for c in checks if c.status == DiagnosticStatus.ERROR),
+        )
+
+        return DiagnosticsResponse(
+            success=True,
+            checks=checks,
+            summary=summary,
+        )
+
+    except Exception as e:
+        if api:
+            await api.close()
+        return DiagnosticsResponse(
+            success=False,
+            checks=checks,
+            summary=DiagnosticsSummary(total=0, ok=0, warning=0, error=0),
+            message=f"Diagnostics failed: {str(e)}",
         )
