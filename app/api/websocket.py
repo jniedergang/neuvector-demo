@@ -44,7 +44,10 @@ async def websocket_endpoint(websocket: WebSocket):
 
             try:
                 if action == "prepare":
-                    async for line in prepare_platform(kubectl):
+                    params = data.get("params", {})
+                    nv_username = params.get("nv_username")
+                    nv_password = params.get("nv_password")
+                    async for line in prepare_platform(kubectl, nv_username, nv_password):
                         await manager.send_output(client_id, line)
 
                 elif action == "reset":
