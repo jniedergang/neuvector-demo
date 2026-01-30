@@ -743,18 +743,12 @@ class DemoApp {
         document.getElementById('btn-clear')?.addEventListener('click', () => this.clearConsole());
 
         // Demo selector dropdown
-        if (this.demoSelector) {
-            console.log('[Demo] Setting up demo selector listener');
-            this.demoSelector.addEventListener('change', (e) => {
-                const demoId = e.target.value;
-                console.log('[Demo] Dropdown changed to:', demoId);
-                if (demoId) {
-                    this.selectDemo(demoId);
-                }
-            });
-        } else {
-            console.warn('[Demo] Demo selector not found!');
-        }
+        this.demoSelector?.addEventListener('change', (e) => {
+            const demoId = e.target.value;
+            if (demoId) {
+                this.selectDemo(demoId);
+            }
+        });
 
         // Demo items in sidebar
         document.querySelectorAll('.demo-item').forEach(item => {
@@ -1057,8 +1051,6 @@ class DemoApp {
      * Select a demo
      */
     selectDemo(demoId) {
-        console.log('[Demo] selectDemo called with:', demoId);
-
         // Update active state in sidebar
         document.querySelectorAll('.demo-item').forEach(item => {
             item.classList.toggle('active', item.dataset.demoId === demoId);
