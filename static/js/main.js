@@ -1143,6 +1143,9 @@ class DemoApp {
      * Render demo form
      */
     renderDemoForm(demo) {
+        // Clean up previous visualization first
+        this.removeVisualization();
+
         // Dropdown is already updated in selectDemo()
 
         if (this.demoDescription) {
@@ -3358,11 +3361,18 @@ class DemoApp {
      * Remove visualization
      */
     removeVisualization() {
+        // Clear live clock interval
+        if (this.liveClockInterval) {
+            clearInterval(this.liveClockInterval);
+            this.liveClockInterval = null;
+        }
+
         const existing = document.getElementById('viz-wrapper');
         if (existing) {
             existing.remove();
         }
         this.vizContainer = null;
+        this.currentDemoType = null;
     }
 
     /**
