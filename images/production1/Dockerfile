@@ -11,7 +11,8 @@ RUN zypper refresh && \
         wget \
         net-tools \
         iproute2 \
-        bind-utils && \
+        bind-utils \
+        netcat-openbsd && \
     zypper clean -a
 
 CMD ["sleep", "infinity"]
