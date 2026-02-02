@@ -16,6 +16,16 @@
  */
 
 /**
+ * Tooltip texts for NeuVector concepts
+ */
+const TOOLTIPS = {
+    networkPolicy: 'Network Policy controls network traffic between containers.\n\n• Discover: Learn and allow all connections\n• Monitor: Allow all, log violations\n• Protect: Block unauthorized connections',
+    processProfile: 'Process Profile controls which processes can run in containers.\n\n• Discover: Learn and allow all processes\n• Monitor: Allow all, log violations\n• Protect: Block unauthorized processes (SIGKILL)',
+    baseline: 'Baseline determines how process rules are generated.\n\n• zero-drift: Only processes from original image allowed\n• basic: Allow processes learned during Discover mode',
+    allowedProcesses: 'List of processes allowed to run in this container.\n\nIn Protect mode, any process not in this list will be killed (SIGKILL, exit code 137).'
+};
+
+/**
  * Settings Manager - handles NeuVector API credentials, logo and title
  * Stores settings in localStorage and provides API connectivity testing
  */
@@ -62,6 +72,7 @@ class SettingsManager {
         document.getElementById('btn-test-connection')?.addEventListener('click', () => this.testConnection());
         document.getElementById('btn-debug-credentials')?.addEventListener('click', () => this.debugCredentials());
         document.getElementById('btn-save-settings')?.addEventListener('click', () => this.saveSettings());
+        document.getElementById('btn-reset-rules')?.addEventListener('click', () => this.resetDemoRules());
 
         // Logo event listeners
         this.logoFileInput?.addEventListener('change', (e) => this.handleLogoUpload(e));
@@ -285,6 +296,50 @@ class SettingsManager {
             }
         } catch (error) {
             this.showStatus(`Error: ${error.message}`, 'error');
+        }
+    }
+
+    async resetDemoRules() {
+        const username = this.usernameInput?.value || 'admin';
+        const password = this.passwordInput?.value || '';
+        const resetStatus = document.getElementById('reset-rules-status');
+
+        if (!password) {
+            if (resetStatus) {
+                resetStatus.textContent = 'Please enter NeuVector password first';
+                resetStatus.className = 'settings-status error';
+            }
+            return;
+        }
+
+        if (resetStatus) {
+            resetStatus.textContent = 'Resetting rules...';
+            resetStatus.className = 'settings-status testing';
+        }
+
+        try {
+            const response = await fetch('/api/neuvector/reset-demo-rules', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password }),
+            });
+
+            const result = await response.json();
+
+            if (resetStatus) {
+                if (result.success) {
+                    resetStatus.textContent = result.message;
+                    resetStatus.className = 'settings-status success';
+                } else {
+                    resetStatus.textContent = `Failed: ${result.message}`;
+                    resetStatus.className = 'settings-status error';
+                }
+            }
+        } catch (error) {
+            if (resetStatus) {
+                resetStatus.textContent = `Error: ${error.message}`;
+                resetStatus.className = 'settings-status error';
+            }
         }
     }
 
@@ -735,6 +790,72 @@ document.addEventListener('DOMContentLoaded', () => {
             closeSidebar();
         }
     });
+
+    // Custom tooltip handler for .has-tooltip elements
+    let tooltipEl = null;
+
+    const showTooltip = (e) => {
+        const target = e.target.closest('.has-tooltip');
+        if (!target) return;
+
+        const text = target.getAttribute('title');
+        if (!text) return;
+
+        // Store and remove title to prevent native tooltip
+        target.dataset.tooltipText = text;
+        target.removeAttribute('title');
+
+        // Create tooltip element if it doesn't exist
+        if (!tooltipEl) {
+            tooltipEl = document.createElement('div');
+            tooltipEl.className = 'custom-tooltip';
+            document.body.appendChild(tooltipEl);
+        }
+
+        tooltipEl.textContent = text;
+
+        // Position tooltip above the element
+        const rect = target.getBoundingClientRect();
+        const tooltipRect = tooltipEl.getBoundingClientRect();
+
+        let top = rect.top - 10;
+        let left = rect.left;
+
+        // Adjust if tooltip would go off screen
+        if (left + 350 > window.innerWidth) {
+            left = window.innerWidth - 360;
+        }
+        if (left < 10) {
+            left = 10;
+        }
+
+        // Position tooltip - measure after content is set
+        tooltipEl.style.left = left + 'px';
+        tooltipEl.style.top = 'auto';
+        tooltipEl.style.bottom = (window.innerHeight - top) + 'px';
+
+        // Show tooltip
+        requestAnimationFrame(() => {
+            tooltipEl.classList.add('visible');
+        });
+    };
+
+    const hideTooltip = (e) => {
+        const target = e.target.closest('.has-tooltip');
+        if (target && target.dataset.tooltipText) {
+            // Restore title attribute
+            target.setAttribute('title', target.dataset.tooltipText);
+            delete target.dataset.tooltipText;
+        }
+
+        if (tooltipEl) {
+            tooltipEl.classList.remove('visible');
+        }
+    };
+
+    // Use event delegation for dynamically created elements
+    document.addEventListener('mouseenter', showTooltip, true);
+    document.addEventListener('mouseleave', hideTooltip, true);
 });
 
 /**
@@ -936,8 +1057,12 @@ class DemoApp {
         wsManager.onStatusChange(status => this.updateConnectionStatus(status));
 
         // Cache DOM elements
-        this.console = document.getElementById('output-console');
+        this.consoleModal = document.getElementById('console-modal');
+        this.consoleHeader = document.getElementById('console-header');
         this.consoleBody = document.getElementById('console-body');
+
+        // Initialize console dragging
+        this.initConsoleDrag();
         this.statusDot = document.getElementById('status-dot');
         this.statusText = document.getElementById('status-text');
         this.demoForm = document.getElementById('demo-form');
@@ -998,6 +1123,10 @@ class DemoApp {
         document.getElementById('btn-status')?.addEventListener('click', () => this.runAction('status'));
         document.getElementById('btn-clear')?.addEventListener('click', () => this.clearConsole());
 
+        // Console toggle
+        document.getElementById('btn-console')?.addEventListener('click', () => this.toggleConsole());
+        document.getElementById('btn-close-console')?.addEventListener('click', () => this.hideConsole());
+
         // Demo items in sidebar
         document.querySelectorAll('.demo-item').forEach(item => {
             item.addEventListener('click', () => this.selectDemo(item.dataset.demoId));
@@ -1005,6 +1134,79 @@ class DemoApp {
 
         // Run button
         this.runButton?.addEventListener('click', () => this.runCurrentDemo());
+    }
+
+    /**
+     * Show the floating console
+     */
+    showConsole() {
+        this.consoleModal?.classList.add('active');
+    }
+
+    /**
+     * Hide the floating console
+     */
+    hideConsole() {
+        this.consoleModal?.classList.remove('active');
+    }
+
+    /**
+     * Toggle console visibility
+     */
+    toggleConsole() {
+        if (this.consoleModal?.classList.contains('active')) {
+            this.hideConsole();
+        } else {
+            this.showConsole();
+        }
+    }
+
+    /**
+     * Initialize console dragging
+     */
+    initConsoleDrag() {
+        if (!this.consoleHeader || !this.consoleModal) return;
+
+        let isDragging = false;
+        let offsetX = 0;
+        let offsetY = 0;
+
+        this.consoleHeader.addEventListener('mousedown', (e) => {
+            // Don't drag if clicking on buttons
+            if (e.target.closest('button')) return;
+
+            isDragging = true;
+            const rect = this.consoleModal.getBoundingClientRect();
+            offsetX = e.clientX - rect.left;
+            offsetY = e.clientY - rect.top;
+
+            // Remove centering transform when starting to drag
+            this.consoleModal.style.transform = 'none';
+            this.consoleModal.style.left = rect.left + 'px';
+            this.consoleModal.style.top = rect.top + 'px';
+
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+
+            let newX = e.clientX - offsetX;
+            let newY = e.clientY - offsetY;
+
+            // Keep within viewport bounds
+            const maxX = window.innerWidth - this.consoleModal.offsetWidth;
+            const maxY = window.innerHeight - this.consoleModal.offsetHeight;
+            newX = Math.max(0, Math.min(newX, maxX));
+            newY = Math.max(0, Math.min(newY, maxY));
+
+            this.consoleModal.style.left = newX + 'px';
+            this.consoleModal.style.top = newY + 'px';
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
     }
 
     /**
@@ -1050,13 +1252,23 @@ class DemoApp {
             return;
         }
 
-        // Detect process interception (check first - exit code 137 = SIGKILL from NeuVector)
+        // Detect timeout exit (exit code 124) - this is SUCCESS for nc_backdoor (backdoor ran for full duration)
+        // Must check BEFORE process interception to avoid false positives
+        if (lowerText.includes('exit code 124')) {
+            // For attack demos, timeout means the attack ran successfully (not blocked)
+            if (this.currentDemoType === 'attack') {
+                this.detectedResult = { state: 'success', message: 'Attack succeeded - consider enabling Protect mode' };
+            }
+            return;
+        }
+
+        // Detect process interception (exit code 137 = SIGKILL from NeuVector)
         if (lowerText.includes('exit code 137') ||
             lowerText.includes('exit code 9') ||
             lowerText.includes('exit code 126') ||
             lowerText.includes('exit code 127') ||
-            lowerText.includes('command terminated') ||
-            lowerText.includes('killed') ||
+            (lowerText.includes('command terminated') && !lowerText.includes('exit code 124')) ||
+            (lowerText.includes('killed') && !lowerText.includes('exit code 124')) ||
             lowerText.includes('sigkill') ||
             lowerText.includes('permission denied') ||
             lowerText.includes('operation not permitted') ||
@@ -1288,6 +1500,7 @@ class DemoApp {
     runAction(action) {
         if (this.isRunning || !wsManager.isConnected()) return;
 
+        this.showConsole();
         this.clearConsole();
         this.appendOutput(`Starting ${action}...`, 'info');
         this.appendOutput('');
@@ -1931,21 +2144,21 @@ class DemoApp {
                 <input type="text" class="viz-select" id="viz-target-custom" name="target_custom" placeholder="hostname/IP" style="display:none;">
                 <div class="viz-pod-settings" id="viz-target-settings">
                     <div class="viz-setting-row">
-                        <span class="viz-setting-label">Network Policy</span>
+                        <span class="viz-setting-label has-tooltip" title="${TOOLTIPS.networkPolicy}">Network Policy</span>
                         <select class="viz-setting-select" id="viz-tgt-policy-mode" data-field="policy_mode" data-target="target">${modeOptions}</select>
                     </div>
                     <div class="viz-setting-row">
-                        <span class="viz-setting-label">Process Profile</span>
+                        <span class="viz-setting-label has-tooltip" title="${TOOLTIPS.processProfile}">Process Profile</span>
                         <select class="viz-setting-select" id="viz-tgt-profile-mode" data-field="profile_mode" data-target="target">${modeOptions}</select>
                     </div>
                     <div class="viz-setting-row">
-                        <span class="viz-setting-label">Baseline</span>
+                        <span class="viz-setting-label has-tooltip" title="${TOOLTIPS.baseline}">Baseline</span>
                         <select class="viz-setting-select" id="viz-tgt-baseline" data-field="baseline_profile" data-target="target">${baselineOptions}</select>
                     </div>
                 </div>
                 <div class="viz-process-list" id="viz-target-processes">
                     <div class="viz-process-header">
-                        <span>Allowed Processes</span>
+                        <span class="has-tooltip" title="${TOOLTIPS.allowedProcesses}">Allowed Processes</span>
                         <span id="viz-tgt-process-count"></span>
                     </div>
                     <div class="viz-process-items loading" id="viz-tgt-process-items">Loading...</div>
@@ -2033,29 +2246,29 @@ class DemoApp {
                                 <div class="viz-icon">🐳</div>
                                 <div class="viz-label">Source</div>
                                 <div class="viz-mode-icons" id="viz-src-mode-icons">
-                                    <span class="viz-mode-icon network" id="viz-src-icon-network" title="Network Policy">🔍</span>
-                                    <span class="viz-mode-icon process" id="viz-src-icon-process" title="Process Profile">🔍</span>
+                                    <span class="viz-mode-icon network" id="viz-src-icon-network" title="${TOOLTIPS.networkPolicy}">🔍</span>
+                                    <span class="viz-mode-icon process" id="viz-src-icon-process" title="${TOOLTIPS.processProfile}">🔍</span>
                                 </div>
                             </div>
                             <select class="viz-select" id="viz-source-select" name="pod_name">${sourceOptions}</select>
                             ${sourceExtraContent}
                             <div class="viz-pod-settings" id="viz-source-settings">
                                 <div class="viz-setting-row">
-                                    <span class="viz-setting-label">Network Policy</span>
+                                    <span class="viz-setting-label has-tooltip" title="${TOOLTIPS.networkPolicy}">Network Policy</span>
                                     <select class="viz-setting-select" id="viz-src-policy-mode" data-field="policy_mode" data-target="source">${modeOptions}</select>
                                 </div>
                                 <div class="viz-setting-row">
-                                    <span class="viz-setting-label">Process Profile</span>
+                                    <span class="viz-setting-label has-tooltip" title="${TOOLTIPS.processProfile}">Process Profile</span>
                                     <select class="viz-setting-select" id="viz-src-profile-mode" data-field="profile_mode" data-target="source">${modeOptions}</select>
                                 </div>
                                 <div class="viz-setting-row">
-                                    <span class="viz-setting-label">Baseline</span>
+                                    <span class="viz-setting-label has-tooltip" title="${TOOLTIPS.baseline}">Baseline</span>
                                     <select class="viz-setting-select" id="viz-src-baseline" data-field="baseline_profile" data-target="source">${baselineOptions}</select>
                                 </div>
                             </div>
                             <div class="viz-process-list" id="viz-source-processes">
                                 <div class="viz-process-header">
-                                    <span>Allowed Processes</span>
+                                    <span class="has-tooltip" title="${TOOLTIPS.allowedProcesses}">Allowed Processes</span>
                                     <span id="viz-src-process-count"></span>
                                 </div>
                                 <div class="viz-process-items loading" id="viz-src-process-items">Loading...</div>
@@ -2070,8 +2283,8 @@ class DemoApp {
                                 <div class="viz-icon" id="viz-target-icon">🌐</div>
                                 <div class="viz-label">Target</div>
                                 <div class="viz-mode-icons" id="viz-tgt-mode-icons">
-                                    <span class="viz-mode-icon network" id="viz-tgt-icon-network" title="Network Policy">🔍</span>
-                                    <span class="viz-mode-icon process" id="viz-tgt-icon-process" title="Process Profile">🔍</span>
+                                    <span class="viz-mode-icon network" id="viz-tgt-icon-network" title="${TOOLTIPS.networkPolicy}">🔍</span>
+                                    <span class="viz-mode-icon process" id="viz-tgt-icon-process" title="${TOOLTIPS.processProfile}">🔍</span>
                                 </div>
                             </div>
                             ${targetContent}
@@ -3052,28 +3265,28 @@ class DemoApp {
                                 <div class="viz-icon">🦹</div>
                                 <div class="viz-label">Attacker</div>
                                 <div class="viz-mode-icons" id="viz-src-mode-icons">
-                                    <span class="viz-mode-icon network" id="viz-src-icon-network" title="Network Policy">🔍</span>
-                                    <span class="viz-mode-icon process" id="viz-src-icon-process" title="Process Profile">🔍</span>
+                                    <span class="viz-mode-icon network" id="viz-src-icon-network" title="${TOOLTIPS.networkPolicy}">🔍</span>
+                                    <span class="viz-mode-icon process" id="viz-src-icon-process" title="${TOOLTIPS.processProfile}">🔍</span>
                                 </div>
                             </div>
                             <select class="viz-select" id="viz-source-select" name="pod_name">${sourceOptions}</select>
                             <div class="viz-pod-settings" id="viz-source-settings">
                                 <div class="viz-setting-row">
-                                    <span class="viz-setting-label">Network Policy</span>
+                                    <span class="viz-setting-label has-tooltip" title="${TOOLTIPS.networkPolicy}">Network Policy</span>
                                     <select class="viz-setting-select" id="viz-src-policy-mode" data-field="policy_mode" data-target="source">${modeOptions}</select>
                                 </div>
                                 <div class="viz-setting-row">
-                                    <span class="viz-setting-label">Process Profile</span>
+                                    <span class="viz-setting-label has-tooltip" title="${TOOLTIPS.processProfile}">Process Profile</span>
                                     <select class="viz-setting-select" id="viz-src-profile-mode" data-field="profile_mode" data-target="source">${modeOptions}</select>
                                 </div>
                                 <div class="viz-setting-row">
-                                    <span class="viz-setting-label">Baseline</span>
+                                    <span class="viz-setting-label has-tooltip" title="${TOOLTIPS.baseline}">Baseline</span>
                                     <select class="viz-setting-select" id="viz-src-baseline" data-field="baseline_profile" data-target="source">${baselineOptions}</select>
                                 </div>
                             </div>
                             <div class="viz-process-list" id="viz-source-processes">
                                 <div class="viz-process-header">
-                                    <span>Allowed Processes</span>
+                                    <span class="has-tooltip" title="${TOOLTIPS.allowedProcesses}">Allowed Processes</span>
                                     <span id="viz-src-process-count"></span>
                                 </div>
                                 <div class="viz-process-items loading" id="viz-src-process-items">Loading...</div>
@@ -3088,28 +3301,28 @@ class DemoApp {
                                 <div class="viz-icon" id="viz-target-icon">🎯</div>
                                 <div class="viz-label">Target</div>
                                 <div class="viz-mode-icons" id="viz-tgt-mode-icons" style="display: none;">
-                                    <span class="viz-mode-icon network" id="viz-tgt-icon-network" title="Network Policy">🔍</span>
-                                    <span class="viz-mode-icon process" id="viz-tgt-icon-process" title="Process Profile">🔍</span>
+                                    <span class="viz-mode-icon network" id="viz-tgt-icon-network" title="${TOOLTIPS.networkPolicy}">🔍</span>
+                                    <span class="viz-mode-icon process" id="viz-tgt-icon-process" title="${TOOLTIPS.processProfile}">🔍</span>
                                 </div>
                             </div>
                             <select class="viz-select" id="viz-attack-target" name="target">${targetOptions}</select>
                             <div class="viz-pod-settings" id="viz-target-settings" style="display: none;">
                                 <div class="viz-setting-row">
-                                    <span class="viz-setting-label">Network Policy</span>
+                                    <span class="viz-setting-label has-tooltip" title="${TOOLTIPS.networkPolicy}">Network Policy</span>
                                     <select class="viz-setting-select" id="viz-tgt-policy-mode" data-field="policy_mode" data-target="target">${modeOptions}</select>
                                 </div>
                                 <div class="viz-setting-row">
-                                    <span class="viz-setting-label">Process Profile</span>
+                                    <span class="viz-setting-label has-tooltip" title="${TOOLTIPS.processProfile}">Process Profile</span>
                                     <select class="viz-setting-select" id="viz-tgt-profile-mode" data-field="profile_mode" data-target="target">${modeOptions}</select>
                                 </div>
                                 <div class="viz-setting-row">
-                                    <span class="viz-setting-label">Baseline</span>
+                                    <span class="viz-setting-label has-tooltip" title="${TOOLTIPS.baseline}">Baseline</span>
                                     <select class="viz-setting-select" id="viz-tgt-baseline" data-field="baseline_profile" data-target="target">${baselineOptions}</select>
                                 </div>
                             </div>
                             <div class="viz-process-list" id="viz-target-processes" style="display: none;">
                                 <div class="viz-process-header">
-                                    <span>Allowed Processes</span>
+                                    <span class="has-tooltip" title="${TOOLTIPS.allowedProcesses}">Allowed Processes</span>
                                     <span id="viz-tgt-process-count"></span>
                                 </div>
                                 <div class="viz-process-items loading" id="viz-tgt-process-items">Loading...</div>
@@ -3731,6 +3944,10 @@ class DemoApp {
         const status = document.getElementById('viz-status');
         const statusText = status?.querySelector('.viz-status-text');
 
+        // Check if this is an attack that runs only on source (like nc_backdoor)
+        const attackType = document.getElementById('param-attack_type')?.value;
+        const isSourceOnlyAttack = this.currentDemoType === 'attack' && attackType === 'nc_backdoor';
+
         // Remove all state classes
         const states = ['pending', 'running', 'success', 'blocked', 'intercepted'];
         [source, arrow, target, status].forEach(el => {
@@ -3743,19 +3960,37 @@ class DemoApp {
 
         // Arrow and target states depend on the scenario
         if (state === 'pending' || state === 'running') {
-            if (arrow) arrow.classList.add(state);
-            if (target) target.classList.add(state);
+            // For source-only attacks (like nc_backdoor), don't illuminate arrow/target
+            if (isSourceOnlyAttack) {
+                if (arrow) arrow.classList.add('pending');
+                if (target) target.classList.add('pending');
+            } else {
+                if (arrow) arrow.classList.add(state);
+                if (target) target.classList.add(state);
+            }
         } else if (state === 'success') {
-            if (arrow) arrow.classList.add('success');
-            if (target) target.classList.add('success');
+            // For source-only attacks, success means backdoor was active on source
+            if (isSourceOnlyAttack) {
+                if (arrow) arrow.classList.add('pending');
+                if (target) target.classList.add('pending');
+            } else {
+                if (arrow) arrow.classList.add('success');
+                if (target) target.classList.add('success');
+            }
         } else if (state === 'blocked') {
             // Network blocked - arrow shows X, target red
             if (arrow) arrow.classList.add('blocked');
             if (target) target.classList.add('blocked');
         } else if (state === 'intercepted') {
             // Process intercepted - source shows strikethrough, arrow blocked
-            if (arrow) arrow.classList.add('blocked');
-            if (target) target.classList.add('pending');
+            if (isSourceOnlyAttack) {
+                // For source-only attacks, intercepted means process was killed on source
+                if (arrow) arrow.classList.add('pending');
+                if (target) target.classList.add('pending');
+            } else {
+                if (arrow) arrow.classList.add('blocked');
+                if (target) target.classList.add('pending');
+            }
         }
 
         // Update status text
@@ -3959,21 +4194,21 @@ class DemoApp {
             `;
             statusDisplay = `<div class="pod-status-container" id="pod-status-container">
                 <div class="pod-status-row">
-                    <span class="pod-status-label">Network Policy:</span>
+                    <span class="pod-status-label has-tooltip" title="${TOOLTIPS.networkPolicy}">Network Policy:</span>
                     <select class="pod-status-select" id="pod-policy-mode" data-field="policy_mode">${modeOptions}</select>
                 </div>
                 <div class="pod-status-row">
-                    <span class="pod-status-label">Process Profile:</span>
+                    <span class="pod-status-label has-tooltip" title="${TOOLTIPS.processProfile}">Process Profile:</span>
                     <select class="pod-status-select" id="pod-profile-mode" data-field="profile_mode">${modeOptions}</select>
                 </div>
                 <div class="pod-status-row">
-                    <span class="pod-status-label">Baseline Profile:</span>
+                    <span class="pod-status-label has-tooltip" title="${TOOLTIPS.baseline}">Baseline Profile:</span>
                     <select class="pod-status-select" id="pod-baseline-profile" data-field="baseline_profile">${baselineOptions}</select>
                 </div>
             </div>
             <div class="process-rules-container" id="process-rules-container">
                 <div class="process-rules-header">
-                    <span>Allowed Processes</span>
+                    <span class="has-tooltip" title="${TOOLTIPS.allowedProcesses}">Allowed Processes</span>
                     <span class="process-rules-count" id="process-rules-count"></span>
                 </div>
                 <div class="process-rules-list loading" id="process-rules-list">Loading...</div>
@@ -4021,6 +4256,9 @@ class DemoApp {
 
         // Reset detected result for new run
         this.detectedResult = null;
+
+        // Show console when running demo
+        this.showConsole();
 
         // Collect parameters
         const params = {};

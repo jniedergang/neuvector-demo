@@ -508,6 +508,99 @@ select.form-control {
     color: #c586c0;
 }
 
+/* Floating Console Modal - Draggable & Resizable */
+.console-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: var(--console-bg);
+    border-radius: 12px;
+    width: 700px;
+    height: 400px;
+    min-width: 400px;
+    min-height: 250px;
+    display: none;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.8125rem;
+    z-index: 1000;
+    resize: both;
+    overflow: hidden;
+}
+
+.console-modal.active {
+    display: flex;
+}
+
+.console-modal .console-header {
+    background-color: #2d2d2d;
+    padding: 0.5rem 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 12px 12px 0 0;
+    border-bottom: 1px solid #444;
+    cursor: move;
+    user-select: none;
+    flex-shrink: 0;
+}
+
+.console-modal .console-header .title {
+    color: #ccc;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.console-modal .console-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.console-modal .btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.7rem;
+}
+
+.console-modal .btn-close {
+    background: none;
+    border: none;
+    color: #888;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0 0.25rem;
+    line-height: 1;
+    transition: color 0.15s ease;
+}
+
+.console-modal .btn-close:hover {
+    color: #fff;
+}
+
+.console-modal .console-body {
+    padding: 1rem;
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: auto;
+    color: var(--console-text);
+    border-radius: 0 0 12px 12px;
+}
+
+/* Resize handle styling */
+.console-modal::after {
+    content: '';
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    width: 12px;
+    height: 12px;
+    cursor: se-resize;
+    background: linear-gradient(135deg, transparent 50%, #666 50%);
+    border-radius: 0 0 8px 0;
+}
+
 /* Status Indicator */
 .status-indicator {
     display: flex;
@@ -2875,4 +2968,44 @@ select.form-control {
     .diagnostic-message {
         font-size: 0.75rem;
     }
+}
+
+/* Custom Tooltips */
+.has-tooltip {
+    cursor: help;
+    border-bottom: 1px dotted var(--text-secondary);
+}
+
+/* Tooltip container created by JavaScript */
+.custom-tooltip {
+    position: fixed;
+    background: var(--primary-color);
+    color: white;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: normal;
+    white-space: pre-line;
+    min-width: 280px;
+    max-width: 350px;
+    line-height: 1.5;
+    z-index: 99999;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    pointer-events: none;
+    text-align: left;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.custom-tooltip.visible {
+    opacity: 1;
+}
+
+.custom-tooltip::before {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 20px;
+    border: 8px solid transparent;
+    border-top-color: var(--primary-color);
 }

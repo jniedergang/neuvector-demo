@@ -445,6 +445,170 @@ async def update_group_settings(request: UpdateGroupRequest):
         return UpdateGroupResponse(success=False, message=str(e))
 
 
+class ResetDemoRulesRequest(BaseModel):
+    """Request model for resetting demo groups to Discover mode."""
+    username: str
+    password: str
+
+
+class ResetDemoRulesResponse(BaseModel):
+    """Response model for reset demo rules."""
+    success: bool
+    message: str = ""
+    groups_reset: list[str] = []
+    processes_deleted: int = 0
+    network_rules_deleted: int = 0
+
+
+@router.post("/neuvector/reset-demo-rules", response_model=ResetDemoRulesResponse)
+async def reset_demo_rules(request: ResetDemoRulesRequest):
+    """Reset NeuVector rules for demo groups (espion1, cible1) to Discover mode and delete learned process/network rules."""
+    api = NeuVectorAPI(
+        base_url=NEUVECTOR_API_URL,
+        username=request.username,
+        password=request.password,
+    )
+
+    groups_to_reset = ["espion1.neuvector-demo", "cible1.neuvector-demo"]
+    nv_group_names = ["nv.espion1.neuvector-demo", "nv.cible1.neuvector-demo"]
+    groups_reset = []
+    processes_deleted = 0
+    network_rules_deleted = 0
+    errors = []
+
+    try:
+        await api.authenticate()
+        client = await api._get_client()
+
+        # Step 1: Reset policy/profile modes to Discover and baseline to zero-drift
+        for service_name in groups_to_reset:
+            try:
+                config = {
+                    "services": [service_name],
+                    "policy_mode": "Discover",
+                    "profile_mode": "Discover",
+                    "baseline_profile": "zero-drift",
+                }
+                response = await client.patch(
+                    f"{api.base_url}/v1/service/config",
+                    json={"config": config},
+                    headers={"X-Auth-Token": api.token},
+                )
+                if response.status_code in (200, 204):
+                    groups_reset.append(service_name)
+                else:
+                    errors.append(f"{service_name}: mode reset failed ({response.status_code})")
+            except Exception as e:
+                errors.append(f"{service_name}: {str(e)}")
+
+        # Step 2: Delete all learned process rules
+        for group_name in nv_group_names:
+            try:
+                # Get process profile
+                profile = await api.get_process_profile(group_name)
+                process_list = profile.get("process_list", [])
+
+                # Delete each learned process rule
+                for proc in process_list:
+                    proc_name = proc.get("name")
+                    proc_path = proc.get("path", "")
+                    if proc_name:
+                        try:
+                            await api.delete_process_rule(
+                                group_name=group_name,
+                                process_name=proc_name,
+                                process_path=proc_path,
+                            )
+                            processes_deleted += 1
+                        except Exception:
+                            pass  # Ignore individual deletion errors
+            except Exception as e:
+                errors.append(f"{group_name}: process cleanup failed ({str(e)})")
+
+        # Step 3: Delete network rules involving demo groups
+        try:
+            # Get all policy rules
+            response = await client.get(
+                f"{api.base_url}/v1/policy/rule",
+                headers={"X-Auth-Token": api.token},
+            )
+            if response.status_code == 200:
+                rules_data = response.json()
+                rules = rules_data.get("rules", [])
+
+                # Filter rules involving our demo groups
+                demo_group_patterns = ["espion1", "cible1", "neuvector-demo"]
+                rules_to_delete = []
+
+                for rule in rules:
+                    rule_id = rule.get("id")
+                    from_group = rule.get("from", "")
+                    to_group = rule.get("to", "")
+
+                    # Check if rule involves demo groups
+                    involves_demo = any(
+                        pattern in from_group or pattern in to_group
+                        for pattern in demo_group_patterns
+                    )
+
+                    # Only delete learned rules (not user-created), check cfg_type
+                    cfg_type = rule.get("cfg_type", "")
+                    is_learned = cfg_type == "learned" or cfg_type == ""
+
+                    if involves_demo and is_learned and rule_id is not None:
+                        rules_to_delete.append(rule_id)
+
+                # Delete each rule
+                for rule_id in rules_to_delete:
+                    try:
+                        del_response = await client.delete(
+                            f"{api.base_url}/v1/policy/rule/{rule_id}",
+                            headers={"X-Auth-Token": api.token},
+                        )
+                        if del_response.status_code in (200, 204):
+                            network_rules_deleted += 1
+                    except Exception:
+                        pass  # Ignore individual deletion errors
+
+        except Exception as e:
+            errors.append(f"Network rules cleanup failed: {str(e)}")
+
+        await api.logout()
+        await api.close()
+
+        # Build result message
+        msg_parts = []
+        if groups_reset:
+            msg_parts.append(f"{len(groups_reset)} groups reset to Discover")
+        if processes_deleted:
+            msg_parts.append(f"{processes_deleted} process rules deleted")
+        if network_rules_deleted:
+            msg_parts.append(f"{network_rules_deleted} network rules deleted")
+
+        if errors:
+            return ResetDemoRulesResponse(
+                success=len(groups_reset) > 0,
+                message=f"{', '.join(msg_parts)}. Errors: {', '.join(errors)}",
+                groups_reset=groups_reset,
+                processes_deleted=processes_deleted,
+                network_rules_deleted=network_rules_deleted,
+            )
+        return ResetDemoRulesResponse(
+            success=True,
+            message=', '.join(msg_parts) if msg_parts else "Nothing to reset",
+            groups_reset=groups_reset,
+            processes_deleted=processes_deleted,
+            network_rules_deleted=network_rules_deleted,
+        )
+
+    except NeuVectorAPIError as e:
+        await api.close()
+        return ResetDemoRulesResponse(success=False, message=str(e))
+    except Exception as e:
+        await api.close()
+        return ResetDemoRulesResponse(success=False, message=str(e))
+
+
 @router.post("/neuvector/test", response_model=NeuVectorTestResponse)
 async def test_neuvector_connection(request: NeuVectorTestRequest):
     """Test NeuVector API connection with provided credentials."""
