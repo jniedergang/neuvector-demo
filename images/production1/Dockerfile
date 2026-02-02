@@ -4,6 +4,7 @@ FROM opensuse/tumbleweed
 RUN zypper refresh && \
     zypper install -y \
         openssh-clients \
+        sshpass \
         iputils \
         nmap \
         tcpdump \

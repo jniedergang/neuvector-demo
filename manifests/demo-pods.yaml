@@ -47,6 +47,8 @@ spec:
     ports:
     - containerPort: 80
       name: http
+    - containerPort: 22
+      name: ssh
     resources:
       requests:
         memory: "32Mi"
