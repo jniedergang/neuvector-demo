@@ -1,7 +1,30 @@
 """Configuration for NeuVector Demo Web Application."""
 
 import os
+import subprocess
 from pathlib import Path
+
+# Application version
+APP_VERSION = "1.1.0"
+
+def _get_git_info():
+    """Get git commit hash and branch if available."""
+    try:
+        commit = subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            stderr=subprocess.DEVNULL,
+            cwd=Path(__file__).parent.parent
+        ).decode().strip()
+        branch = subprocess.check_output(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            stderr=subprocess.DEVNULL,
+            cwd=Path(__file__).parent.parent
+        ).decode().strip()
+        return commit, branch
+    except Exception:
+        return None, None
+
+GIT_COMMIT, GIT_BRANCH = _get_git_info()
 
 # Base paths
 BASE_DIR = Path(__file__).parent.parent
