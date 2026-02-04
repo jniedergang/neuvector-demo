@@ -77,5 +77,10 @@ ALLOWED_KUBECTL_COMMANDS = {
 # Admission control test namespace
 FORBIDDEN_NAMESPACE = "untrusted-namespace"
 
+# Demo images configuration
+# For local deployment: "localhost" (default)
+# For private registry: "registry.example.com/myproject"
+DEMO_IMAGE_REGISTRY = os.environ.get("DEMO_IMAGE_REGISTRY", "localhost")
+
 # Security: namespace restrictions
 ALLOWED_NAMESPACES = {NAMESPACE, NEUVECTOR_NAMESPACE, "default", FORBIDDEN_NAMESPACE}

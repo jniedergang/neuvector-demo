@@ -6,18 +6,17 @@ NeuVector admission control rules blocking resource creation.
 
 Prerequisites:
 1. NeuVector admission control must be enabled
-2. An admission rule must be configured to block creation in forbidden_namespace1
+2. An admission rule must be configured to block creation in untrusted-namespace
 """
 
 from typing import Any, AsyncGenerator
 
 from app.core.kubectl import Kubectl
-from app.config import NAMESPACE
+from app.config import NAMESPACE, FORBIDDEN_NAMESPACE, DEMO_IMAGE_REGISTRY
 from app.demos.base import DemoModule, DemoParameter
 from app.demos.registry import DemoRegistry
 
 
-FORBIDDEN_NAMESPACE = "untrusted-namespace"
 ALLOWED_NAMESPACE = NAMESPACE  # neuvector-demo
 
 
@@ -112,7 +111,10 @@ class AdmissionControlDemo(DemoModule):
         yield f"[CMD] Creating pod '{pod_name}' in namespace '{namespace}'..."
         yield ""
 
-        # Simple pod manifest using local image
+        # Determine image pull policy based on registry
+        image_pull_policy = "Never" if DEMO_IMAGE_REGISTRY == "localhost" else "IfNotPresent"
+
+        # Pod manifest using configurable registry
         pod_yaml = f"""apiVersion: v1
 kind: Pod
 metadata:
@@ -123,8 +125,8 @@ metadata:
 spec:
   containers:
   - name: web
-    image: localhost/demo-web1:latest
-    imagePullPolicy: Never
+    image: {DEMO_IMAGE_REGISTRY}/demo-web1:latest
+    imagePullPolicy: {image_pull_policy}
     resources:
       limits:
         memory: "64Mi"
