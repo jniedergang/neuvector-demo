@@ -112,7 +112,7 @@ class AdmissionControlDemo(DemoModule):
         yield f"[CMD] Creating pod '{pod_name}' in namespace '{namespace}'..."
         yield ""
 
-        # Simple pod manifest
+        # Simple pod manifest using local image
         pod_yaml = f"""apiVersion: v1
 kind: Pod
 metadata:
@@ -122,8 +122,9 @@ metadata:
     app: admission-test
 spec:
   containers:
-  - name: nginx
-    image: nginx:alpine
+  - name: web
+    image: localhost/demo-web1:latest
+    imagePullPolicy: Never
     resources:
       limits:
         memory: "64Mi"
