@@ -154,6 +154,24 @@
                         </div>
                         <div class="settings-status" id="reset-rules-status"></div>
                     </div>
+
+                    <!-- Image Registry Section -->
+                    <div class="settings-section">
+                        <h4 class="settings-section-title">Image Registry</h4>
+                        <div class="form-group">
+                            <label for="settings-registry">Registry URL</label>
+                            <input type="text" class="form-control" id="settings-registry" placeholder="localhost" title="Registry used for test pods (Admission Control demo)">
+                            <div class="help-text">
+                                Used for Admission Control test pods.<br>
+                                <strong>localhost</strong> - Local images (imagePullPolicy: Never)<br>
+                                <strong>registry.example.com/project</strong> - Private registry (imagePullPolicy: IfNotPresent)
+                            </div>
+                        </div>
+                        <div class="settings-status" id="registry-status"></div>
+                        <div class="settings-actions">
+                            <button class="btn btn-outline" id="btn-test-registry">Test Registry</button>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Tab: Credentials -->

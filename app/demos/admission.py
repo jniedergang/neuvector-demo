@@ -82,15 +82,18 @@ class AdmissionControlDemo(DemoModule):
         action = params.get("action", "create")
         namespace = params.get("namespace", ALLOWED_NAMESPACE)
         pod_name = params.get("pod_name", "test-admission-pod")
+        # Use dynamic registry if provided, otherwise use config default
+        image_registry = params.get("image_registry") or DEMO_IMAGE_REGISTRY
 
         yield f"[INFO] Admission Control Test"
         yield f"[INFO] Action: {action}"
         yield f"[INFO] Namespace: {namespace}"
         yield f"[INFO] Pod: {pod_name}"
+        yield f"[INFO] Registry: {image_registry}"
         yield ""
 
         if action == "create":
-            async for line in self._create_pod(kubectl, namespace, pod_name):
+            async for line in self._create_pod(kubectl, namespace, pod_name, image_registry):
                 yield line
         elif action == "delete":
             async for line in self._delete_pod(kubectl, namespace, pod_name):
@@ -106,13 +109,14 @@ class AdmissionControlDemo(DemoModule):
         kubectl: Kubectl,
         namespace: str,
         pod_name: str,
+        image_registry: str,
     ) -> AsyncGenerator[str, None]:
         """Create a test pod."""
         yield f"[CMD] Creating pod '{pod_name}' in namespace '{namespace}'..."
         yield ""
 
         # Determine image pull policy based on registry
-        image_pull_policy = "Never" if DEMO_IMAGE_REGISTRY == "localhost" else "IfNotPresent"
+        image_pull_policy = "Never" if image_registry == "localhost" else "IfNotPresent"
 
         # Pod manifest using configurable registry
         pod_yaml = f"""apiVersion: v1
@@ -125,7 +129,7 @@ metadata:
 spec:
   containers:
   - name: web
-    image: {DEMO_IMAGE_REGISTRY}/demo-web1:latest
+    image: {image_registry}/demo-web1:latest
     imagePullPolicy: {image_pull_policy}
     resources:
       limits:

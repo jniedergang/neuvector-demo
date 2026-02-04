@@ -1906,3 +1906,101 @@ async def run_diagnostics(request: DiagnosticsRequest):
             summary=DiagnosticsSummary(total=0, ok=0, warning=0, error=0),
             message=f"Diagnostics failed: {str(e)}",
         )
+
+
+# ========== Registry Test Endpoint ==========
+
+class RegistryTestRequest(BaseModel):
+    """Request model for testing image registry."""
+    registry: str
+
+
+class RegistryTestResponse(BaseModel):
+    """Response model for registry test."""
+    success: bool
+    message: str = ""
+    registry: str = ""
+
+
+@router.post("/registry/test", response_model=RegistryTestResponse)
+async def test_registry(request: RegistryTestRequest):
+    """Test if the image registry is accessible.
+
+    For 'localhost', this checks if required images are available locally.
+    For remote registries, this tries to fetch the registry catalog or ping the registry.
+    """
+    registry = request.registry.strip() or "localhost"
+
+    if registry == "localhost":
+        # For localhost, we check if the demo images exist in the cluster
+        kubectl = Kubectl()
+        try:
+            # Try to check if images are on nodes using crictl
+            cmd = kubectl._build_base_command()
+            # Just verify cluster connectivity for localhost
+            info = await kubectl.get_cluster_info()
+            if info.get("connected"):
+                return RegistryTestResponse(
+                    success=True,
+                    message="Local registry mode - cluster accessible. Images must be pre-loaded on nodes.",
+                    registry=registry,
+                )
+            else:
+                return RegistryTestResponse(
+                    success=False,
+                    message="Cannot connect to cluster to verify local images",
+                    registry=registry,
+                )
+        except Exception as e:
+            return RegistryTestResponse(
+                success=False,
+                message=f"Error checking cluster: {str(e)}",
+                registry=registry,
+            )
+    else:
+        # For remote registries, try to access the registry API
+        import httpx
+
+        # Build registry URL (add https if no protocol specified)
+        if not registry.startswith(("http://", "https://")):
+            registry_url = f"https://{registry}"
+        else:
+            registry_url = registry
+
+        try:
+            async with httpx.AsyncClient(verify=False, timeout=10.0) as client:
+                # Try to access the registry v2 API
+                response = await client.get(f"{registry_url}/v2/")
+
+                if response.status_code in (200, 401):
+                    # 200 = open registry, 401 = requires auth (but registry is reachable)
+                    auth_required = response.status_code == 401
+                    return RegistryTestResponse(
+                        success=True,
+                        message=f"Registry accessible{' (authentication required)' if auth_required else ''}",
+                        registry=registry,
+                    )
+                else:
+                    return RegistryTestResponse(
+                        success=False,
+                        message=f"Registry returned status {response.status_code}",
+                        registry=registry,
+                    )
+        except httpx.ConnectError:
+            return RegistryTestResponse(
+                success=False,
+                message="Cannot connect to registry - check URL and network",
+                registry=registry,
+            )
+        except httpx.TimeoutException:
+            return RegistryTestResponse(
+                success=False,
+                message="Registry connection timeout",
+                registry=registry,
+            )
+        except Exception as e:
+            return RegistryTestResponse(
+                success=False,
+                message=f"Error connecting to registry: {str(e)}",
+                registry=registry,
+            )

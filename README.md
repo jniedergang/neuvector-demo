@@ -2,19 +2,27 @@
 
 Application web interactive pour executer des demonstrations NeuVector sur un cluster Kubernetes.
 
+**Version actuelle : 1.2.0**
+
 ## Fonctionnalites
 
 ### Actions Plateforme
-- **Prepare** : Deploie le namespace `neuvector-demo` et les pods de test
+- **Prepare** : Deploie le namespace `neuvector-demo` et les pods de test (utilise le registre configure)
 - **Status** : Verifie l'etat de la plateforme et des pods
 - **Reset** : Supprime le namespace et toutes les ressources de demo
+- **Reset Rules** : Remet les groupes demo en mode Discover avec baseline zero-drift
+
+### Configuration
+- **Image Registry** : Configuration dynamique du registre d'images (localhost ou registre prive)
+- **NeuVector API** : Credentials configurables avec test de connexion
+- **Cosmetics** : Titre et logo personnalisables
 
 ### Demos Disponibles
 
 | Demo | Description |
 |------|-------------|
 | **Interception de Process** | Test d'execution de commandes (curl) avec visualisation du blocage par NeuVector |
-| **DLP Detection** | Test d'envoi de donnees sensibles (carte credit, SSN) avec blocage DLP |
+| **DLP Detection** | Test d'envoi de donnees sensibles (carte credit, SSN, passeport) avec blocage DLP |
 | **Admission Control** | Test de creation de pods dans un namespace interdit avec blocage par admission control |
 
 ### Interface
@@ -26,6 +34,7 @@ Application web interactive pour executer des demonstrations NeuVector sur un cl
 - **NeuVector Events** : Affichage des incidents et violations detectes en temps reel
 - **Allowed Processes** : Gestion des regles de process (ajout/suppression)
 - **Cluster Status** : Affichage de l'etat du cluster K8s et de l'API NeuVector
+- **Diagnostics** : Verification complete de l'environnement (K8s, NeuVector, pods, DLP, admission)
 
 ## Visualization Interactive
 
@@ -62,6 +71,8 @@ Les sensors DLP peuvent etre actives/desactives avec deux modes :
 Sensors disponibles :
 - Credit Card (sensor.creditcard)
 - SSN (sensor.ssn)
+- Passeport (sensor.passeport)
+- Visa (sensor.visa)
 
 ## Architecture
 
@@ -88,8 +99,8 @@ Sensors disponibles :
         ▼                  ▼                  ▼
 ┌───────────────┐  ┌───────────────┐  ┌───────────────┐
 │ Demo Pods     │  │ NeuVector     │  │ Kubernetes    │
-│ production1   │  │ Controller    │  │ API Server    │
-│ web1          │  │ REST API      │  │               │
+│ espion1       │  │ Controller    │  │ API Server    │
+│ cible1        │  │ REST API      │  │               │
 └───────────────┘  └───────────────┘  └───────────────┘
 ```
 
@@ -99,9 +110,9 @@ Sensors disponibles :
 neuvector-demo-web/
 ├── app/
 │   ├── main.py              # Application FastAPI
-│   ├── config.py            # Configuration
+│   ├── config.py            # Configuration (version, registre, etc.)
 │   ├── api/
-│   │   ├── routes.py        # Endpoints REST + NeuVector API
+│   │   ├── routes.py        # Endpoints REST + NeuVector API + Registry
 │   │   └── websocket.py     # WebSocket handlers
 │   ├── core/
 │   │   ├── kubectl.py       # Wrapper kubectl securise
@@ -111,20 +122,24 @@ neuvector-demo-web/
 │   │   ├── base.py          # Classe abstraite
 │   │   ├── connectivity.py  # Demo interception process
 │   │   ├── dlp.py           # Demo DLP
+│   │   ├── admission.py     # Demo Admission Control
 │   │   └── registry.py      # Auto-registration
 │   └── lifecycle/           # Actions prepare/reset/status
+│       ├── prepare.py       # Deploiement dynamique avec registre configurable
+│       ├── reset.py
+│       └── status.py
 ├── static/
 │   ├── css/style.css        # Styles (visualization, DLP, events)
 │   └── js/
-│       ├── main.js          # Logique UI + Visualization + DLP
+│       ├── main.js          # Logique UI + Settings + Registry
 │       └── websocket.js     # Client WebSocket
 ├── templates/
-│   └── index.html
+│   └── index.html           # Interface avec onglets Preparation/Credentials/Troubleshoot/Cosmetics
 ├── manifests/
 │   ├── deployment.yaml      # Deployment + Service
 │   ├── deployment-registry.yaml  # Version avec registre prive
 │   ├── rbac.yaml            # ServiceAccount + Roles
-│   └── demo-pods.yaml       # Pods de test
+│   └── demo-pods.yaml       # Pods de test (reference)
 ├── scripts/
 │   ├── deploy.sh            # Deploiement initial (import direct)
 │   ├── deploy-registry.sh   # Deploiement avec registre prive
@@ -132,6 +147,30 @@ neuvector-demo-web/
 │   └── undeploy.sh          # Suppression complete
 ├── Dockerfile
 └── requirements.txt
+```
+
+---
+
+## Configuration du Registre d'Images
+
+### Via l'Interface Web (Recommande)
+
+1. Ouvrir les **Parametres** (icone ⚙️)
+2. Aller dans l'onglet **Preparation**
+3. Dans la section **Image Registry**, entrer l'URL du registre :
+   - **localhost** : Pour images locales (imagePullPolicy: Never)
+   - **registry.example.com/project** : Pour registre prive (imagePullPolicy: IfNotPresent)
+4. Cliquer sur **Test Registry** pour verifier la connectivite
+5. Cliquer sur **Save & Close**
+
+Le registre configure sera utilise pour :
+- Le deploiement des pods de demo (bouton **Prepare**)
+- La demo Admission Control (creation de pods de test)
+
+### Via Variable d'Environnement
+
+```bash
+export DEMO_IMAGE_REGISTRY="registry.example.com/myproject"
 ```
 
 ---
@@ -183,7 +222,7 @@ ssh ${NODE_USER}@${NODE_IP} "sudo /var/lib/rancher/rke2/bin/ctr \
   -n k8s.io images import /tmp/demo-web1.tar"
 ```
 
-> **Note**: Ces images sont referenciees avec `imagePullPolicy: Never` dans les manifests, donc elles doivent etre presentes localement dans containerd sur chaque noeud.
+> **Note**: Ces images sont referenciees avec `imagePullPolicy: Never` dans les manifests quand le registre est "localhost", donc elles doivent etre presentes localement dans containerd sur chaque noeud.
 
 ---
 
@@ -228,7 +267,7 @@ export REGISTRY_URL="registry.example.com"
 export REGISTRY_USER="myuser"
 export REGISTRY_PASSWORD="mypassword"
 export IMAGE_NAME="neuvector-demo-web"
-export IMAGE_TAG="v1.0.0"
+export IMAGE_TAG="v1.2.0"
 ```
 
 #### 2.2 Build et Push de l'Image
@@ -297,6 +336,7 @@ sudo systemctl restart rke2-server  # ou rke2-agent
 |-----|-------------|
 | `http://<NODE_IP>:30080` | Interface web |
 | `http://<NODE_IP>:30080/api/health` | Health check |
+| `http://<NODE_IP>:30080/api/version` | Version de l'application |
 | `http://<NODE_IP>:30080/api/demos` | Liste des demos |
 
 ---
@@ -306,10 +346,12 @@ sudo systemctl restart rke2-server  # ou rke2-agent
 ### Workflow Standard
 
 1. **Ouvrir l'interface** : `http://<NODE_IP>:30080`
-2. **Configurer NeuVector** : Cliquer sur l'icone ⚙️ et entrer les credentials
+2. **Configurer les parametres** : Cliquer sur l'icone ⚙️
+   - **Preparation** : Configurer le registre d'images si necessaire
+   - **Credentials** : Entrer les credentials NeuVector et tester la connexion
 3. **Preparer l'environnement** : Cliquer **Prepare** pour deployer les pods de test
-4. **Selectionner une demo** : Choisir "Interception de Process" ou "DLP Detection Test"
-5. **Configurer et executer** : Ajuster les parametres et cliquer **Run Demo** ou **Run DLP Test**
+4. **Selectionner une demo** : Choisir dans le menu lateral
+5. **Configurer et executer** : Ajuster les parametres et cliquer **Run Demo**
 6. **Observer** :
    - La visualization montre l'etat (Success/Blocked/Intercepted)
    - Les events NeuVector s'affichent en temps reel
@@ -325,7 +367,7 @@ Cette demo teste le blocage de processus par NeuVector :
 3. **Test** :
    - Executer `curl` vers une URL → process autorise
    - Supprimer `curl` des Allowed Processes
-   - Ré-executer → **Process Intercepted** (exit code 137)
+   - Re-executer → **Process Intercepted** (exit code 137)
 
 ### Demo : DLP Detection
 
@@ -338,13 +380,13 @@ Cette demo teste la detection et le blocage de donnees sensibles :
    - Au moins un DLP sensor active en mode **Block**
 
 2. **Parametres** :
-   - Selectionner le pod source (production1)
+   - Selectionner le pod source (espion1)
    - Selectionner la cible (Internal Nginx Pod ou External Service)
-   - Choisir le type de donnees sensibles (Credit Card, SSN, Custom)
+   - Choisir le type de donnees sensibles (Credit Card, SSN, Passeport, Custom)
 
 3. **Execution** :
    - Cliquer **Run DLP Test**
-   - Le test envoie un numero de carte de test (4532-0151-1283-0366)
+   - Le test envoie des donnees correspondant au sensor choisi
    - Si DLP est configure en mode Block, NeuVector bloque la requete
 
 4. **Resultat** :
@@ -360,20 +402,22 @@ Cette demo teste le blocage de creation de ressources par NeuVector Admission Co
    - Admission Control doit etre active dans NeuVector
    - Une regle d'admission doit exister pour bloquer le namespace `untrusted-namespace`
 
-2. **Interface** :
+2. **Configuration du registre** :
+   - Le registre configure dans les parametres sera utilise pour l'image du pod de test
+   - Pour "localhost" : imagePullPolicy sera "Never"
+   - Pour un registre distant : imagePullPolicy sera "IfNotPresent"
+
+3. **Interface** :
    - Selecteur de namespace (allowed ou forbidden)
    - Champ de nom de pod personnalisable
    - Boutons d'action : Create Pod, Delete Pod, Check Status
-   - Affichage de l'etat d'Admission Control (Enabled/Disabled, Mode)
-   - Liste des regles d'admission actives
-   - Panel d'evenements d'admission
 
-3. **Test** :
+4. **Test** :
    - Selectionner le namespace **Allowed** → creer un pod → succes
    - Selectionner le namespace **Forbidden** → creer un pod → bloque par Admission Control
-   - Observer les evenements dans le panel "Admission Events"
+   - Observer les evenements dans la console
 
-4. **Resultat** :
+5. **Resultat** :
    - Si autorise : le pod est cree avec succes
    - Si bloque : erreur "Admission control DENIED" affichee
 
@@ -381,18 +425,37 @@ Cette demo teste le blocage de creation de ressources par NeuVector Admission Co
 
 ## API Endpoints
 
+### General
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/health` | GET | Health check |
+| `/api/version` | GET | Version de l'application et info Git |
+| `/api/demos` | GET | Liste des demos disponibles |
+| `/api/config` | GET | Configuration actuelle |
+| `/api/cluster-info` | GET | Info cluster Kubernetes |
+| `/api/diagnostics` | POST | Diagnostics complets de l'environnement |
+
+### Registry
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/registry/test` | POST | Test de connectivite au registre d'images |
+
 ### NeuVector Integration
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/api/neuvector/test` | POST | Test de connexion API |
+| `/api/neuvector/default-url` | GET | URL par defaut de l'API NeuVector |
 | `/api/neuvector/group-status` | POST | Statut d'un groupe (modes, baseline) |
+| `/api/neuvector/pod-info` | POST | Info combinee groupe + process profile |
 | `/api/neuvector/update-group` | POST | Modifier policy_mode, profile_mode, baseline |
+| `/api/neuvector/reset-demo-rules` | POST | Reset des regles demo (Discover + zero-drift) |
 | `/api/neuvector/dlp-config` | POST | Configuration DLP d'un groupe |
 | `/api/neuvector/update-dlp-sensor` | POST | Activer/desactiver un sensor DLP |
 | `/api/neuvector/process-profile` | POST | Liste des process autorises |
-| `/api/neuvector/add-process` | POST | Ajouter un process autorise |
-| `/api/neuvector/delete-process` | POST | Supprimer un process autorise |
+| `/api/neuvector/delete-process-rule` | POST | Supprimer un process autorise |
 | `/api/neuvector/recent-events` | POST | Evenements recents (incidents, violations, DLP) |
 | `/api/neuvector/admission-state` | POST | Etat de l'Admission Control (enabled, mode) |
 | `/api/neuvector/update-admission-state` | POST | Activer/desactiver l'Admission Control |
@@ -400,6 +463,12 @@ Cette demo teste le blocage de creation de ressources par NeuVector Admission Co
 | `/api/neuvector/create-admission-rule` | POST | Creer une regle d'admission |
 | `/api/neuvector/delete-admission-rule` | POST | Supprimer une regle d'admission |
 | `/api/neuvector/admission-events` | POST | Evenements d'admission recents |
+
+### DLP
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/dlp/sensors` | POST | Liste des sensors DLP disponibles |
 
 ---
 
@@ -413,13 +482,22 @@ Cette demo teste le blocage de creation de ressources par NeuVector Admission Co
 | `PORT` | `8080` | Port d'ecoute |
 | `DEMO_NAMESPACE` | `neuvector-demo` | Namespace pour les demos |
 | `NEUVECTOR_NAMESPACE` | `neuvector` | Namespace NeuVector |
+| `NEUVECTOR_API_URL` | `https://neuvector-svc-controller.neuvector:10443` | URL API NeuVector |
+| `DEMO_IMAGE_REGISTRY` | `localhost` | Registre pour les images de demo |
 | `KUBECONFIG` | In-cluster | Chemin kubeconfig (dev only) |
+| `KUBECTL_TIMEOUT` | `120` | Timeout kubectl en secondes |
 
-### API NeuVector
+### Stockage Local (Browser)
 
-L'application se connecte a l'API NeuVector via :
-- **URL** : `https://neuvector-svc-controller.neuvector:10443`
-- **Authentification** : Username/Password configurables dans l'UI
+Les parametres suivants sont stockes dans le localStorage du navigateur :
+
+| Cle | Description |
+|-----|-------------|
+| `neuvector_settings` | Credentials NeuVector (username, password) |
+| `neuvector_api_url` | URL personnalisee de l'API NeuVector |
+| `neuvector_registry` | URL du registre d'images |
+| `neuvector_title` | Titre personnalise de l'application |
+| `neuvector_logo` | Logo personnalise (base64) |
 
 ---
 
@@ -430,7 +508,7 @@ L'application se connecte a l'API NeuVector via :
 ```python
 from typing import Any, AsyncGenerator
 from app.core.kubectl import Kubectl
-from app.config import NAMESPACE
+from app.config import NAMESPACE, DEMO_IMAGE_REGISTRY
 from app.demos.base import DemoModule, DemoParameter
 from app.demos.registry import DemoRegistry
 
@@ -460,10 +538,14 @@ class MaDemo(DemoModule):
         kubectl: Kubectl,
         params: dict[str, Any],
     ) -> AsyncGenerator[str, None]:
+        # Recuperer le registre dynamique si fourni
+        image_registry = params.get("image_registry") or DEMO_IMAGE_REGISTRY
+
         yield "[INFO] Execution de la demo..."
+        yield f"[INFO] Registre: {image_registry}"
 
         async for line in kubectl.exec_in_pod(
-            pod_name="production1",
+            pod_name="espion1",
             command=["echo", "Hello"],
             namespace=NAMESPACE,
         ):
@@ -486,13 +568,26 @@ from app.demos.ma_demo import MaDemo
 
 - **Validation stricte** des noms de pods (regex Kubernetes)
 - **Whitelist de commandes** kubectl autorisees
-- **Namespaces restreints** : seul `neuvector-demo` est accessible
-- **Timeout** sur toutes les commandes (30s par defaut)
+- **Namespaces restreints** : seul `neuvector-demo` et namespaces autorises sont accessibles
+- **Timeout** sur toutes les commandes (120s par defaut)
 - **RBAC** : ServiceAccount avec permissions minimales
+- **TLS** : Verification SSL desactivable pour registres internes
 
 ---
 
 ## Troubleshooting
+
+### Onglet Diagnostics
+
+L'onglet **Troubleshoot** dans les parametres permet de verifier :
+- Connectivite Kubernetes
+- API NeuVector
+- Namespace de demo
+- Pods de demo
+- Groupes NeuVector
+- Profiles de process
+- Sensors DLP
+- Admission Control
 
 ### L'application ne demarre pas
 
@@ -523,12 +618,20 @@ kubectl get secret registry-credentials -n neuvector-demo -o yaml
 kubectl describe pod -n neuvector-demo -l app=neuvector-demo-web
 ```
 
+### Test Registry echoue
+
+1. Verifier que l'URL du registre est correcte
+2. Pour un registre distant, verifier la connectivite reseau
+3. Pour "localhost", verifier que les images sont importees sur les noeuds
+4. Verifier les certificats TLS si le registre utilise HTTPS
+
 ### NeuVector API "Not configured"
 
 1. Cliquer sur ⚙️ Settings
-2. Entrer le username/password NeuVector
-3. Cliquer "Test Connection"
-4. Si OK, cliquer "Save"
+2. Aller dans l'onglet **Credentials**
+3. Entrer le username/password NeuVector
+4. Cliquer "Test Connection"
+5. Si OK, cliquer "Save & Close"
 
 ### K8s Cluster "Disconnected"
 
@@ -544,6 +647,17 @@ kubectl auth can-i get pods -n neuvector-demo --as=system:serviceaccount:neuvect
 3. Le pattern de carte credit doit etre non-repetitif (ex: 4532-0151-1283-0366)
 4. Les patterns repetitifs (4242-4242-4242-4242) sont exclus par le regex NeuVector
 
+### Pods de demo ne demarrent pas
+
+1. Verifier le registre configure dans les parametres
+2. Pour "localhost", verifier que les images sont importees :
+   ```bash
+   ssh rancher@<NODE_IP> "sudo /var/lib/rancher/rke2/bin/ctr \
+     -a /run/k3s/containerd/containerd.sock \
+     -n k8s.io images ls | grep demo-"
+   ```
+3. Pour un registre distant, verifier les credentials et la connectivite
+
 ---
 
 ## Developpement Local
@@ -556,8 +670,32 @@ pip install -r requirements.txt
 
 # Lancer l'application (necessite kubeconfig)
 export KUBECONFIG=~/.kube/config-downstream
+export DEMO_IMAGE_REGISTRY=localhost
 python run.py
 ```
+
+---
+
+## Changelog
+
+### Version 1.2.0
+- Ajout de la configuration dynamique du registre d'images dans l'interface
+- Bouton "Test Registry" pour verifier la connectivite au registre
+- Le registre est utilise pour Prepare et Admission Control demo
+- Generation dynamique des manifests de pods avec le registre configure
+- Support de imagePullPolicy dynamique (Never pour localhost, IfNotPresent pour distant)
+
+### Version 1.1.0
+- Ajout de la demo Admission Control
+- Diagnostics complets de l'environnement
+- Reset des regles NeuVector (Discover + zero-drift)
+- Ameliorations de l'interface utilisateur
+
+### Version 1.0.0
+- Version initiale
+- Demos: Interception de Process, DLP Detection
+- Integration NeuVector API
+- Visualization interactive
 
 ---
 
