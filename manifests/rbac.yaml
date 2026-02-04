@@ -74,24 +74,24 @@ roleRef:
   name: demo-web-clusterrole
   apiGroup: rbac.authorization.k8s.io
 ---
-# Role for secured-namespace (for admission control demo)
+# Role for untrusted-namespace (for admission control demo)
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: demo-web-role
-  namespace: secured-namespace
+  namespace: untrusted-namespace
 rules:
 # Pod management - allow so NeuVector Admission Control can block
 - apiGroups: [""]
   resources: ["pods", "pods/exec", "pods/log"]
   verbs: ["get", "list", "watch", "create", "delete"]
 ---
-# RoleBinding for secured-namespace
+# RoleBinding for untrusted-namespace
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: demo-web-rolebinding
-  namespace: secured-namespace
+  namespace: untrusted-namespace
 subjects:
 - kind: ServiceAccount
   name: demo-web-sa
