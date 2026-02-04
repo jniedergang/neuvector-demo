@@ -526,7 +526,6 @@ select.form-control {
     font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
     font-size: 0.8125rem;
     z-index: 1000;
-    resize: both;
     overflow: hidden;
 }
 
@@ -588,15 +587,74 @@ select.form-control {
     border-radius: 0 0 12px 12px;
 }
 
-/* Resize handle styling */
-.console-modal::after {
-    content: '';
+/* Resize handles for all edges */
+.console-resize-handle {
     position: absolute;
-    bottom: 4px;
-    right: 4px;
+    z-index: 10;
+}
+
+.console-resize-handle.top {
+    top: 0;
+    left: 8px;
+    right: 8px;
+    height: 6px;
+    cursor: ns-resize;
+}
+
+.console-resize-handle.bottom {
+    bottom: 0;
+    left: 8px;
+    right: 8px;
+    height: 6px;
+    cursor: ns-resize;
+}
+
+.console-resize-handle.left {
+    left: 0;
+    top: 8px;
+    bottom: 8px;
+    width: 6px;
+    cursor: ew-resize;
+}
+
+.console-resize-handle.right {
+    right: 0;
+    top: 8px;
+    bottom: 8px;
+    width: 6px;
+    cursor: ew-resize;
+}
+
+.console-resize-handle.top-left {
+    top: 0;
+    left: 0;
     width: 12px;
     height: 12px;
-    cursor: se-resize;
+    cursor: nwse-resize;
+}
+
+.console-resize-handle.top-right {
+    top: 0;
+    right: 0;
+    width: 12px;
+    height: 12px;
+    cursor: nesw-resize;
+}
+
+.console-resize-handle.bottom-left {
+    bottom: 0;
+    left: 0;
+    width: 12px;
+    height: 12px;
+    cursor: nesw-resize;
+}
+
+.console-resize-handle.bottom-right {
+    bottom: 0;
+    right: 0;
+    width: 12px;
+    height: 12px;
+    cursor: nwse-resize;
     background: linear-gradient(135deg, transparent 50%, #666 50%);
     border-radius: 0 0 8px 0;
 }

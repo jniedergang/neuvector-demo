@@ -184,9 +184,9 @@ async def prepare_platform(
         )
         await nv_api.authenticate()
 
-        # Check if rule already exists for forbidden-namespace1
+        # Check if rule already exists for secured-namespace
         existing_rules = await nv_api.get_admission_rules()
-        forbidden_ns = "forbidden-namespace1"
+        forbidden_ns = "secured-namespace"
         rule_exists = False
 
         for rule in existing_rules:
@@ -211,7 +211,7 @@ async def prepare_platform(
             ]
             await nv_api.create_admission_rule(
                 rule_type="deny",
-                comment="Demo: Deny all deployments in forbidden-namespace1",
+                comment="Demo: Deny all deployments in secured-namespace",
                 criteria=criteria,
                 disable=False,
             )

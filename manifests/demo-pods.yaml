@@ -3,7 +3,7 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: forbidden-namespace1
+  name: secured-namespace
   labels:
     demo: admission-control
     policy: forbidden

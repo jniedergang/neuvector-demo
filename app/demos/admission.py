@@ -17,7 +17,7 @@ from app.demos.base import DemoModule, DemoParameter
 from app.demos.registry import DemoRegistry
 
 
-FORBIDDEN_NAMESPACE = "forbidden-namespace1"
+FORBIDDEN_NAMESPACE = "secured-namespace"
 ALLOWED_NAMESPACE = NAMESPACE  # neuvector-demo
 
 
