@@ -75,7 +75,7 @@ ALLOWED_KUBECTL_COMMANDS = {
 }
 
 # Admission control test namespace
-FORBIDDEN_NAMESPACE = "secured-namespace"
+FORBIDDEN_NAMESPACE = "untrusted-namespace"
 
 # Security: namespace restrictions
 ALLOWED_NAMESPACES = {NAMESPACE, NEUVECTOR_NAMESPACE, "default", FORBIDDEN_NAMESPACE}
