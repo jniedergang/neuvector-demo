@@ -116,160 +116,179 @@
                 <h3>Parameters</h3>
                 <button class="btn-close" id="btn-close-settings">&times;</button>
             </div>
+
+            <!-- Tabs Navigation -->
+            <div class="settings-tabs">
+                <button class="settings-tab active" data-tab="preparation">Preparation</button>
+                <button class="settings-tab" data-tab="credentials">Credentials</button>
+                <button class="settings-tab" data-tab="troubleshoot">Troubleshoot</button>
+                <button class="settings-tab" data-tab="cosmetics">Cosmetics</button>
+            </div>
+
             <div class="modal-body">
-                <!-- Platform Actions Section -->
-                <div class="settings-section">
-                    <h4 class="settings-section-title">Platform Actions</h4>
-                    <div class="lifecycle-actions">
-                        <button class="btn btn-success" id="btn-prepare" title="Deploy demo namespace and pods">
-                            Prepare
-                        </button>
-                        <button class="btn btn-outline" id="btn-status" title="Check platform status">
-                            Status
-                        </button>
-                        <button class="btn btn-danger" id="btn-reset" title="Remove all demo resources">
-                            Reset
-                        </button>
+                <!-- Tab: Preparation -->
+                <div class="settings-tab-content active" id="tab-preparation">
+                    <!-- Platform Actions Section -->
+                    <div class="settings-section">
+                        <h4 class="settings-section-title">Platform Actions</h4>
+                        <div class="lifecycle-actions">
+                            <button class="btn btn-success" id="btn-prepare" title="Deploy demo namespace and pods">
+                                Prepare
+                            </button>
+                            <button class="btn btn-outline" id="btn-status" title="Check platform status">
+                                Status
+                            </button>
+                            <button class="btn btn-danger" id="btn-reset" title="Remove all demo resources">
+                                Reset
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- NeuVector Actions Section -->
+                    <div class="settings-section">
+                        <h4 class="settings-section-title">NeuVector Actions</h4>
+                        <div class="lifecycle-actions">
+                            <button class="btn btn-warning" id="btn-reset-rules" title="Reset espion1 and cible1 to Discover mode, zero-drift baseline, and clear process rules">
+                                Reset Rules
+                            </button>
+                        </div>
+                        <div class="settings-status" id="reset-rules-status"></div>
                     </div>
                 </div>
 
-                <!-- NeuVector Actions Section -->
-                <div class="settings-section">
-                    <h4 class="settings-section-title">NeuVector Actions</h4>
-                    <div class="lifecycle-actions">
-                        <button class="btn btn-warning" id="btn-reset-rules" title="Reset espion1 and cible1 to Discover mode, zero-drift baseline, and clear process rules">
-                            Reset Rules
-                        </button>
-                    </div>
-                    <div class="settings-status" id="reset-rules-status"></div>
-                </div>
-
-                <!-- Diagnostics Section -->
-                <div class="settings-section">
-                    <h4 class="settings-section-title">Diagnostics</h4>
-                    <div class="diagnostics-header">
-                        <button class="btn btn-outline" id="btn-run-diagnostics" title="Run all diagnostic checks">
-                            Run All Checks
-                        </button>
-                        <span class="diagnostics-summary" id="diagnostics-summary"></span>
-                    </div>
-
-                    <div class="diagnostics-content" id="diagnostics-content">
-                        <!-- Infrastructure -->
-                        <div class="diagnostics-category">
-                            <div class="diagnostics-category-header">Infrastructure</div>
-                            <div class="diagnostic-item" id="diag-kubernetes">
-                                <span class="diagnostic-icon pending">-</span>
-                                <span class="diagnostic-name">Kubernetes Cluster</span>
-                                <span class="diagnostic-message"></span>
-                            </div>
-                            <div class="diagnostic-item" id="diag-neuvector-api">
-                                <span class="diagnostic-icon pending">-</span>
-                                <span class="diagnostic-name">NeuVector API</span>
-                                <span class="diagnostic-message"></span>
-                            </div>
+                <!-- Tab: Credentials -->
+                <div class="settings-tab-content" id="tab-credentials">
+                    <div class="settings-section">
+                        <h4 class="settings-section-title">NeuVector API</h4>
+                        <div class="form-group">
+                            <label for="settings-username">Username</label>
+                            <input type="text" class="form-control" id="settings-username" placeholder="admin" value="admin">
                         </div>
-
-                        <!-- Environment -->
-                        <div class="diagnostics-category">
-                            <div class="diagnostics-category-header">Environment</div>
-                            <div class="diagnostic-item" id="diag-demo-namespace">
-                                <span class="diagnostic-icon pending">-</span>
-                                <span class="diagnostic-name">Demo Namespace</span>
-                                <span class="diagnostic-message"></span>
-                            </div>
-                            <div class="diagnostic-item" id="diag-demo-pods">
-                                <span class="diagnostic-icon pending">-</span>
-                                <span class="diagnostic-name">Demo Pods</span>
-                                <span class="diagnostic-message"></span>
-                            </div>
+                        <div class="form-group">
+                            <label for="settings-password">Password</label>
+                            <input type="password" class="form-control" id="settings-password" placeholder="Enter password">
                         </div>
-
-                        <!-- NeuVector Configuration -->
-                        <div class="diagnostics-category">
-                            <div class="diagnostics-category-header">NeuVector Configuration</div>
-                            <div class="diagnostic-item" id="diag-neuvector-groups">
-                                <span class="diagnostic-icon pending">-</span>
-                                <span class="diagnostic-name">NeuVector Groups</span>
-                                <span class="diagnostic-message"></span>
-                            </div>
-                            <div class="diagnostic-item" id="diag-process-profiles">
-                                <span class="diagnostic-icon pending">-</span>
-                                <span class="diagnostic-name">Process Profiles</span>
-                                <span class="diagnostic-message"></span>
-                            </div>
-                            <div class="diagnostic-item" id="diag-dlp-sensors">
-                                <span class="diagnostic-icon pending">-</span>
-                                <span class="diagnostic-name">DLP Sensors</span>
-                                <span class="diagnostic-message"></span>
-                            </div>
-                            <div class="diagnostic-item" id="diag-admission-control">
-                                <span class="diagnostic-icon pending">-</span>
-                                <span class="diagnostic-name">Admission Control</span>
-                                <span class="diagnostic-message"></span>
-                            </div>
+                        <div class="form-group">
+                            <label for="settings-api-url">API URL</label>
+                            <input type="text" class="form-control" id="settings-api-url" placeholder="https://neuvector-controller:10443">
+                            <div class="help-text">Leave empty to use default server URL</div>
+                        </div>
+                        <div class="settings-status" id="settings-status"></div>
+                        <div class="settings-actions">
+                            <button class="btn btn-outline" id="btn-test-connection">Test Connection</button>
+                            <button class="btn btn-outline" id="btn-debug-credentials">Debug Credentials</button>
                         </div>
                     </div>
                 </div>
 
-                <!-- API Settings Section -->
-                <div class="settings-section">
-                    <h4 class="settings-section-title">API Settings</h4>
-                    <div class="form-group">
-                        <label for="settings-username">Username</label>
-                        <input type="text" class="form-control" id="settings-username" placeholder="admin" value="admin">
-                    </div>
-                    <div class="form-group">
-                        <label for="settings-password">Password</label>
-                        <input type="password" class="form-control" id="settings-password" placeholder="Enter password">
-                    </div>
-                    <div class="form-group">
-                        <label for="settings-api-url">API URL</label>
-                        <input type="text" class="form-control" id="settings-api-url" placeholder="https://neuvector-controller:10443">
-                        <div class="help-text">Leave empty to use default server URL</div>
-                    </div>
-                    <div class="settings-status" id="settings-status"></div>
-                    <div class="settings-actions">
-                        <button class="btn btn-outline" id="btn-test-connection">Test Connection</button>
-                        <button class="btn btn-outline" id="btn-debug-credentials">Debug Credentials</button>
-                    </div>
-                </div>
+                <!-- Tab: Troubleshoot -->
+                <div class="settings-tab-content" id="tab-troubleshoot">
+                    <div class="settings-section">
+                        <h4 class="settings-section-title">Diagnostics</h4>
+                        <div class="diagnostics-header">
+                            <button class="btn btn-outline" id="btn-run-diagnostics" title="Run all diagnostic checks">
+                                Run All Checks
+                            </button>
+                            <span class="diagnostics-summary" id="diagnostics-summary"></span>
+                        </div>
 
-                <!-- Appearance Section -->
-                <div class="settings-section">
-                    <h4 class="settings-section-title">Appearance</h4>
-                    <div class="form-group">
-                        <label for="settings-title">Page Title</label>
-                        <input type="text" class="form-control" id="settings-title" placeholder="NeuVector Demo Platform" value="NeuVector Demo Platform">
-                    </div>
-                    <div class="form-group">
-                        <label>Logo</label>
-                        <div class="logo-upload-container">
-                            <div class="logo-preview" id="logo-preview">
-                                <span class="logo-placeholder">No logo</span>
+                        <div class="diagnostics-content" id="diagnostics-content">
+                            <!-- Infrastructure -->
+                            <div class="diagnostics-category">
+                                <div class="diagnostics-category-header">Infrastructure</div>
+                                <div class="diagnostic-item" id="diag-kubernetes">
+                                    <span class="diagnostic-icon pending">-</span>
+                                    <span class="diagnostic-name">Kubernetes Cluster</span>
+                                    <span class="diagnostic-message"></span>
+                                </div>
+                                <div class="diagnostic-item" id="diag-neuvector-api">
+                                    <span class="diagnostic-icon pending">-</span>
+                                    <span class="diagnostic-name">NeuVector API</span>
+                                    <span class="diagnostic-message"></span>
+                                </div>
                             </div>
-                            <div class="logo-actions">
-                                <label class="btn btn-outline btn-file">
-                                    Upload Image
-                                    <input type="file" id="logo-file-input" accept="image/*" style="display: none;">
-                                </label>
-                                <button class="btn btn-outline" id="btn-remove-logo" style="display: none;">Remove</button>
+
+                            <!-- Environment -->
+                            <div class="diagnostics-category">
+                                <div class="diagnostics-category-header">Environment</div>
+                                <div class="diagnostic-item" id="diag-demo-namespace">
+                                    <span class="diagnostic-icon pending">-</span>
+                                    <span class="diagnostic-name">Demo Namespace</span>
+                                    <span class="diagnostic-message"></span>
+                                </div>
+                                <div class="diagnostic-item" id="diag-demo-pods">
+                                    <span class="diagnostic-icon pending">-</span>
+                                    <span class="diagnostic-name">Demo Pods</span>
+                                    <span class="diagnostic-message"></span>
+                                </div>
+                            </div>
+
+                            <!-- NeuVector Configuration -->
+                            <div class="diagnostics-category">
+                                <div class="diagnostics-category-header">NeuVector Configuration</div>
+                                <div class="diagnostic-item" id="diag-neuvector-groups">
+                                    <span class="diagnostic-icon pending">-</span>
+                                    <span class="diagnostic-name">NeuVector Groups</span>
+                                    <span class="diagnostic-message"></span>
+                                </div>
+                                <div class="diagnostic-item" id="diag-process-profiles">
+                                    <span class="diagnostic-icon pending">-</span>
+                                    <span class="diagnostic-name">Process Profiles</span>
+                                    <span class="diagnostic-message"></span>
+                                </div>
+                                <div class="diagnostic-item" id="diag-dlp-sensors">
+                                    <span class="diagnostic-icon pending">-</span>
+                                    <span class="diagnostic-name">DLP Sensors</span>
+                                    <span class="diagnostic-message"></span>
+                                </div>
+                                <div class="diagnostic-item" id="diag-admission-control">
+                                    <span class="diagnostic-icon pending">-</span>
+                                    <span class="diagnostic-name">Admission Control</span>
+                                    <span class="diagnostic-message"></span>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Version Section -->
-                <div class="settings-section">
-                    <h4 class="settings-section-title">About</h4>
-                    <div class="version-info" id="version-info">
-                        <div class="version-row">
-                            <span class="version-label">Version:</span>
-                            <span class="version-value" id="app-version">Loading...</span>
+                <!-- Tab: Cosmetics -->
+                <div class="settings-tab-content" id="tab-cosmetics">
+                    <!-- Appearance Section -->
+                    <div class="settings-section">
+                        <h4 class="settings-section-title">Appearance</h4>
+                        <div class="form-group">
+                            <label for="settings-title">Page Title</label>
+                            <input type="text" class="form-control" id="settings-title" placeholder="NeuVector Demo Platform" value="NeuVector Demo Platform">
                         </div>
-                        <div class="version-row" id="git-info-row" style="display: none;">
-                            <span class="version-label">Git:</span>
-                            <span class="version-value" id="git-info">-</span>
+                        <div class="form-group">
+                            <label>Logo</label>
+                            <div class="logo-upload-container">
+                                <div class="logo-preview" id="logo-preview">
+                                    <span class="logo-placeholder">No logo</span>
+                                </div>
+                                <div class="logo-actions">
+                                    <label class="btn btn-outline btn-file">
+                                        Upload Image
+                                        <input type="file" id="logo-file-input" accept="image/*" style="display: none;">
+                                    </label>
+                                    <button class="btn btn-outline" id="btn-remove-logo" style="display: none;">Remove</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Version Section -->
+                    <div class="settings-section">
+                        <h4 class="settings-section-title">About</h4>
+                        <div class="version-info" id="version-info">
+                            <div class="version-row">
+                                <span class="version-label">Version:</span>
+                                <span class="version-value" id="app-version">Loading...</span>
+                            </div>
+                            <div class="version-row" id="git-info-row" style="display: none;">
+                                <span class="version-label">Git:</span>
+                                <span class="version-value" id="git-info">-</span>
+                            </div>
                         </div>
                     </div>
                 </div>
