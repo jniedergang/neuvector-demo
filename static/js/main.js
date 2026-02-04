@@ -77,6 +77,9 @@ class SettingsManager {
         document.getElementById('btn-save-settings')?.addEventListener('click', () => this.saveSettings());
         document.getElementById('btn-reset-rules')?.addEventListener('click', () => this.resetDemoRules());
 
+        // Tab navigation
+        this.initSettingsTabs();
+
         // Logo event listeners
         this.logoFileInput?.addEventListener('change', (e) => this.handleLogoUpload(e));
         this.removeLogo?.addEventListener('click', () => this.handleLogoRemove());
@@ -167,6 +170,25 @@ class SettingsManager {
 
     closeModal() {
         this.modal?.classList.remove('active');
+    }
+
+    initSettingsTabs() {
+        const tabs = document.querySelectorAll('.settings-tab');
+        const contents = document.querySelectorAll('.settings-tab-content');
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const targetId = tab.dataset.tab;
+
+                // Update active tab
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+
+                // Update active content
+                contents.forEach(c => c.classList.remove('active'));
+                document.getElementById(`tab-${targetId}`)?.classList.add('active');
+            });
+        });
     }
 
     loadSettings() {
