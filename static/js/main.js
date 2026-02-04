@@ -54,6 +54,22 @@ class SettingsManager {
     }
 
     init() {
+        // Re-initialize DOM elements (constructor runs before DOM is ready)
+        this.modal = document.getElementById('settings-modal');
+        this.usernameInput = document.getElementById('settings-username');
+        this.passwordInput = document.getElementById('settings-password');
+        this.titleInput = document.getElementById('settings-title');
+        this.apiUrlInput = document.getElementById('settings-api-url');
+        this.registryInput = document.getElementById('settings-registry');
+        this.statusDiv = document.getElementById('settings-status');
+        this.apiStatusBox = document.getElementById('api-status-box');
+        this.apiStatusValue = document.getElementById('api-status-value');
+        this.logoFileInput = document.getElementById('logo-file-input');
+        this.logoPreview = document.getElementById('logo-preview');
+        this.removeLogo = document.getElementById('btn-remove-logo');
+        this.headerLogo = document.getElementById('header-logo');
+        this.headerTitle = document.getElementById('header-title');
+
         // Load saved settings
         this.loadSettings();
 
