@@ -144,6 +144,49 @@ neuvector-demo-web/
 - `kubectl` configure avec acces au cluster
 - Docker ou Podman pour builder l'image
 
+### Construction des Images de Demo
+
+Les pods de demo (`espion1` et `cible1`) utilisent des images personnalisees qui doivent etre construites et importees dans le cluster.
+
+#### Images requises
+
+| Image | Description | Dockerfile |
+|-------|-------------|------------|
+| `demo-production1` | OpenSUSE avec outils reseau (curl, nmap, nc, ssh) | `images/production1/Dockerfile` |
+| `demo-web1` | Nginx avec serveur SSH et outils reseau | `images/web1/Dockerfile` |
+
+#### Build et Import des Images
+
+```bash
+# Variables
+NODE_IP="172.16.3.21"
+NODE_USER="rancher"
+
+# Build des images
+podman build -t demo-production1:latest images/production1/
+podman build -t demo-web1:latest images/web1/
+
+# Export en tar
+podman save demo-production1:latest -o /tmp/demo-production1.tar
+podman save demo-web1:latest -o /tmp/demo-web1.tar
+
+# Copie vers le noeud
+scp /tmp/demo-production1.tar /tmp/demo-web1.tar ${NODE_USER}@${NODE_IP}:/tmp/
+
+# Import dans containerd (sur le noeud)
+ssh ${NODE_USER}@${NODE_IP} "sudo /var/lib/rancher/rke2/bin/ctr \
+  --address /run/k3s/containerd/containerd.sock \
+  -n k8s.io images import /tmp/demo-production1.tar"
+
+ssh ${NODE_USER}@${NODE_IP} "sudo /var/lib/rancher/rke2/bin/ctr \
+  --address /run/k3s/containerd/containerd.sock \
+  -n k8s.io images import /tmp/demo-web1.tar"
+```
+
+> **Note**: Ces images sont referenciees avec `imagePullPolicy: Never` dans les manifests, donc elles doivent etre presentes localement dans containerd sur chaque noeud.
+
+---
+
 ### Methode 1 : Import Direct dans Containerd (Sans Registre)
 
 Cette methode importe l'image directement dans containerd sur le noeud. Utile pour les environnements de test ou sans registre.
