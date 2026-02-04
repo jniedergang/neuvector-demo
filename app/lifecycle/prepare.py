@@ -5,7 +5,7 @@ from typing import AsyncGenerator
 
 from app.core.kubectl import Kubectl
 from app.core.neuvector_api import NeuVectorAPI, NeuVectorAPIError
-from app.config import NAMESPACE, MANIFESTS_DIR, NEUVECTOR_API_URL
+from app.config import NAMESPACE, MANIFESTS_DIR, NEUVECTOR_API_URL, DEMO_IMAGE_REGISTRY
 
 # NeuVector credentials (from environment or defaults)
 NV_USERNAME = os.environ.get("NEUVECTOR_USERNAME", "admin")
@@ -50,10 +50,125 @@ DLP_SENSORS = [
 ]
 
 
+def generate_demo_pods_manifest(image_registry: str, namespace: str = NAMESPACE) -> str:
+    """Generate the demo pods manifest with configurable registry.
+
+    Args:
+        image_registry: The image registry to use (e.g., "localhost" or "myregistry.com/project")
+        namespace: The namespace for the pods
+
+    Returns:
+        YAML manifest as string
+    """
+    # Determine image pull policy based on registry
+    image_pull_policy = "Never" if image_registry == "localhost" else "IfNotPresent"
+
+    return f"""---
+# Forbidden namespace for Admission Control demo
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: untrusted-namespace
+  labels:
+    demo: admission-control
+    policy: forbidden
+---
+# Espion1 pod - OpenSUSE for running curl and network tests
+apiVersion: v1
+kind: Pod
+metadata:
+  name: espion1
+  namespace: {namespace}
+  labels:
+    app: demo-test
+    component: espion
+spec:
+  containers:
+  - name: opensuse
+    image: {image_registry}/demo-production1:latest
+    imagePullPolicy: {image_pull_policy}
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "50m"
+      limits:
+        memory: "128Mi"
+        cpu: "200m"
+---
+# Cible1 pod - Nginx for receiving HTTP requests
+apiVersion: v1
+kind: Pod
+metadata:
+  name: cible1
+  namespace: {namespace}
+  labels:
+    app: demo-test
+    component: cible
+spec:
+  containers:
+  - name: nginx
+    image: {image_registry}/demo-web1:latest
+    imagePullPolicy: {image_pull_policy}
+    ports:
+    - containerPort: 80
+      name: http
+    - containerPort: 22
+      name: ssh
+    resources:
+      requests:
+        memory: "32Mi"
+        cpu: "25m"
+      limits:
+        memory: "64Mi"
+        cpu: "100m"
+---
+# Service for espion1 pod (for internal cluster access)
+apiVersion: v1
+kind: Service
+metadata:
+  name: espion1
+  namespace: {namespace}
+  labels:
+    app: demo-test
+    component: espion
+spec:
+  selector:
+    app: demo-test
+    component: espion
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: http
+  type: ClusterIP
+---
+# Service for cible1 pod (for internal cluster access)
+apiVersion: v1
+kind: Service
+metadata:
+  name: cible1
+  namespace: {namespace}
+  labels:
+    app: demo-test
+    component: cible
+spec:
+  selector:
+    app: demo-test
+    component: cible
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: http
+  type: ClusterIP
+"""
+
+
 async def prepare_platform(
     kubectl: Kubectl,
     nv_username: str = None,
     nv_password: str = None,
+    image_registry: str = None,
 ) -> AsyncGenerator[str, None]:
     """
     Prepare the demo platform by creating namespace and deploying test pods.
@@ -62,6 +177,7 @@ async def prepare_platform(
         kubectl: Kubectl instance
         nv_username: Optional NeuVector username (uses env/default if not provided)
         nv_password: Optional NeuVector password (uses env/default if not provided)
+        image_registry: Optional image registry (uses DEMO_IMAGE_REGISTRY env/default if not provided)
 
     Yields:
         Status messages during preparation
@@ -69,7 +185,9 @@ async def prepare_platform(
     # Use provided credentials or fall back to env/defaults
     username = nv_username or NV_USERNAME
     password = nv_password or NV_PASSWORD
+    registry = image_registry or DEMO_IMAGE_REGISTRY
     yield "[PREPARE] Starting platform preparation..."
+    yield f"[INFO] Using image registry: {registry}"
     yield ""
 
     # Step 1: Create namespace
@@ -92,22 +210,13 @@ async def prepare_platform(
 
     yield ""
 
-    # Step 2: Apply demo pods manifest
+    # Step 2: Apply demo pods manifest (generated with registry)
     yield "[STEP 2/4] Deploying test pods..."
-    manifest_path = str(MANIFESTS_DIR / "demo-pods.yaml")
+    manifest_content = generate_demo_pods_manifest(registry, NAMESPACE)
     try:
-        stdout, stderr, rc = await kubectl.run(
-            "apply", "-f", manifest_path,
-            namespace=NAMESPACE,
-            check=False,
-        )
-        if rc == 0:
-            for line in stdout.strip().split("\n"):
-                if line:
-                    yield f"[OK] {line}"
-        else:
-            yield f"[ERROR] {stderr.strip()}"
-            return
+        async for line in kubectl.apply_from_stdin(manifest_content, namespace=None):
+            yield line
+        yield "[OK] Demo pods deployed"
     except Exception as e:
         yield f"[ERROR] Failed to deploy pods: {e}"
         return

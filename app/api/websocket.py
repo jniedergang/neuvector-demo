@@ -47,7 +47,8 @@ async def websocket_endpoint(websocket: WebSocket):
                     params = data.get("params", {})
                     nv_username = params.get("nv_username")
                     nv_password = params.get("nv_password")
-                    async for line in prepare_platform(kubectl, nv_username, nv_password):
+                    image_registry = params.get("image_registry")
+                    async for line in prepare_platform(kubectl, nv_username, nv_password, image_registry):
                         await manager.send_output(client_id, line)
 
                 elif action == "reset":

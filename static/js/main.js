@@ -35,11 +35,13 @@ class SettingsManager {
         this.LOGO_KEY = 'neuvector_logo';
         this.TITLE_KEY = 'neuvector_title';
         this.API_URL_KEY = 'neuvector_api_url';
+        this.REGISTRY_KEY = 'neuvector_registry';
         this.modal = document.getElementById('settings-modal');
         this.usernameInput = document.getElementById('settings-username');
         this.passwordInput = document.getElementById('settings-password');
         this.titleInput = document.getElementById('settings-title');
         this.apiUrlInput = document.getElementById('settings-api-url');
+        this.registryInput = document.getElementById('settings-registry');
         this.statusDiv = document.getElementById('settings-status');
         this.apiStatusBox = document.getElementById('api-status-box');
         this.apiStatusValue = document.getElementById('api-status-value');
@@ -76,6 +78,7 @@ class SettingsManager {
         document.getElementById('btn-debug-credentials')?.addEventListener('click', () => this.debugCredentials());
         document.getElementById('btn-save-settings')?.addEventListener('click', () => this.saveSettings());
         document.getElementById('btn-reset-rules')?.addEventListener('click', () => this.resetDemoRules());
+        document.getElementById('btn-test-registry')?.addEventListener('click', () => this.testRegistry());
 
         // Tab navigation
         this.initSettingsTabs();
@@ -204,6 +207,11 @@ class SettingsManager {
             if (this.apiUrlInput) {
                 this.apiUrlInput.value = savedUrl || '';
             }
+            // Load registry separately
+            const savedRegistry = localStorage.getItem(this.REGISTRY_KEY);
+            if (this.registryInput) {
+                this.registryInput.value = savedRegistry || '';
+            }
         } catch (error) {
             console.error('Failed to load settings:', error);
         }
@@ -223,6 +231,13 @@ class SettingsManager {
                 localStorage.setItem(this.API_URL_KEY, apiUrl);
             } else {
                 localStorage.removeItem(this.API_URL_KEY);
+            }
+            // Save registry separately (can be empty to use default "localhost")
+            const registry = this.registryInput?.value?.trim() || '';
+            if (registry) {
+                localStorage.setItem(this.REGISTRY_KEY, registry);
+            } else {
+                localStorage.removeItem(this.REGISTRY_KEY);
             }
             this.saveTitle(); // Save title
             this.checkApiStatus(); // Refresh API status
@@ -303,15 +318,16 @@ class SettingsManager {
         try {
             const saved = localStorage.getItem(this.STORAGE_KEY);
             const apiUrl = localStorage.getItem(this.API_URL_KEY) || '';
+            const registry = localStorage.getItem(this.REGISTRY_KEY) || '';
             if (saved) {
                 const creds = JSON.parse(saved);
-                return { ...creds, api_url: apiUrl };
+                return { ...creds, api_url: apiUrl, image_registry: registry };
             }
-            return { username: 'admin', password: '', api_url: apiUrl };
+            return { username: 'admin', password: '', api_url: apiUrl, image_registry: registry };
         } catch (error) {
             console.error('Failed to get credentials:', error);
         }
-        return { username: 'admin', password: '', api_url: '' };
+        return { username: 'admin', password: '', api_url: '', image_registry: '' };
     }
 
     debugCredentials() {
@@ -372,6 +388,41 @@ class SettingsManager {
             }
         } catch (error) {
             this.showStatus(`Error: ${error.message}`, 'error');
+        }
+    }
+
+    async testRegistry() {
+        const registry = this.registryInput?.value?.trim() || 'localhost';
+        const registryStatus = document.getElementById('registry-status');
+
+        if (registryStatus) {
+            registryStatus.textContent = 'Testing registry...';
+            registryStatus.className = 'settings-status testing';
+        }
+
+        try {
+            const response = await fetch('/api/registry/test', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ registry }),
+            });
+
+            const result = await response.json();
+
+            if (registryStatus) {
+                if (result.success) {
+                    registryStatus.textContent = result.message;
+                    registryStatus.className = 'settings-status success';
+                } else {
+                    registryStatus.textContent = `Failed: ${result.message}`;
+                    registryStatus.className = 'settings-status error';
+                }
+            }
+        } catch (error) {
+            if (registryStatus) {
+                registryStatus.textContent = `Error: ${error.message}`;
+                registryStatus.className = 'settings-status error';
+            }
         }
     }
 
@@ -1672,12 +1723,15 @@ class DemoApp {
         this.appendOutput(`Starting ${action}...`, 'info');
         this.appendOutput('');
 
-        // For prepare action, pass NeuVector credentials
+        // For prepare action, pass NeuVector credentials and image registry
         const params = {};
         if (action === 'prepare') {
             const credentials = settingsManager.getCredentials();
             params.nv_username = credentials.username;
             params.nv_password = credentials.password;
+            if (credentials.image_registry) {
+                params.image_registry = credentials.image_registry;
+            }
         }
 
         wsManager.executeAction(action, params);
@@ -4439,6 +4493,12 @@ class DemoApp {
                 }
             }
         });
+
+        // Add global settings (image registry)
+        const credentials = settingsManager.getCredentials();
+        if (credentials.image_registry) {
+            params.image_registry = credentials.image_registry;
+        }
 
         this.clearConsole();
         this.appendOutput(`Running demo: ${this.currentDemo.name}`, 'info');
