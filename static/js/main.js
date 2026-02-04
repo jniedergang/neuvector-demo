@@ -1116,8 +1116,9 @@ class DemoApp {
         this.consoleHeader = document.getElementById('console-header');
         this.consoleBody = document.getElementById('console-body');
 
-        // Initialize console dragging
+        // Initialize console dragging and resizing
         this.initConsoleDrag();
+        this.initConsoleResize();
         this.statusDot = document.getElementById('status-dot');
         this.statusText = document.getElementById('status-text');
         this.demoForm = document.getElementById('demo-form');
@@ -1261,6 +1262,95 @@ class DemoApp {
 
         document.addEventListener('mouseup', () => {
             isDragging = false;
+        });
+    }
+
+    /**
+     * Initialize console resizing from all edges
+     */
+    initConsoleResize() {
+        if (!this.consoleModal) return;
+
+        const handles = this.consoleModal.querySelectorAll('.console-resize-handle');
+        if (!handles.length) return;
+
+        let isResizing = false;
+        let currentHandle = null;
+        let startX, startY, startWidth, startHeight, startLeft, startTop;
+
+        const minWidth = 400;
+        const minHeight = 250;
+
+        handles.forEach(handle => {
+            handle.addEventListener('mousedown', (e) => {
+                isResizing = true;
+                currentHandle = handle.dataset.resize;
+
+                const rect = this.consoleModal.getBoundingClientRect();
+                startX = e.clientX;
+                startY = e.clientY;
+                startWidth = rect.width;
+                startHeight = rect.height;
+                startLeft = rect.left;
+                startTop = rect.top;
+
+                // Remove centering transform
+                this.consoleModal.style.transform = 'none';
+                this.consoleModal.style.left = startLeft + 'px';
+                this.consoleModal.style.top = startTop + 'px';
+                this.consoleModal.style.width = startWidth + 'px';
+                this.consoleModal.style.height = startHeight + 'px';
+
+                e.preventDefault();
+                e.stopPropagation();
+            });
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing || !currentHandle) return;
+
+            const deltaX = e.clientX - startX;
+            const deltaY = e.clientY - startY;
+
+            let newWidth = startWidth;
+            let newHeight = startHeight;
+            let newLeft = startLeft;
+            let newTop = startTop;
+
+            // Handle horizontal resizing
+            if (currentHandle.includes('right')) {
+                newWidth = Math.max(minWidth, startWidth + deltaX);
+            }
+            if (currentHandle.includes('left')) {
+                const potentialWidth = startWidth - deltaX;
+                if (potentialWidth >= minWidth) {
+                    newWidth = potentialWidth;
+                    newLeft = startLeft + deltaX;
+                }
+            }
+
+            // Handle vertical resizing
+            if (currentHandle.includes('bottom')) {
+                newHeight = Math.max(minHeight, startHeight + deltaY);
+            }
+            if (currentHandle.includes('top')) {
+                const potentialHeight = startHeight - deltaY;
+                if (potentialHeight >= minHeight) {
+                    newHeight = potentialHeight;
+                    newTop = startTop + deltaY;
+                }
+            }
+
+            // Apply new dimensions
+            this.consoleModal.style.width = newWidth + 'px';
+            this.consoleModal.style.height = newHeight + 'px';
+            this.consoleModal.style.left = newLeft + 'px';
+            this.consoleModal.style.top = newTop + 'px';
+        });
+
+        document.addEventListener('mouseup', () => {
+            isResizing = false;
+            currentHandle = null;
         });
     }
 

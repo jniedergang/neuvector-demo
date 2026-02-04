@@ -315,7 +315,7 @@ Cette demo teste le blocage de creation de ressources par NeuVector Admission Co
 
 1. **Prerequis** :
    - Admission Control doit etre active dans NeuVector
-   - Une regle d'admission doit exister pour bloquer le namespace `forbidden-namespace1`
+   - Une regle d'admission doit exister pour bloquer le namespace `secured-namespace`
 
 2. **Interface** :
    - Selecteur de namespace (allowed ou forbidden)
