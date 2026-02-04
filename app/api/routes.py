@@ -7,12 +7,17 @@ from pydantic import BaseModel
 from typing import Any, Optional
 
 from app.demos import DemoRegistry
-from app.config import NAMESPACE, NEUVECTOR_NAMESPACE, NEUVECTOR_API_URL
+from app.config import NAMESPACE, NEUVECTOR_NAMESPACE, NEUVECTOR_API_URL, APP_VERSION, GIT_COMMIT, GIT_BRANCH
 from app.core.neuvector_api import NeuVectorAPI, NeuVectorAPIError
 from app.core.kubectl import Kubectl
 
 
 router = APIRouter(prefix="/api", tags=["api"])
+
+
+def get_effective_api_url(api_url: Optional[str]) -> str:
+    """Get effective API URL - use custom if provided, otherwise default."""
+    return api_url.strip() if api_url else NEUVECTOR_API_URL
 
 
 class DemoInfo(BaseModel):
@@ -77,6 +82,23 @@ async def health_check():
     return {"status": "healthy"}
 
 
+class VersionResponse(BaseModel):
+    """Response model for version info."""
+    version: str
+    git_commit: Optional[str] = None
+    git_branch: Optional[str] = None
+
+
+@router.get("/version", response_model=VersionResponse)
+async def get_version():
+    """Get application version info."""
+    return VersionResponse(
+        version=APP_VERSION,
+        git_commit=GIT_COMMIT,
+        git_branch=GIT_BRANCH,
+    )
+
+
 class ClusterInfoResponse(BaseModel):
     """Response model for cluster info."""
     context: str
@@ -93,10 +115,22 @@ async def get_cluster_info():
     return ClusterInfoResponse(**info)
 
 
+class NeuVectorDefaultUrlResponse(BaseModel):
+    """Response model for default NeuVector API URL."""
+    api_url: str
+
+
+@router.get("/neuvector/default-url", response_model=NeuVectorDefaultUrlResponse)
+async def get_default_neuvector_url():
+    """Get the default NeuVector API URL configured on the server."""
+    return NeuVectorDefaultUrlResponse(api_url=NEUVECTOR_API_URL)
+
+
 class NeuVectorTestRequest(BaseModel):
     """Request model for testing NeuVector connection."""
     username: str
     password: str
+    api_url: Optional[str] = None  # Custom API URL (uses default if not provided)
 
 
 class NeuVectorTestResponse(BaseModel):
@@ -111,6 +145,7 @@ class GroupStatusRequest(BaseModel):
     username: str
     password: str
     group_name: str
+    api_url: Optional[str] = None
 
 
 class GroupStatusResponse(BaseModel):
@@ -127,7 +162,7 @@ class GroupStatusResponse(BaseModel):
 async def get_group_status(request: GroupStatusRequest):
     """Get NeuVector group policy status."""
     api = NeuVectorAPI(
-        base_url=NEUVECTOR_API_URL,
+        base_url=get_effective_api_url(request.api_url),
         username=request.username,
         password=request.password,
     )
@@ -166,6 +201,7 @@ class ProcessProfileRequest(BaseModel):
     username: str
     password: str
     group_name: str
+    api_url: Optional[str] = None
 
 
 class ProcessRule(BaseModel):
@@ -191,6 +227,7 @@ class PodInfoRequest(BaseModel):
     username: str
     password: str
     group_name: str
+    api_url: Optional[str] = None
 
 
 class PodInfoResponse(BaseModel):
@@ -218,7 +255,7 @@ async def get_pod_info(request: PodInfoRequest):
     Reduces HTTP requests from ~6 to ~4 per pod.
     """
     api = NeuVectorAPI(
-        base_url=NEUVECTOR_API_URL,
+        base_url=get_effective_api_url(request.api_url),
         username=request.username,
         password=request.password,
     )
@@ -279,7 +316,7 @@ async def get_pod_info(request: PodInfoRequest):
 async def get_process_profile(request: ProcessProfileRequest):
     """Get NeuVector process profile rules for a group."""
     api = NeuVectorAPI(
-        base_url=NEUVECTOR_API_URL,
+        base_url=get_effective_api_url(request.api_url),
         username=request.username,
         password=request.password,
     )
@@ -380,6 +417,7 @@ class UpdateGroupRequest(BaseModel):
     username: str
     password: str
     service_name: str  # e.g., "opensuse.neuvector-demo"
+    api_url: Optional[str] = None
     policy_mode: Optional[str] = None
     profile_mode: Optional[str] = None
     baseline_profile: Optional[str] = None
@@ -395,7 +433,7 @@ class UpdateGroupResponse(BaseModel):
 async def update_group_settings(request: UpdateGroupRequest):
     """Update NeuVector group settings (policy mode, profile mode, baseline)."""
     api = NeuVectorAPI(
-        base_url=NEUVECTOR_API_URL,
+        base_url=get_effective_api_url(request.api_url),
         username=request.username,
         password=request.password,
     )
@@ -449,6 +487,7 @@ class ResetDemoRulesRequest(BaseModel):
     """Request model for resetting demo groups to Discover mode."""
     username: str
     password: str
+    api_url: Optional[str] = None
 
 
 class ResetDemoRulesResponse(BaseModel):
@@ -464,7 +503,7 @@ class ResetDemoRulesResponse(BaseModel):
 async def reset_demo_rules(request: ResetDemoRulesRequest):
     """Reset NeuVector rules for demo groups (espion1, cible1) to Discover mode and delete learned process/network rules."""
     api = NeuVectorAPI(
-        base_url=NEUVECTOR_API_URL,
+        base_url=get_effective_api_url(request.api_url),
         username=request.username,
         password=request.password,
     )
@@ -612,8 +651,10 @@ async def reset_demo_rules(request: ResetDemoRulesRequest):
 @router.post("/neuvector/test", response_model=NeuVectorTestResponse)
 async def test_neuvector_connection(request: NeuVectorTestRequest):
     """Test NeuVector API connection with provided credentials."""
+    effective_url = get_effective_api_url(request.api_url)
+
     api = NeuVectorAPI(
-        base_url=NEUVECTOR_API_URL,
+        base_url=effective_url,
         username=request.username,
         password=request.password,
     )
@@ -625,14 +666,14 @@ async def test_neuvector_connection(request: NeuVectorTestRequest):
         return NeuVectorTestResponse(
             success=True,
             message="Connection successful",
-            api_url=NEUVECTOR_API_URL,
+            api_url=effective_url,
         )
     except NeuVectorAPIError as e:
         await api.close()
         return NeuVectorTestResponse(
             success=False,
             message=str(e),
-            api_url=NEUVECTOR_API_URL,
+            api_url=effective_url,
         )
     except Exception as e:
         await api.close()

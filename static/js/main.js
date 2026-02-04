@@ -34,11 +34,12 @@ class SettingsManager {
         this.STORAGE_KEY = 'neuvector_settings';
         this.LOGO_KEY = 'neuvector_logo';
         this.TITLE_KEY = 'neuvector_title';
+        this.API_URL_KEY = 'neuvector_api_url';
         this.modal = document.getElementById('settings-modal');
         this.usernameInput = document.getElementById('settings-username');
         this.passwordInput = document.getElementById('settings-password');
         this.titleInput = document.getElementById('settings-title');
-        this.apiUrlDisplay = document.getElementById('settings-api-url');
+        this.apiUrlInput = document.getElementById('settings-api-url');
         this.statusDiv = document.getElementById('settings-status');
         this.apiStatusBox = document.getElementById('api-status-box');
         this.apiStatusValue = document.getElementById('api-status-value');
@@ -47,6 +48,7 @@ class SettingsManager {
         this.removeLogo = document.getElementById('btn-remove-logo');
         this.headerLogo = document.getElementById('header-logo');
         this.headerTitle = document.getElementById('header-title');
+        this.defaultApiUrl = '';  // Will be fetched from server
     }
 
     init() {
@@ -57,8 +59,9 @@ class SettingsManager {
         this.loadLogo();
         this.loadTitle();
 
-        // Fetch API URL
+        // Fetch API URL and version
         this.fetchApiUrl();
+        this.loadVersion();
 
         // Check API status on load if credentials exist
         this.checkApiStatus();
@@ -93,12 +96,49 @@ class SettingsManager {
 
     async fetchApiUrl() {
         try {
-            const response = await fetch('/api/config');
-            const config = await response.json();
-            // API URL is not exposed in config, will be shown after test
-            this.apiUrlDisplay.textContent = 'Test connection to see API URL';
+            // Fetch default API URL from server
+            const response = await fetch('/api/neuvector/default-url');
+            const data = await response.json();
+            this.defaultApiUrl = data.api_url || '';
+
+            // Load saved custom URL or use default
+            const savedUrl = localStorage.getItem(this.API_URL_KEY);
+            if (this.apiUrlInput) {
+                this.apiUrlInput.value = savedUrl || '';
+                this.apiUrlInput.placeholder = this.defaultApiUrl || 'https://neuvector-controller:10443';
+            }
         } catch (error) {
-            this.apiUrlDisplay.textContent = 'Unable to fetch';
+            console.error('Failed to fetch API URL:', error);
+        }
+    }
+
+    async loadVersion() {
+        try {
+            const response = await fetch('/api/version');
+            const data = await response.json();
+
+            const versionEl = document.getElementById('app-version');
+            const gitInfoEl = document.getElementById('git-info');
+            const gitInfoRow = document.getElementById('git-info-row');
+
+            if (versionEl) {
+                versionEl.textContent = data.version || 'Unknown';
+            }
+
+            if (data.git_commit && gitInfoEl && gitInfoRow) {
+                let gitText = data.git_commit;
+                if (data.git_branch) {
+                    gitText += ` (${data.git_branch})`;
+                }
+                gitInfoEl.textContent = gitText;
+                gitInfoRow.style.display = 'flex';
+            }
+        } catch (error) {
+            console.error('Failed to fetch version:', error);
+            const versionEl = document.getElementById('app-version');
+            if (versionEl) {
+                versionEl.textContent = 'Error';
+            }
         }
     }
 
@@ -137,6 +177,11 @@ class SettingsManager {
                 if (this.usernameInput) this.usernameInput.value = settings.username || 'admin';
                 if (this.passwordInput) this.passwordInput.value = settings.password || '';
             }
+            // Load API URL separately
+            const savedUrl = localStorage.getItem(this.API_URL_KEY);
+            if (this.apiUrlInput) {
+                this.apiUrlInput.value = savedUrl || '';
+            }
         } catch (error) {
             console.error('Failed to load settings:', error);
         }
@@ -150,6 +195,13 @@ class SettingsManager {
 
         try {
             localStorage.setItem(this.STORAGE_KEY, JSON.stringify(settings));
+            // Save API URL separately (can be empty to use default)
+            const apiUrl = this.apiUrlInput?.value?.trim() || '';
+            if (apiUrl) {
+                localStorage.setItem(this.API_URL_KEY, apiUrl);
+            } else {
+                localStorage.removeItem(this.API_URL_KEY);
+            }
             this.saveTitle(); // Save title
             this.checkApiStatus(); // Refresh API status
             this.closeModal();
@@ -228,13 +280,16 @@ class SettingsManager {
     getCredentials() {
         try {
             const saved = localStorage.getItem(this.STORAGE_KEY);
+            const apiUrl = localStorage.getItem(this.API_URL_KEY) || '';
             if (saved) {
-                return JSON.parse(saved);
+                const creds = JSON.parse(saved);
+                return { ...creds, api_url: apiUrl };
             }
+            return { username: 'admin', password: '', api_url: apiUrl };
         } catch (error) {
             console.error('Failed to get credentials:', error);
         }
-        return { username: 'admin', password: '' };
+        return { username: 'admin', password: '', api_url: '' };
     }
 
     debugCredentials() {
@@ -279,20 +334,19 @@ class SettingsManager {
         this.showStatus('Testing connection...', 'testing');
 
         try {
+            const api_url = this.apiUrlInput?.value?.trim() || '';
             const response = await fetch('/api/neuvector/test', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password }),
+                body: JSON.stringify({ username, password, api_url }),
             });
 
             const result = await response.json();
 
             if (result.success) {
                 this.showStatus('Connection successful!', 'success');
-                this.apiUrlDisplay.textContent = result.api_url;
             } else {
                 this.showStatus(`Connection failed: ${result.message}`, 'error');
-                this.apiUrlDisplay.textContent = result.api_url;
             }
         } catch (error) {
             this.showStatus(`Error: ${error.message}`, 'error');
@@ -302,6 +356,7 @@ class SettingsManager {
     async resetDemoRules() {
         const username = this.usernameInput?.value || 'admin';
         const password = this.passwordInput?.value || '';
+        const api_url = this.apiUrlInput?.value?.trim() || '';
         const resetStatus = document.getElementById('reset-rules-status');
 
         if (!password) {
@@ -321,7 +376,7 @@ class SettingsManager {
             const response = await fetch('/api/neuvector/reset-demo-rules', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password }),
+                body: JSON.stringify({ username, password, api_url }),
             });
 
             const result = await response.json();

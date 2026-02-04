@@ -9,14 +9,14 @@ from fastapi.responses import HTMLResponse
 from app.api.routes import router as api_router
 from app.api.websocket import router as ws_router
 from app.demos import DemoRegistry
-from app.config import BASE_DIR
+from app.config import BASE_DIR, APP_VERSION
 
 
 # Create FastAPI app
 app = FastAPI(
     title="NeuVector Demo Platform",
     description="Interactive web interface for NeuVector demonstrations",
-    version="1.0.0",
+    version=APP_VERSION,
 )
 
 # Mount static files

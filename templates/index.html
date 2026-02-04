@@ -224,8 +224,9 @@
                         <input type="password" class="form-control" id="settings-password" placeholder="Enter password">
                     </div>
                     <div class="form-group">
-                        <label>API URL</label>
-                        <div class="api-url-display" id="settings-api-url">Loading...</div>
+                        <label for="settings-api-url">API URL</label>
+                        <input type="text" class="form-control" id="settings-api-url" placeholder="https://neuvector-controller:10443">
+                        <div class="help-text">Leave empty to use default server URL</div>
                     </div>
                     <div class="settings-status" id="settings-status"></div>
                     <div class="settings-actions">
@@ -254,6 +255,21 @@
                                 </label>
                                 <button class="btn btn-outline" id="btn-remove-logo" style="display: none;">Remove</button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Version Section -->
+                <div class="settings-section">
+                    <h4 class="settings-section-title">About</h4>
+                    <div class="version-info" id="version-info">
+                        <div class="version-row">
+                            <span class="version-label">Version:</span>
+                            <span class="version-value" id="app-version">Loading...</span>
+                        </div>
+                        <div class="version-row" id="git-info-row" style="display: none;">
+                            <span class="version-label">Git:</span>
+                            <span class="version-value" id="git-info">-</span>
                         </div>
                     </div>
                 </div>
