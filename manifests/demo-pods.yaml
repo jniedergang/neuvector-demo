@@ -95,4 +95,8 @@ spec:
     targetPort: 80
     protocol: TCP
     name: http
+  - port: 22
+    targetPort: 22
+    protocol: TCP
+    name: ssh
   type: ClusterIP

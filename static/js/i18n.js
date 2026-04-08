@@ -189,14 +189,6 @@ const translations = {
         'network.egress': 'OUT',
         'network.both': 'BOTH',
 
-        // Global policy
-        'global.title': 'NeuVector Global Policy',
-        'global.netServiceMode': 'Net Service Mode',
-        'global.newServiceMode': 'New Service Mode',
-        'global.none': '(not set)',
-        'global.hintBasic': 'Default: effective mode between 2 groups = least restrictive (Basic mode)',
-        'global.hintOverride': 'Global override: all network connections enforced in {mode} mode',
-
         // Admission
         'admission.controlTest': 'Admission Control Test',
         'admission.targetNamespace': 'Target Namespace',
@@ -428,13 +420,6 @@ const translations = {
         'network.egress': 'OUT',
         'network.both': 'LES 2',
 
-        'global.title': 'Politique globale NeuVector',
-        'global.netServiceMode': 'Mode service réseau',
-        'global.newServiceMode': 'Mode nouveau service',
-        'global.none': '(non défini)',
-        'global.hintBasic': 'Par défaut : le mode effectif entre 2 groupes = le moins restrictif (mode Basic)',
-        'global.hintOverride': 'Override global : toutes les connexions réseau évaluées en mode {mode}',
-
         'admission.controlTest': 'Test de contrôle d\'admission',
         'admission.targetNamespace': 'Namespace cible',
         'admission.podName': 'Nom du pod',
@@ -659,13 +644,6 @@ const translations = {
         'network.egress': 'OUT',
         'network.both': 'BEIDE',
 
-        'global.title': 'NeuVector Globale Richtlinie',
-        'global.netServiceMode': 'Netzwerk-Service-Modus',
-        'global.newServiceMode': 'Neuer Service-Modus',
-        'global.none': '(nicht gesetzt)',
-        'global.hintBasic': 'Standard: effektiver Modus zwischen 2 Gruppen = am wenigsten restriktiv (Basic-Modus)',
-        'global.hintOverride': 'Globales Override: alle Netzwerkverbindungen werden im {mode}-Modus erzwungen',
-
         'admission.controlTest': 'Zugangs-Kontroll-Test',
         'admission.targetNamespace': 'Ziel-Namespace',
         'admission.podName': 'Pod-Name',
@@ -889,13 +867,6 @@ const translations = {
         'network.ingress': 'IN',
         'network.egress': 'OUT',
         'network.both': 'AMBOS',
-
-        'global.title': 'Política global de NeuVector',
-        'global.netServiceMode': 'Modo servicio de red',
-        'global.newServiceMode': 'Modo nuevo servicio',
-        'global.none': '(no definido)',
-        'global.hintBasic': 'Por defecto: modo efectivo entre 2 grupos = el menos restrictivo (modo Basic)',
-        'global.hintOverride': 'Override global: todas las conexiones de red se aplican en modo {mode}',
 
         'admission.controlTest': 'Prueba de control de admisión',
         'admission.targetNamespace': 'Namespace destino',

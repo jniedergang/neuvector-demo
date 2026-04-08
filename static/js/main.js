@@ -2655,8 +2655,6 @@ class DemoApp {
         this.vizContainer = document.getElementById('demo-visualization');
         this.vizState = 'pending';
 
-        // Insert global policy banner
-        this.insertGlobalPolicyBanner();
 
         // Set up target type switching in visualization
         this.setupVizTargetSwitch();
@@ -3867,8 +3865,6 @@ class DemoApp {
         this.vizContainer = document.getElementById('demo-visualization');
         this.vizState = 'pending';
 
-        // Insert global policy banner
-        this.insertGlobalPolicyBanner();
 
         // Set up source select listener
         const sourceSelect = document.getElementById('viz-source-select');
@@ -4128,8 +4124,6 @@ class DemoApp {
         this.vizContainer = document.getElementById('demo-visualization');
         this.vizState = 'pending';
 
-        // Insert global policy banner
-        this.insertGlobalPolicyBanner();
 
         // Set up namespace change listener
         const namespaceSelect = document.getElementById('viz-admission-namespace');
@@ -4393,141 +4387,6 @@ class DemoApp {
     /**
      * Remove visualization
      */
-    /**
-     * Insert the global policy banner at the top of the viz-wrapper
-     */
-    insertGlobalPolicyBanner() {
-        const vizWrapper = document.getElementById('viz-wrapper');
-        if (!vizWrapper) return;
-
-        const banner = document.createElement('div');
-        banner.className = 'viz-global-policy';
-        banner.id = 'viz-global-policy';
-        banner.innerHTML = `
-            <span class="viz-global-policy-title">${t('global.title')}</span>
-            <div class="viz-global-policy-group">
-                <span class="viz-global-policy-label">${t('global.netServiceMode')}:</span>
-                <select id="viz-net-service-mode" disabled>
-                    <option value="">${t('global.none')}</option>
-                    <option value="Discover">Discover</option>
-                    <option value="Monitor">Monitor</option>
-                    <option value="Protect">Protect</option>
-                </select>
-            </div>
-            <div class="viz-global-policy-group">
-                <span class="viz-global-policy-label">${t('global.newServiceMode')}:</span>
-                <select id="viz-new-service-mode" disabled>
-                    <option value="Discover">Discover</option>
-                    <option value="Monitor">Monitor</option>
-                    <option value="Protect">Protect</option>
-                </select>
-            </div>
-            <div class="viz-global-policy-hint" id="viz-global-hint">${t('global.hintBasic')}</div>
-        `;
-        vizWrapper.insertBefore(banner, vizWrapper.firstChild);
-
-        // Load current values
-        this.loadGlobalPolicyConfig();
-    }
-
-    /**
-     * Load global policy config from NeuVector
-     */
-    async loadGlobalPolicyConfig() {
-        const credentials = settingsManager.getCredentials();
-        if (!credentials.password) return;
-
-        const netSelect = document.getElementById('viz-net-service-mode');
-        const newSelect = document.getElementById('viz-new-service-mode');
-
-        try {
-            const response = await fetch('/api/neuvector/system-config', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    username: credentials.username,
-                    password: credentials.password,
-                }),
-            });
-
-            const result = await response.json();
-
-            if (result.success) {
-                if (netSelect) {
-                    netSelect.value = result.net_service_policy_mode || '';
-                    netSelect.disabled = false;
-                    netSelect.className = result.net_service_policy_mode ?
-                        'mode-' + result.net_service_policy_mode.toLowerCase() : '';
-                    netSelect.addEventListener('change', () => this.updateGlobalPolicySetting('net_service_policy_mode', netSelect));
-                }
-                if (newSelect) {
-                    newSelect.value = result.new_service_policy_mode || 'Discover';
-                    newSelect.disabled = false;
-                    newSelect.className = 'mode-' + (result.new_service_policy_mode || 'discover').toLowerCase();
-                    newSelect.addEventListener('change', () => this.updateGlobalPolicySetting('new_service_policy_mode', newSelect));
-                }
-                this.updateGlobalPolicyHint(result.net_service_policy_mode || '');
-            }
-        } catch (error) {
-            console.error('Failed to load global policy config:', error);
-        }
-    }
-
-    /**
-     * Update a global policy setting
-     */
-    async updateGlobalPolicySetting(field, selectElement) {
-        const credentials = settingsManager.getCredentials();
-        if (!credentials.password) return;
-
-        const value = selectElement.value;
-        selectElement.disabled = true;
-
-        try {
-            const response = await fetch('/api/neuvector/update-system-config', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    username: credentials.username,
-                    password: credentials.password,
-                    field: field,
-                    value: value,
-                }),
-            });
-
-            const result = await response.json();
-
-            if (result.success) {
-                selectElement.className = value ? 'mode-' + value.toLowerCase() : '';
-                if (field === 'net_service_policy_mode') {
-                    this.updateGlobalPolicyHint(value);
-                }
-            } else {
-                console.error('Failed to update global policy:', result.message);
-            }
-        } catch (error) {
-            console.error('Failed to update global policy:', error);
-        }
-
-        selectElement.disabled = false;
-    }
-
-    /**
-     * Update the global policy hint text
-     */
-    updateGlobalPolicyHint(netServiceMode) {
-        const hint = document.getElementById('viz-global-hint');
-        if (!hint) return;
-
-        if (netServiceMode && netServiceMode !== '') {
-            hint.textContent = t('global.hintOverride').replace('{mode}', netServiceMode);
-            hint.className = 'viz-global-policy-hint override';
-        } else {
-            hint.textContent = t('global.hintBasic');
-            hint.className = 'viz-global-policy-hint warning';
-        }
-    }
-
     removeVisualization() {
         // Clear live clock interval
         if (this.liveClockInterval) {
