@@ -3131,3 +3131,53 @@ select.form-control {
     border: 8px solid transparent;
     border-top-color: var(--primary-color);
 }
+
+/* Size slider inline row */
+.form-row-inline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+.form-row-inline label {
+    font-size: 0.8rem;
+    color: #666;
+    min-width: 30px;
+}
+
+.form-range {
+    flex: 1;
+    height: 4px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: #ddd;
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+}
+
+.form-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--primary-light);
+    cursor: pointer;
+}
+
+.form-range::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--primary-light);
+    cursor: pointer;
+    border: none;
+}
+
+.form-row-inline span {
+    font-size: 0.8rem;
+    color: #666;
+    min-width: 36px;
+    text-align: right;
+}

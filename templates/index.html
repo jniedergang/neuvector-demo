@@ -10,7 +10,7 @@
     <!-- Header -->
     <header class="header">
         <div class="header-left">
-            <button class="btn-sidebar-toggle" id="btn-sidebar-toggle" title="Open menu">
+            <button class="btn-sidebar-toggle" id="btn-sidebar-toggle" data-i18n-title="header.openMenu" title="Open menu">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="3" y1="12" x2="21" y2="12"></line>
                     <line x1="3" y1="6" x2="21" y2="6"></line>
@@ -26,21 +26,21 @@
             <!-- Status Boxes -->
             <div class="header-status-group">
                 <div class="header-status-box" id="cluster-status-box">
-                    <span class="header-status-label">K8s:</span>
+                    <span class="header-status-label" data-i18n="header.k8s">K8s:</span>
                     <span class="header-status-value" id="cluster-status-value">...</span>
                 </div>
                 <div class="header-status-box" id="api-status-box">
-                    <span class="header-status-label">NV API:</span>
+                    <span class="header-status-label" data-i18n="header.nvApi">NV API:</span>
                     <span class="header-status-value" id="api-status-value">...</span>
                 </div>
             </div>
-            <button class="btn btn-icon" id="btn-console" title="Toggle Console">
+            <button class="btn btn-icon" id="btn-console" data-i18n-title="header.toggleConsole" title="Toggle Console">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="4 17 10 11 4 5"></polyline>
                     <line x1="12" y1="19" x2="20" y2="19"></line>
                 </svg>
             </button>
-            <button class="btn btn-icon" id="btn-settings" title="Parameters">
+            <button class="btn btn-icon" id="btn-settings" data-i18n-title="header.parameters" title="Parameters">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="12" cy="12" r="3"></circle>
                     <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
@@ -48,7 +48,7 @@
             </button>
             <div class="status-indicator">
                 <span class="status-dot" id="status-dot"></span>
-                <span class="status" id="status-text">Connecting...</span>
+                <span class="status" id="status-text" data-i18n="header.connecting">Connecting...</span>
             </div>
         </div>
     </header>
@@ -61,8 +61,8 @@
         <!-- Sidebar -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <h2>Demos</h2>
-                <button class="btn-sidebar-close" id="btn-sidebar-close" title="Close menu">&times;</button>
+                <h2 data-i18n="sidebar.demos">Demos</h2>
+                <button class="btn-sidebar-close" id="btn-sidebar-close" data-i18n-title="header.closeMenu" title="Close menu">&times;</button>
             </div>
             <!-- Demo List -->
             {% for category, demo_list in categories.items() %}
@@ -90,7 +90,7 @@
                 <div class="card-header">
                     <div class="demo-title-display" id="demo-title-display">
                         <span class="demo-title-icon" id="demo-title-icon"></span>
-                        <span class="demo-title-text" id="demo-title-text">Select a demo from the menu</span>
+                        <span class="demo-title-text" id="demo-title-text" data-i18n="sidebar.selectDemo">Select a demo from the menu</span>
                     </div>
                 </div>
                 <div class="card-body">
@@ -99,7 +99,7 @@
                             <!-- Parameters will be rendered here -->
                         </div>
 
-                        <button type="button" class="btn btn-primary" id="run-demo-btn" style="display: none;">
+                        <button type="button" class="btn btn-primary" id="run-demo-btn" style="display: none;" data-i18n="btn.runDemo">
                             Run Demo
                         </button>
                     </form>
@@ -113,16 +113,16 @@
     <div class="modal-overlay" id="settings-modal">
         <div class="modal modal-large">
             <div class="modal-header">
-                <h3>Parameters</h3>
+                <h3 data-i18n="settings.title">Parameters</h3>
                 <button class="btn-close" id="btn-close-settings">&times;</button>
             </div>
 
             <!-- Tabs Navigation -->
             <div class="settings-tabs">
-                <button class="settings-tab active" data-tab="preparation">Preparation</button>
-                <button class="settings-tab" data-tab="credentials">Credentials</button>
-                <button class="settings-tab" data-tab="troubleshoot">Troubleshoot</button>
-                <button class="settings-tab" data-tab="cosmetics">Cosmetics</button>
+                <button class="settings-tab active" data-tab="preparation" data-i18n="settings.tab.preparation">Preparation</button>
+                <button class="settings-tab" data-tab="credentials" data-i18n="settings.tab.credentials">Credentials</button>
+                <button class="settings-tab" data-tab="troubleshoot" data-i18n="settings.tab.troubleshoot">Troubleshoot</button>
+                <button class="settings-tab" data-tab="cosmetics" data-i18n="settings.tab.cosmetics">Cosmetics</button>
             </div>
 
             <div class="modal-body">
@@ -130,15 +130,15 @@
                 <div class="settings-tab-content active" id="tab-preparation">
                     <!-- Platform Actions Section -->
                     <div class="settings-section">
-                        <h4 class="settings-section-title">Platform Actions</h4>
+                        <h4 class="settings-section-title" data-i18n="settings.platformActions">Platform Actions</h4>
                         <div class="lifecycle-actions">
-                            <button class="btn btn-success" id="btn-prepare" title="Deploy demo namespace and pods">
+                            <button class="btn btn-success" id="btn-prepare" data-i18n-title="settings.prepare.title" title="Deploy demo namespace and pods" data-i18n="btn.prepare">
                                 Prepare
                             </button>
-                            <button class="btn btn-outline" id="btn-status" title="Check platform status">
+                            <button class="btn btn-outline" id="btn-status" data-i18n-title="settings.status.title" title="Check platform status" data-i18n="btn.status">
                                 Status
                             </button>
-                            <button class="btn btn-danger" id="btn-reset" title="Remove all demo resources">
+                            <button class="btn btn-danger" id="btn-reset" data-i18n-title="settings.reset.title" title="Remove all demo resources" data-i18n="btn.reset">
                                 Reset
                             </button>
                         </div>
@@ -146,9 +146,9 @@
 
                     <!-- NeuVector Actions Section -->
                     <div class="settings-section">
-                        <h4 class="settings-section-title">NeuVector Actions</h4>
+                        <h4 class="settings-section-title" data-i18n="settings.neuVectorActions">NeuVector Actions</h4>
                         <div class="lifecycle-actions">
-                            <button class="btn btn-warning" id="btn-reset-rules" title="Reset espion1 and cible1 to Discover mode, zero-drift baseline, and clear process rules">
+                            <button class="btn btn-warning" id="btn-reset-rules" data-i18n-title="settings.resetRules.title" title="Reset espion1 and cible1 to Discover mode, zero-drift baseline, and clear process rules" data-i18n="btn.resetRules">
                                 Reset Rules
                             </button>
                         </div>
@@ -157,19 +157,23 @@
 
                     <!-- Image Registry Section -->
                     <div class="settings-section">
-                        <h4 class="settings-section-title">Image Registry</h4>
+                        <h4 class="settings-section-title" data-i18n="settings.imageRegistry">Image Registry</h4>
                         <div class="form-group">
-                            <label for="settings-registry">Registry URL</label>
-                            <input type="text" class="form-control" id="settings-registry" placeholder="localhost" title="Registry used for test pods (Admission Control demo)">
-                            <div class="help-text">
-                                Used for Admission Control test pods.<br>
-                                <strong>localhost</strong> - Local images (imagePullPolicy: Never)<br>
+                            <label for="settings-registry" data-i18n="settings.registryUrl">Registry URL</label>
+                            <input type="text" class="form-control" id="settings-registry" placeholder="localhost" data-i18n-title="settings.registryHelp1" title="Registry used for test pods (Admission Control demo)">
+                            <div class="help-text" data-i18n-html="settings.registryHelp1">
+                                Used for Admission Control test pods.
+                            </div>
+                            <div class="help-text" data-i18n-html="settings.registryHelp2">
+                                <strong>localhost</strong> - Local images (imagePullPolicy: Never)
+                            </div>
+                            <div class="help-text" data-i18n-html="settings.registryHelp3">
                                 <strong>registry.example.com/project</strong> - Private registry (imagePullPolicy: IfNotPresent)
                             </div>
                         </div>
                         <div class="settings-status" id="registry-status"></div>
                         <div class="settings-actions">
-                            <button class="btn btn-outline" id="btn-test-registry">Test Registry</button>
+                            <button class="btn btn-outline" id="btn-test-registry" data-i18n="btn.testRegistry">Test Registry</button>
                         </div>
                     </div>
                 </div>
@@ -177,24 +181,24 @@
                 <!-- Tab: Credentials -->
                 <div class="settings-tab-content" id="tab-credentials">
                     <div class="settings-section">
-                        <h4 class="settings-section-title">NeuVector API</h4>
+                        <h4 class="settings-section-title" data-i18n="settings.neuVectorApi">NeuVector API</h4>
                         <div class="form-group">
-                            <label for="settings-username">Username</label>
+                            <label for="settings-username" data-i18n="settings.username">Username</label>
                             <input type="text" class="form-control" id="settings-username" placeholder="admin" value="admin">
                         </div>
                         <div class="form-group">
-                            <label for="settings-password">Password</label>
-                            <input type="password" class="form-control" id="settings-password" placeholder="Enter password">
+                            <label for="settings-password" data-i18n="settings.password">Password</label>
+                            <input type="password" class="form-control" id="settings-password" data-i18n-placeholder="settings.enterPassword" placeholder="Enter password">
                         </div>
                         <div class="form-group">
-                            <label for="settings-api-url">API URL</label>
+                            <label for="settings-api-url" data-i18n="settings.apiUrl">API URL</label>
                             <input type="text" class="form-control" id="settings-api-url" placeholder="https://neuvector-controller:10443">
-                            <div class="help-text">Leave empty to use default server URL</div>
+                            <div class="help-text" data-i18n="settings.apiUrlHelp">Leave empty to use default server URL</div>
                         </div>
                         <div class="settings-status" id="settings-status"></div>
                         <div class="settings-actions">
-                            <button class="btn btn-outline" id="btn-test-connection">Test Connection</button>
-                            <button class="btn btn-outline" id="btn-debug-credentials">Debug Credentials</button>
+                            <button class="btn btn-outline" id="btn-test-connection" data-i18n="btn.testConnection">Test Connection</button>
+                            <button class="btn btn-outline" id="btn-debug-credentials" data-i18n="btn.debugCredentials">Debug Credentials</button>
                         </div>
                     </div>
                 </div>
@@ -202,9 +206,9 @@
                 <!-- Tab: Troubleshoot -->
                 <div class="settings-tab-content" id="tab-troubleshoot">
                     <div class="settings-section">
-                        <h4 class="settings-section-title">Diagnostics</h4>
+                        <h4 class="settings-section-title" data-i18n="settings.diagnostics">Diagnostics</h4>
                         <div class="diagnostics-header">
-                            <button class="btn btn-outline" id="btn-run-diagnostics" title="Run all diagnostic checks">
+                            <button class="btn btn-outline" id="btn-run-diagnostics" data-i18n-title="btn.runAllChecks" title="Run all diagnostic checks" data-i18n="btn.runAllChecks">
                                 Run All Checks
                             </button>
                             <span class="diagnostics-summary" id="diagnostics-summary"></span>
@@ -213,55 +217,55 @@
                         <div class="diagnostics-content" id="diagnostics-content">
                             <!-- Infrastructure -->
                             <div class="diagnostics-category">
-                                <div class="diagnostics-category-header">Infrastructure</div>
+                                <div class="diagnostics-category-header" data-i18n="diag.infrastructure">Infrastructure</div>
                                 <div class="diagnostic-item" id="diag-kubernetes">
                                     <span class="diagnostic-icon pending">-</span>
-                                    <span class="diagnostic-name">Kubernetes Cluster</span>
+                                    <span class="diagnostic-name" data-i18n="diag.kubernetes">Kubernetes Cluster</span>
                                     <span class="diagnostic-message"></span>
                                 </div>
                                 <div class="diagnostic-item" id="diag-neuvector-api">
                                     <span class="diagnostic-icon pending">-</span>
-                                    <span class="diagnostic-name">NeuVector API</span>
+                                    <span class="diagnostic-name" data-i18n="diag.neuVectorApi">NeuVector API</span>
                                     <span class="diagnostic-message"></span>
                                 </div>
                             </div>
 
                             <!-- Environment -->
                             <div class="diagnostics-category">
-                                <div class="diagnostics-category-header">Environment</div>
+                                <div class="diagnostics-category-header" data-i18n="diag.environment">Environment</div>
                                 <div class="diagnostic-item" id="diag-demo-namespace">
                                     <span class="diagnostic-icon pending">-</span>
-                                    <span class="diagnostic-name">Demo Namespace</span>
+                                    <span class="diagnostic-name" data-i18n="diag.demoNamespace">Demo Namespace</span>
                                     <span class="diagnostic-message"></span>
                                 </div>
                                 <div class="diagnostic-item" id="diag-demo-pods">
                                     <span class="diagnostic-icon pending">-</span>
-                                    <span class="diagnostic-name">Demo Pods</span>
+                                    <span class="diagnostic-name" data-i18n="diag.demoPods">Demo Pods</span>
                                     <span class="diagnostic-message"></span>
                                 </div>
                             </div>
 
                             <!-- NeuVector Configuration -->
                             <div class="diagnostics-category">
-                                <div class="diagnostics-category-header">NeuVector Configuration</div>
+                                <div class="diagnostics-category-header" data-i18n="diag.nvConfig">NeuVector Configuration</div>
                                 <div class="diagnostic-item" id="diag-neuvector-groups">
                                     <span class="diagnostic-icon pending">-</span>
-                                    <span class="diagnostic-name">NeuVector Groups</span>
+                                    <span class="diagnostic-name" data-i18n="diag.nvGroups">NeuVector Groups</span>
                                     <span class="diagnostic-message"></span>
                                 </div>
                                 <div class="diagnostic-item" id="diag-process-profiles">
                                     <span class="diagnostic-icon pending">-</span>
-                                    <span class="diagnostic-name">Process Profiles</span>
+                                    <span class="diagnostic-name" data-i18n="diag.processProfiles">Process Profiles</span>
                                     <span class="diagnostic-message"></span>
                                 </div>
                                 <div class="diagnostic-item" id="diag-dlp-sensors">
                                     <span class="diagnostic-icon pending">-</span>
-                                    <span class="diagnostic-name">DLP Sensors</span>
+                                    <span class="diagnostic-name" data-i18n="diag.dlpSensors">DLP Sensors</span>
                                     <span class="diagnostic-message"></span>
                                 </div>
                                 <div class="diagnostic-item" id="diag-admission-control">
                                     <span class="diagnostic-icon pending">-</span>
-                                    <span class="diagnostic-name">Admission Control</span>
+                                    <span class="diagnostic-name" data-i18n="diag.admissionControl">Admission Control</span>
                                     <span class="diagnostic-message"></span>
                                 </div>
                             </div>
@@ -271,40 +275,63 @@
 
                 <!-- Tab: Cosmetics -->
                 <div class="settings-tab-content" id="tab-cosmetics">
+                    <!-- Language Section -->
+                    <div class="settings-section">
+                        <h4 class="settings-section-title" data-i18n="settings.language">Language</h4>
+                        <div class="form-group">
+                            <select class="form-control" id="settings-language">
+                                <option value="en">English</option>
+                                <option value="fr">Français</option>
+                                <option value="de">Deutsch</option>
+                                <option value="es">Español</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <!-- Appearance Section -->
                     <div class="settings-section">
-                        <h4 class="settings-section-title">Appearance</h4>
+                        <h4 class="settings-section-title" data-i18n="settings.appearance">Appearance</h4>
                         <div class="form-group">
-                            <label for="settings-title">Page Title</label>
+                            <label for="settings-title" data-i18n="settings.pageTitle">Page Title</label>
                             <input type="text" class="form-control" id="settings-title" placeholder="NeuVector Demo Platform" value="NeuVector Demo Platform">
+                            <div class="form-row-inline">
+                                <label for="settings-title-size">Size</label>
+                                <input type="range" id="settings-title-size" min="14" max="32" value="20" class="form-range">
+                                <span id="settings-title-size-value">20px</span>
+                            </div>
                         </div>
                         <div class="form-group">
-                            <label>Logo</label>
+                            <label data-i18n="settings.logo">Logo</label>
                             <div class="logo-upload-container">
                                 <div class="logo-preview" id="logo-preview">
-                                    <span class="logo-placeholder">No logo</span>
+                                    <span class="logo-placeholder" data-i18n="settings.noLogo">No logo</span>
                                 </div>
                                 <div class="logo-actions">
                                     <label class="btn btn-outline btn-file">
-                                        Upload Image
+                                        <span data-i18n="btn.uploadImage">Upload Image</span>
                                         <input type="file" id="logo-file-input" accept="image/*" style="display: none;">
                                     </label>
-                                    <button class="btn btn-outline" id="btn-remove-logo" style="display: none;">Remove</button>
+                                    <button class="btn btn-outline" id="btn-remove-logo" style="display: none;" data-i18n="btn.remove">Remove</button>
                                 </div>
+                            </div>
+                            <div class="form-row-inline">
+                                <label for="settings-logo-size">Size</label>
+                                <input type="range" id="settings-logo-size" min="20" max="80" value="36" class="form-range">
+                                <span id="settings-logo-size-value">36px</span>
                             </div>
                         </div>
                     </div>
 
                     <!-- Version Section -->
                     <div class="settings-section">
-                        <h4 class="settings-section-title">About</h4>
+                        <h4 class="settings-section-title" data-i18n="settings.about">About</h4>
                         <div class="version-info" id="version-info">
                             <div class="version-row">
-                                <span class="version-label">Version:</span>
-                                <span class="version-value" id="app-version">Loading...</span>
+                                <span class="version-label" data-i18n="settings.version">Version:</span>
+                                <span class="version-value" id="app-version" data-i18n="settings.loading">Loading...</span>
                             </div>
                             <div class="version-row" id="git-info-row" style="display: none;">
-                                <span class="version-label">Git:</span>
+                                <span class="version-label" data-i18n="settings.git">Git:</span>
                                 <span class="version-value" id="git-info">-</span>
                             </div>
                         </div>
@@ -312,7 +339,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-primary" id="btn-save-settings">Save & Close</button>
+                <button class="btn btn-primary" id="btn-save-settings" data-i18n="btn.saveClose">Save & Close</button>
             </div>
         </div>
     </div>
@@ -330,19 +357,20 @@
         <div class="console-resize-handle bottom-right" data-resize="bottom-right"></div>
 
         <div class="console-header" id="console-header">
-            <span class="title">Output Console</span>
+            <span class="title" data-i18n="console.title">Output Console</span>
             <div class="console-actions">
-                <button class="btn btn-outline btn-sm" id="btn-clear">Clear</button>
+                <button class="btn btn-outline btn-sm" id="btn-clear" data-i18n="btn.clear">Clear</button>
                 <button class="btn-close" id="btn-close-console">&times;</button>
             </div>
         </div>
         <div class="console-body" id="console-body">
-            <div class="console-line info">[INFO] Welcome to NeuVector Demo Platform</div>
-            <div class="console-line info">[INFO] Select a demo from the menu to begin</div>
+            <div class="console-line info" data-i18n="console.welcome">[INFO] Welcome to NeuVector Demo Platform</div>
+            <div class="console-line info" data-i18n="console.selectDemo">[INFO] Select a demo from the menu to begin</div>
         </div>
     </div>
 
     <!-- Scripts -->
+    <script src="/static/js/i18n.js"></script>
     <script src="/static/js/websocket.js"></script>
     <script src="/static/js/main.js"></script>
 </body>
