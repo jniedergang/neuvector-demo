@@ -39,9 +39,9 @@ async def index(request: Request):
     categories = DemoRegistry.get_by_category()
 
     return templates.TemplateResponse(
-        "index.html",
-        {
-            "request": request,
+        request=request,
+        name="index.html",
+        context={
             "demos": demos,
             "categories": categories,
         },
