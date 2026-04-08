@@ -291,7 +291,10 @@ async def get_pod_info(request: PodInfoRequest):
         # Handle potential exceptions from parallel calls
         group = group_result if not isinstance(group_result, Exception) else {}
         profile = profile_result if not isinstance(profile_result, Exception) else {}
-        raw_rules = rules_result if not isinstance(rules_result, Exception) else []
+        if isinstance(rules_result, Exception):
+            raw_rules = []
+        else:
+            raw_rules = rules_result
 
         # Build process list
         process_list = [
