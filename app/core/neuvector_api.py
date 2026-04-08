@@ -784,6 +784,73 @@ class NeuVectorAPI:
         # Update the group with new sensors list
         return await self.update_group_dlp_sensors(group_name, new_sensors)
 
+    # ========== Network Rules API ==========
+
+    async def get_network_rules(self, group_name: str) -> list[dict[str, Any]]:
+        """
+        Fetch network rules involving a specific group.
+
+        Args:
+            group_name: Name of the group (e.g., "nv.espion1.neuvector-demo")
+
+        Returns:
+            List of network rule objects filtered for this group
+
+        Raises:
+            NeuVectorAPIError: If request fails
+        """
+        client = await self._get_client()
+
+        try:
+            response = await client.get(
+                "/v1/policy/rule",
+                headers=self._auth_headers(),
+            )
+
+            if response.status_code != 200:
+                raise NeuVectorAPIError(f"Failed to get network rules: {response.status_code}")
+
+            data = response.json()
+            rules = data.get("rules", [])
+
+            # Filter rules where from or to matches the group name
+            return [
+                r for r in rules
+                if group_name in r.get("from", "") or group_name in r.get("to", "")
+            ]
+
+        except httpx.RequestError as e:
+            raise NeuVectorAPIError(f"Connection error: {str(e)}")
+
+    async def delete_network_rule(self, rule_id: int) -> bool:
+        """
+        Delete a specific network rule.
+
+        Args:
+            rule_id: ID of the rule to delete
+
+        Returns:
+            True if deletion was successful
+
+        Raises:
+            NeuVectorAPIError: If request fails
+        """
+        client = await self._get_client()
+
+        try:
+            response = await client.delete(
+                f"/v1/policy/rule/{rule_id}",
+                headers=self._auth_headers(),
+            )
+
+            if response.status_code not in (200, 204):
+                raise NeuVectorAPIError(f"Failed to delete network rule: {response.status_code}")
+
+            return True
+
+        except httpx.RequestError as e:
+            raise NeuVectorAPIError(f"Connection error: {str(e)}")
+
     # ========== Admission Control API ==========
 
     async def get_admission_state(self) -> dict[str, Any]:

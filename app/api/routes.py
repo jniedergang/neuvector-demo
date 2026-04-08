@@ -230,6 +230,18 @@ class PodInfoRequest(BaseModel):
     api_url: Optional[str] = None
 
 
+class NetworkRule(BaseModel):
+    """Network rule model."""
+    id: int
+    from_group: str
+    to_group: str
+    ports: str = ""
+    applications: list[str] = []
+    action: str = "allow"
+    cfg_type: str = "learned"
+    direction: str = ""  # "ingress", "egress", or "both"
+
+
 class PodInfoResponse(BaseModel):
     """Response model for combined pod info."""
     success: bool
@@ -240,6 +252,8 @@ class PodInfoResponse(BaseModel):
     baseline_profile: Optional[str] = None
     # Process profile
     process_list: list[ProcessRule] = []
+    # Network rules
+    network_rules: list[NetworkRule] = []
     message: str = ""
 
 
@@ -263,10 +277,11 @@ async def get_pod_info(request: PodInfoRequest):
     try:
         await api.authenticate()
 
-        # Fetch group status and process profile in parallel
-        group_result, profile_result = await asyncio.gather(
+        # Fetch group status, process profile, and network rules in parallel
+        group_result, profile_result, rules_result = await asyncio.gather(
             api.get_group(request.group_name),
             api.get_process_profile(request.group_name),
+            api.get_network_rules(request.group_name),
             return_exceptions=True,
         )
 
@@ -276,6 +291,7 @@ async def get_pod_info(request: PodInfoRequest):
         # Handle potential exceptions from parallel calls
         group = group_result if not isinstance(group_result, Exception) else {}
         profile = profile_result if not isinstance(profile_result, Exception) else {}
+        raw_rules = rules_result if not isinstance(rules_result, Exception) else []
 
         # Build process list
         process_list = [
@@ -288,6 +304,30 @@ async def get_pod_info(request: PodInfoRequest):
             for p in profile.get("process_list", [])
         ]
 
+        # Build network rules list with direction
+        network_rules = []
+        for r in raw_rules:
+            from_g = r.get("from", "")
+            to_g = r.get("to", "")
+            is_from = request.group_name in from_g
+            is_to = request.group_name in to_g
+            if is_from and is_to:
+                direction = "both"
+            elif is_from:
+                direction = "egress"
+            else:
+                direction = "ingress"
+            network_rules.append(NetworkRule(
+                id=r.get("id", 0),
+                from_group=from_g,
+                to_group=to_g,
+                ports=r.get("ports", "any"),
+                applications=r.get("applications", []),
+                action=r.get("action", "allow"),
+                cfg_type=r.get("cfg_type", "learned"),
+                direction=direction,
+            ))
+
         return PodInfoResponse(
             success=True,
             group_name=request.group_name,
@@ -295,6 +335,7 @@ async def get_pod_info(request: PodInfoRequest):
             profile_mode=group.get("profile_mode"),
             baseline_profile=group.get("baseline_profile"),
             process_list=process_list,
+            network_rules=network_rules,
         )
     except NeuVectorAPIError as e:
         await api.close()
@@ -407,6 +448,53 @@ async def delete_process_rule(request: DeleteProcessRuleRequest):
     except Exception as e:
         await api.close()
         return DeleteProcessRuleResponse(
+            success=False,
+            message=f"Unexpected error: {str(e)}",
+        )
+
+
+class DeleteNetworkRuleRequest(BaseModel):
+    """Request model for deleting a network rule."""
+    username: str
+    password: str
+    rule_id: int
+    api_url: Optional[str] = None
+
+
+class DeleteNetworkRuleResponse(BaseModel):
+    """Response model for network rule deletion."""
+    success: bool
+    message: str = ""
+
+
+@router.post("/neuvector/delete-network-rule", response_model=DeleteNetworkRuleResponse)
+async def delete_network_rule(request: DeleteNetworkRuleRequest):
+    """Delete a network rule from NeuVector policy."""
+    api = NeuVectorAPI(
+        base_url=get_effective_api_url(request.api_url),
+        username=request.username,
+        password=request.password,
+    )
+
+    try:
+        await api.authenticate()
+        await api.delete_network_rule(request.rule_id)
+        await api.logout()
+        await api.close()
+
+        return DeleteNetworkRuleResponse(
+            success=True,
+            message=f"Network rule {request.rule_id} deleted",
+        )
+    except NeuVectorAPIError as e:
+        await api.close()
+        return DeleteNetworkRuleResponse(
+            success=False,
+            message=str(e),
+        )
+    except Exception as e:
+        await api.close()
+        return DeleteNetworkRuleResponse(
             success=False,
             message=f"Unexpected error: {str(e)}",
         )

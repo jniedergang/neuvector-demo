@@ -2470,6 +2470,13 @@ class DemoApp {
                     </div>
                     <div class="viz-process-items loading" id="viz-tgt-process-items">${t('process.loading')}</div>
                 </div>
+                <div class="viz-network-rules" id="viz-target-network-rules">
+                    <div class="viz-network-header" id="viz-tgt-network-header">
+                        <span>${t('viz.networkRules')}</span>
+                        <span id="viz-tgt-network-count"></span>
+                    </div>
+                    <div class="viz-network-items loading" id="viz-tgt-network-items">${t('events.loading')}</div>
+                </div>
             `;
         } else if (isDLPDemo) {
             targetContent = `
@@ -2519,6 +2526,13 @@ class DemoApp {
                         <span id="viz-tgt-process-count"></span>
                     </div>
                     <div class="viz-process-items loading" id="viz-tgt-process-items">${t('process.loading')}</div>
+                </div>
+                <div class="viz-network-rules" id="viz-target-network-rules">
+                    <div class="viz-network-header" id="viz-tgt-network-header">
+                        <span>${t('viz.networkRules')}</span>
+                        <span id="viz-tgt-network-count"></span>
+                    </div>
+                    <div class="viz-network-items loading" id="viz-tgt-network-items">${t('events.loading')}</div>
                 </div>
             `;
         }
@@ -2579,6 +2593,13 @@ class DemoApp {
                                     <span id="viz-src-process-count"></span>
                                 </div>
                                 <div class="viz-process-items loading" id="viz-src-process-items">${t('process.loading')}</div>
+                            </div>
+                            <div class="viz-network-rules" id="viz-source-network-rules">
+                                <div class="viz-network-header" id="viz-src-network-header">
+                                    <span>${t('viz.networkRules')}</span>
+                                    <span id="viz-src-network-count"></span>
+                                </div>
+                                <div class="viz-network-items loading" id="viz-src-network-items">${t('events.loading')}</div>
                             </div>
                         </div>
                         <div class="viz-arrow pending" id="viz-arrow">
@@ -3157,6 +3178,10 @@ class DemoApp {
         const serviceName = podName.replace(/-test$/, '');
         const groupName = `nv.${serviceName}.neuvector-demo`;
 
+        // Get DOM elements for network rules
+        const netItems = document.getElementById(`${prefix}-network-items`);
+        const netCount = document.getElementById(`${prefix}-network-count`);
+
         // Show loading states
         if (policyMode) policyMode.disabled = true;
         if (profileMode) profileMode.disabled = true;
@@ -3166,6 +3191,11 @@ class DemoApp {
             list.className = 'viz-process-items loading';
         }
         if (count) count.textContent = '';
+        if (netItems) {
+            netItems.innerHTML = t('events.loading');
+            netItems.className = 'viz-network-items loading';
+        }
+        if (netCount) netCount.textContent = '';
 
         // Fetch combined pod info
         const result = await settingsManager.getPodInfo(groupName);
@@ -3237,11 +3267,150 @@ class DemoApp {
                     list.className = 'viz-process-items empty';
                 }
             }
+
+            // Update network rules list
+            this.updateVizNetworkRules(target, podName, groupName, result.network_rules || [], result.policy_mode || 'Discover');
         } else {
             // Error or not configured
             if (list) {
                 list.innerHTML = t('process.notConfigured');
                 list.className = 'viz-process-items empty';
+            }
+            // Clear network rules
+            this.updateVizNetworkRules(target, podName, '', [], 'Discover');
+        }
+    }
+
+    /**
+     * Helper to shorten a NeuVector group name for display
+     */
+    shortenGroupName(groupName) {
+        return groupName
+            .replace(/^nv\./, '')
+            .replace(/\.neuvector-demo$/, '');
+    }
+
+    /**
+     * Update network rules list in the visualization
+     */
+    updateVizNetworkRules(target, podName, groupName, rules, policyMode) {
+        const prefix = target === 'source' ? 'viz-src' : 'viz-tgt';
+        const itemsEl = document.getElementById(`${prefix}-network-items`);
+        const countEl = document.getElementById(`${prefix}-network-count`);
+        const headerEl = document.getElementById(`${prefix}-network-header`);
+        const rulesContainer = document.getElementById(`viz-${target}-network-rules`);
+
+        if (!itemsEl) return;
+
+        const hasLearnedRules = rules.some(r => r.cfg_type === 'learned');
+        const isProtect = policyMode === 'Protect';
+
+        // Toggle warning state on header and box
+        if (headerEl) {
+            headerEl.classList.toggle('has-learned-protect', hasLearnedRules && isProtect);
+        }
+        if (rulesContainer) {
+            rulesContainer.classList.toggle('has-learned-protect', hasLearnedRules && isProtect);
+        }
+
+        // Toggle warning on the pod box itself
+        const boxEl = document.getElementById(`viz-${target}`);
+        if (boxEl) {
+            boxEl.classList.toggle('learned-warning', hasLearnedRules && isProtect);
+        }
+
+        if (rules.length === 0) {
+            itemsEl.innerHTML = t('network.noRules');
+            itemsEl.className = 'viz-network-items empty';
+            if (countEl) countEl.textContent = '';
+            return;
+        }
+
+        if (countEl) countEl.textContent = `(${rules.length})`;
+
+        // Build warning banner if needed
+        let warningHtml = '';
+        if (hasLearnedRules && isProtect) {
+            warningHtml = `<div class="viz-network-warning">⚠ ${t('viz.networkRulesWarning')}</div>`;
+        }
+
+        const rulesHtml = rules.map(rule => {
+            const dirClass = rule.direction || 'egress';
+            const dirLabel = t(`network.${dirClass}`);
+            const peer = rule.direction === 'egress' ? this.shortenGroupName(rule.to_group) :
+                         rule.direction === 'ingress' ? this.shortenGroupName(rule.from_group) :
+                         this.shortenGroupName(rule.from_group) + ' ↔ ' + this.shortenGroupName(rule.to_group);
+            const ports = rule.ports || 'any';
+            return `
+                <div class="viz-network-item" data-rule-id="${rule.id}">
+                    <span class="viz-network-direction ${dirClass}">${dirLabel}</span>
+                    <span class="viz-network-peer" title="${this.escapeHtml(rule.from_group)} → ${this.escapeHtml(rule.to_group)}">${this.escapeHtml(peer)}</span>
+                    <span class="viz-network-ports">${this.escapeHtml(ports)}</span>
+                    <span class="viz-network-type ${rule.cfg_type}">${rule.cfg_type}</span>
+                    <button type="button" class="viz-btn-delete" title="${t('network.deleteRule')}">&times;</button>
+                </div>
+            `;
+        }).join('');
+
+        itemsEl.innerHTML = warningHtml + rulesHtml;
+        itemsEl.className = 'viz-network-items';
+
+        // Add delete listeners
+        itemsEl.querySelectorAll('.viz-btn-delete').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const item = e.target.closest('.viz-network-item');
+                if (item) {
+                    this.deleteVizNetworkRule(
+                        parseInt(item.dataset.ruleId),
+                        item,
+                        target,
+                        podName
+                    );
+                }
+            });
+        });
+    }
+
+    /**
+     * Delete a network rule and refresh the list
+     */
+    async deleteVizNetworkRule(ruleId, itemElement, target, podName) {
+        const deleteBtn = itemElement.querySelector('.viz-btn-delete');
+        if (deleteBtn) {
+            deleteBtn.disabled = true;
+            deleteBtn.textContent = '...';
+        }
+        itemElement.classList.add('deleting');
+
+        const credentials = settingsManager.getCredentials();
+        try {
+            const response = await fetch('/api/neuvector/delete-network-rule', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: credentials.username,
+                    password: credentials.password,
+                    rule_id: ruleId,
+                }),
+            });
+            const result = await response.json();
+            if (result.success) {
+                // Refresh the pod info to get updated rules
+                this.updateVizPodInfo(target, podName);
+            } else {
+                itemElement.classList.remove('deleting');
+                if (deleteBtn) {
+                    deleteBtn.disabled = false;
+                    deleteBtn.textContent = '×';
+                }
+            }
+        } catch (error) {
+            console.error('Failed to delete network rule:', error);
+            itemElement.classList.remove('deleting');
+            if (deleteBtn) {
+                deleteBtn.disabled = false;
+                deleteBtn.textContent = '×';
             }
         }
     }
@@ -3598,6 +3767,13 @@ class DemoApp {
                                 </div>
                                 <div class="viz-process-items loading" id="viz-src-process-items">${t('process.loading')}</div>
                             </div>
+                            <div class="viz-network-rules" id="viz-source-network-rules">
+                                <div class="viz-network-header" id="viz-src-network-header">
+                                    <span>${t('viz.networkRules')}</span>
+                                    <span id="viz-src-network-count"></span>
+                                </div>
+                                <div class="viz-network-items loading" id="viz-src-network-items">${t('events.loading')}</div>
+                            </div>
                         </div>
                         <div class="viz-arrow attack-arrow pending" id="viz-arrow">
                             <div class="viz-arrow-line"></div>
@@ -3633,6 +3809,13 @@ class DemoApp {
                                     <span id="viz-tgt-process-count"></span>
                                 </div>
                                 <div class="viz-process-items loading" id="viz-tgt-process-items">${t('process.loading')}</div>
+                            </div>
+                            <div class="viz-network-rules" id="viz-target-network-rules" style="display: none;">
+                                <div class="viz-network-header" id="viz-tgt-network-header">
+                                    <span>${t('viz.networkRules')}</span>
+                                    <span id="viz-tgt-network-count"></span>
+                                </div>
+                                <div class="viz-network-items loading" id="viz-tgt-network-items">${t('events.loading')}</div>
                             </div>
                         </div>
                     </div>
@@ -3695,6 +3878,7 @@ class DemoApp {
         const targetIcon = document.getElementById('viz-target-icon');
         const targetSettings = document.getElementById('viz-target-settings');
         const targetProcesses = document.getElementById('viz-target-processes');
+        const targetNetworkRules = document.getElementById('viz-target-network-rules');
         const targetModeIcons = document.getElementById('viz-tgt-mode-icons');
 
         if (targetSelect) {
@@ -3704,6 +3888,7 @@ class DemoApp {
                 if (targetIcon) targetIcon.textContent = isInternalPod ? '🐳' : '🌐';
                 if (targetSettings) targetSettings.style.display = isInternalPod ? 'block' : 'none';
                 if (targetProcesses) targetProcesses.style.display = isInternalPod ? 'block' : 'none';
+                if (targetNetworkRules) targetNetworkRules.style.display = isInternalPod ? 'block' : 'none';
                 if (targetModeIcons) targetModeIcons.style.display = isInternalPod ? '' : 'none';
                 if (isInternalPod) {
                     this.updateVizPodInfo('target', 'cible1');
@@ -3714,6 +3899,7 @@ class DemoApp {
             if (targetIcon) targetIcon.textContent = isInternalPod ? '🐳' : '🌐';
             if (targetSettings) targetSettings.style.display = isInternalPod ? 'block' : 'none';
             if (targetProcesses) targetProcesses.style.display = isInternalPod ? 'block' : 'none';
+            if (targetNetworkRules) targetNetworkRules.style.display = isInternalPod ? 'block' : 'none';
             if (targetModeIcons) targetModeIcons.style.display = isInternalPod ? '' : 'none';
         }
 

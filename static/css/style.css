@@ -1715,6 +1715,158 @@ select.form-control {
     background-color: #f5f5f5;
 }
 
+/* Network Rules in viz box */
+.viz-network-rules {
+    width: 100%;
+    margin-top: 0.25rem;
+    background: #ffffff;
+    border-radius: 6px;
+    border: 2px solid var(--accent-color);
+    font-size: 0.65rem;
+    max-height: 90px;
+    overflow-y: auto;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.viz-network-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.3rem 0.5rem;
+    background: var(--accent-color);
+    font-weight: 600;
+    color: #ffffff;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.viz-network-header.has-learned-protect {
+    background: var(--warning-color);
+}
+
+.viz-network-warning {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.25rem 0.5rem;
+    background: #fff3e0;
+    color: #e65100;
+    font-size: 0.6rem;
+    font-weight: 500;
+    border-bottom: 1px solid #ffe0b2;
+}
+
+.viz-network-items {
+    padding: 0.3rem;
+    background: #ffffff;
+}
+
+.viz-network-items.loading,
+.viz-network-items.empty {
+    padding: 0.6rem;
+    text-align: center;
+    color: #555555;
+    font-style: italic;
+    font-weight: 500;
+}
+
+.viz-network-item {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.35rem;
+    border-radius: 4px;
+    background: #f0f4f8;
+    margin-bottom: 0.2rem;
+    border: 1px solid #d0d8e0;
+}
+
+.viz-network-item:last-child {
+    margin-bottom: 0;
+}
+
+.viz-network-direction {
+    font-size: 0.55rem;
+    font-weight: 700;
+    min-width: 24px;
+    text-align: center;
+    padding: 0.1rem 0.2rem;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+.viz-network-direction.egress {
+    background: #fff3e0;
+    color: var(--warning-color);
+}
+
+.viz-network-direction.ingress {
+    background: #e3f2fd;
+    color: var(--primary-light);
+}
+
+.viz-network-direction.both {
+    background: #f3e5f5;
+    color: #7b1fa2;
+}
+
+.viz-network-peer {
+    font-family: monospace;
+    font-size: 0.6rem;
+    font-weight: 600;
+    color: #1a1a2e;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.viz-network-ports {
+    font-family: monospace;
+    font-size: 0.55rem;
+    color: #666;
+    flex-shrink: 0;
+}
+
+.viz-network-type {
+    font-size: 0.5rem;
+    padding: 0.05rem 0.25rem;
+    border-radius: 3px;
+    margin-left: auto;
+    flex-shrink: 0;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.viz-network-type.learned {
+    background-color: #009f4d;
+    color: #ffffff;
+}
+
+.viz-network-type.user_created {
+    background-color: #0077c8;
+    color: #ffffff;
+}
+
+.viz-network-item:hover .viz-btn-delete {
+    opacity: 1;
+}
+
+.viz-network-item.deleting {
+    opacity: 0.5;
+    background-color: #f5f5f5;
+}
+
+/* Warning border on pod box when learned rules exist in Protect mode */
+.viz-box.learned-warning {
+    border-color: var(--warning-color) !important;
+    box-shadow: 0 0 8px rgba(254, 80, 0, 0.3);
+}
+
+.viz-network-rules.has-learned-protect {
+    border-color: var(--warning-color);
+}
+
 /* DLP Settings in viz box */
 .viz-dlp-settings {
     width: 100%;

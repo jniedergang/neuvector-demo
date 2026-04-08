@@ -180,6 +180,15 @@ const translations = {
         'process.deleteRule': 'Delete this rule',
         'process.delete': 'Delete',
 
+        // Network rules
+        'viz.networkRules': 'Network Rules',
+        'viz.networkRulesWarning': 'Learned rules allow traffic in Protect mode',
+        'network.noRules': 'No network rules',
+        'network.deleteRule': 'Delete this network rule',
+        'network.ingress': 'IN',
+        'network.egress': 'OUT',
+        'network.both': 'BOTH',
+
         // Admission
         'admission.controlTest': 'Admission Control Test',
         'admission.targetNamespace': 'Target Namespace',
@@ -403,6 +412,14 @@ const translations = {
         'process.deleteRule': 'Supprimer cette règle',
         'process.delete': 'Supprimer',
 
+        'viz.networkRules': 'Règles réseau',
+        'viz.networkRulesWarning': 'Les règles apprises autorisent le trafic en mode Protect',
+        'network.noRules': 'Aucune règle réseau',
+        'network.deleteRule': 'Supprimer cette règle réseau',
+        'network.ingress': 'IN',
+        'network.egress': 'OUT',
+        'network.both': 'LES 2',
+
         'admission.controlTest': 'Test de contrôle d\'admission',
         'admission.targetNamespace': 'Namespace cible',
         'admission.podName': 'Nom du pod',
@@ -619,6 +636,14 @@ const translations = {
         'process.deleteRule': 'Diese Regel löschen',
         'process.delete': 'Löschen',
 
+        'viz.networkRules': 'Netzwerkregeln',
+        'viz.networkRulesWarning': 'Gelernte Regeln erlauben Verkehr im Protect-Modus',
+        'network.noRules': 'Keine Netzwerkregeln',
+        'network.deleteRule': 'Diese Netzwerkregel löschen',
+        'network.ingress': 'IN',
+        'network.egress': 'OUT',
+        'network.both': 'BEIDE',
+
         'admission.controlTest': 'Zugangs-Kontroll-Test',
         'admission.targetNamespace': 'Ziel-Namespace',
         'admission.podName': 'Pod-Name',
@@ -834,6 +859,14 @@ const translations = {
         'process.notConfigured': 'No configurado',
         'process.deleteRule': 'Eliminar esta regla',
         'process.delete': 'Eliminar',
+
+        'viz.networkRules': 'Reglas de red',
+        'viz.networkRulesWarning': 'Las reglas aprendidas permiten tráfico en modo Protect',
+        'network.noRules': 'Sin reglas de red',
+        'network.deleteRule': 'Eliminar esta regla de red',
+        'network.ingress': 'IN',
+        'network.egress': 'OUT',
+        'network.both': 'AMBOS',
 
         'admission.controlTest': 'Prueba de control de admisión',
         'admission.targetNamespace': 'Namespace destino',
