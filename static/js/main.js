@@ -1006,7 +1006,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let tooltipEl = null;
 
     const showTooltip = (e) => {
-        const target = e.target.closest('.has-tooltip');
+        const el = e.target instanceof Element ? e.target : e.target.parentElement;
+        if (!el) return;
+        const target = el.closest('.has-tooltip');
         if (!target) return;
 
         const text = target.getAttribute('title');
@@ -1052,7 +1054,8 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const hideTooltip = (e) => {
-        const target = e.target.closest('.has-tooltip');
+        const el = e.target instanceof Element ? e.target : e.target.parentElement;
+        const target = el?.closest('.has-tooltip');
         if (target && target.dataset.tooltipText) {
             // Restore title attribute
             target.setAttribute('title', target.dataset.tooltipText);
