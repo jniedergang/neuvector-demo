@@ -784,6 +784,72 @@ class NeuVectorAPI:
         # Update the group with new sensors list
         return await self.update_group_dlp_sensors(group_name, new_sensors)
 
+    # ========== System Configuration API ==========
+
+    async def get_system_config(self) -> dict[str, Any]:
+        """
+        Get NeuVector system configuration.
+
+        Returns:
+            System configuration object with policy mode settings
+
+        Raises:
+            NeuVectorAPIError: If request fails
+        """
+        client = await self._get_client()
+
+        try:
+            response = await client.get(
+                "/v1/system/config",
+                headers=self._auth_headers(),
+            )
+
+            if response.status_code != 200:
+                raise NeuVectorAPIError(f"Failed to get system config: {response.status_code}")
+
+            data = response.json()
+            return data.get("config", {})
+
+        except httpx.RequestError as e:
+            raise NeuVectorAPIError(f"Connection error: {str(e)}")
+
+    async def update_system_config(self, **kwargs) -> bool:
+        """
+        Update NeuVector system configuration.
+
+        Args:
+            **kwargs: Configuration fields to update (e.g., net_service_policy_mode="Protect")
+
+        Returns:
+            True if update was successful
+
+        Raises:
+            NeuVectorAPIError: If request fails
+        """
+        client = await self._get_client()
+
+        try:
+            response = await client.patch(
+                "/v1/system/config",
+                json={"config": kwargs},
+                headers=self._auth_headers(),
+            )
+
+            if response.status_code not in (200, 204):
+                error_msg = f"Failed to update system config: {response.status_code}"
+                try:
+                    error_data = response.json()
+                    if "error" in error_data:
+                        error_msg = f"Failed to update system config: {error_data['error']}"
+                except Exception:
+                    pass
+                raise NeuVectorAPIError(error_msg)
+
+            return True
+
+        except httpx.RequestError as e:
+            raise NeuVectorAPIError(f"Connection error: {str(e)}")
+
     # ========== Network Rules API ==========
 
     async def get_network_rules(self, group_name: str) -> list[dict[str, Any]]:

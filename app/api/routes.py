@@ -739,6 +739,98 @@ async def reset_demo_rules(request: ResetDemoRulesRequest):
         return ResetDemoRulesResponse(success=False, message=str(e))
 
 
+class SystemConfigRequest(BaseModel):
+    """Request model for system config operations."""
+    username: str
+    password: str
+    api_url: Optional[str] = None
+
+
+class SystemConfigResponse(BaseModel):
+    """Response model for system config."""
+    success: bool
+    new_service_policy_mode: str = ""
+    net_service_policy_mode: str = ""
+    message: str = ""
+
+
+@router.post("/neuvector/system-config", response_model=SystemConfigResponse)
+async def get_system_config(request: SystemConfigRequest):
+    """Get NeuVector system configuration (global policy modes)."""
+    api = NeuVectorAPI(
+        base_url=get_effective_api_url(request.api_url),
+        username=request.username,
+        password=request.password,
+    )
+
+    try:
+        await api.authenticate()
+        config = await api.get_system_config()
+        await api.logout()
+        await api.close()
+
+        return SystemConfigResponse(
+            success=True,
+            new_service_policy_mode=config.get("new_service_policy_mode", ""),
+            net_service_policy_mode=config.get("net_service_policy_mode", ""),
+        )
+    except NeuVectorAPIError as e:
+        await api.close()
+        return SystemConfigResponse(success=False, message=str(e))
+    except Exception as e:
+        await api.close()
+        return SystemConfigResponse(success=False, message=f"Unexpected error: {str(e)}")
+
+
+class UpdateSystemConfigRequest(BaseModel):
+    """Request model for updating system config."""
+    username: str
+    password: str
+    field: str
+    value: str
+    api_url: Optional[str] = None
+
+
+class UpdateSystemConfigResponse(BaseModel):
+    """Response model for system config update."""
+    success: bool
+    message: str = ""
+
+
+@router.post("/neuvector/update-system-config", response_model=UpdateSystemConfigResponse)
+async def update_system_config(request: UpdateSystemConfigRequest):
+    """Update a NeuVector system configuration field."""
+    allowed_fields = {"new_service_policy_mode", "net_service_policy_mode"}
+    if request.field not in allowed_fields:
+        return UpdateSystemConfigResponse(
+            success=False,
+            message=f"Field '{request.field}' not allowed. Allowed: {allowed_fields}",
+        )
+
+    api = NeuVectorAPI(
+        base_url=get_effective_api_url(request.api_url),
+        username=request.username,
+        password=request.password,
+    )
+
+    try:
+        await api.authenticate()
+        await api.update_system_config(**{request.field: request.value})
+        await api.logout()
+        await api.close()
+
+        return UpdateSystemConfigResponse(
+            success=True,
+            message=f"{request.field} updated to '{request.value}'",
+        )
+    except NeuVectorAPIError as e:
+        await api.close()
+        return UpdateSystemConfigResponse(success=False, message=str(e))
+    except Exception as e:
+        await api.close()
+        return UpdateSystemConfigResponse(success=False, message=f"Unexpected error: {str(e)}")
+
+
 @router.post("/neuvector/test", response_model=NeuVectorTestResponse)
 async def test_neuvector_connection(request: NeuVectorTestRequest):
     """Test NeuVector API connection with provided credentials."""
