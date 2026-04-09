@@ -4778,6 +4778,17 @@ class DemoApp {
         }
 
         this.clearConsole();
+
+        // Warn if any network policy is in Discover mode for attack/connectivity demos
+        if (this.currentDemoType === 'attack' || this.currentDemoType === 'connectivity') {
+            const srcMode = document.getElementById('viz-src-policy-mode')?.value;
+            const tgtMode = document.getElementById('viz-tgt-policy-mode')?.value;
+            if (srcMode === 'Discover' || tgtMode === 'Discover') {
+                this.appendOutput(t('warning.discoverMode'), 'warning');
+                this.appendOutput('');
+            }
+        }
+
         this.appendOutput(`Running demo: ${this.currentDemo.name}`, 'info');
         this.appendOutput('');
 

@@ -189,6 +189,9 @@ const translations = {
         'network.egress': 'OUT',
         'network.both': 'BOTH',
 
+        // Warnings
+        'warning.discoverMode': '[WARNING] Network Policy is in Discover mode — attacks will NOT be blocked. Switch to Protect to demonstrate blocking.',
+
         // Admission
         'admission.controlTest': 'Admission Control Test',
         'admission.targetNamespace': 'Target Namespace',
@@ -420,6 +423,8 @@ const translations = {
         'network.egress': 'OUT',
         'network.both': 'LES 2',
 
+        'warning.discoverMode': '[WARNING] La politique réseau est en mode Discover — les attaques ne seront PAS bloquées. Passez en mode Protect pour démontrer le blocage.',
+
         'admission.controlTest': 'Test de contrôle d\'admission',
         'admission.targetNamespace': 'Namespace cible',
         'admission.podName': 'Nom du pod',
@@ -644,6 +649,8 @@ const translations = {
         'network.egress': 'OUT',
         'network.both': 'BEIDE',
 
+        'warning.discoverMode': '[WARNING] Netzwerkrichtlinie ist im Discover-Modus — Angriffe werden NICHT blockiert. Wechseln Sie zu Protect, um die Blockierung zu demonstrieren.',
+
         'admission.controlTest': 'Zugangs-Kontroll-Test',
         'admission.targetNamespace': 'Ziel-Namespace',
         'admission.podName': 'Pod-Name',
@@ -867,6 +874,8 @@ const translations = {
         'network.ingress': 'IN',
         'network.egress': 'OUT',
         'network.both': 'AMBOS',
+
+        'warning.discoverMode': '[WARNING] La política de red está en modo Discover — los ataques NO serán bloqueados. Cambie a Protect para demostrar el bloqueo.',
 
         'admission.controlTest': 'Prueba de control de admisión',
         'admission.targetNamespace': 'Namespace destino',
