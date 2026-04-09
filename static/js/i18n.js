@@ -190,7 +190,7 @@ const translations = {
         'network.both': 'BOTH',
 
         // Warnings
-        'warning.discoverMode': '[WARNING] Network Policy is in Discover mode — attacks will NOT be blocked. Switch to Protect to demonstrate blocking.',
+        'warning.discoverMode': 'Network Policy is in Discover mode — attacks will NOT be blocked.\n\nSwitch to Protect to demonstrate blocking.\n\nContinue anyway?',
         'status.syncing': 'Synchronizing with NeuVector...',
 
         // Admission
@@ -424,7 +424,7 @@ const translations = {
         'network.egress': 'OUT',
         'network.both': 'LES 2',
 
-        'warning.discoverMode': '[WARNING] La politique réseau est en mode Discover — les attaques ne seront PAS bloquées. Passez en mode Protect pour démontrer le blocage.',
+        'warning.discoverMode': 'La politique réseau est en mode Discover — les attaques ne seront PAS bloquées.\n\nPassez en mode Protect pour démontrer le blocage.\n\nContinuer quand même ?',
         'status.syncing': 'Synchronisation avec NeuVector...',
 
         'admission.controlTest': 'Test de contrôle d\'admission',
@@ -651,7 +651,7 @@ const translations = {
         'network.egress': 'OUT',
         'network.both': 'BEIDE',
 
-        'warning.discoverMode': '[WARNING] Netzwerkrichtlinie ist im Discover-Modus — Angriffe werden NICHT blockiert. Wechseln Sie zu Protect, um die Blockierung zu demonstrieren.',
+        'warning.discoverMode': 'Netzwerkrichtlinie ist im Discover-Modus — Angriffe werden NICHT blockiert.\n\nWechseln Sie zu Protect, um die Blockierung zu demonstrieren.\n\nTrotzdem fortfahren?',
         'status.syncing': 'Synchronisierung mit NeuVector...',
 
         'admission.controlTest': 'Zugangs-Kontroll-Test',
@@ -878,7 +878,7 @@ const translations = {
         'network.egress': 'OUT',
         'network.both': 'AMBOS',
 
-        'warning.discoverMode': '[WARNING] La política de red está en modo Discover — los ataques NO serán bloqueados. Cambie a Protect para demostrar el bloqueo.',
+        'warning.discoverMode': 'La política de red está en modo Discover — los ataques NO serán bloqueados.\n\nCambie a Protect para demostrar el bloqueo.\n\n¿Continuar de todos modos?',
         'status.syncing': 'Sincronizando con NeuVector...',
 
         'admission.controlTest': 'Prueba de control de admisión',
