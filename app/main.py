@@ -44,6 +44,7 @@ async def index(request: Request):
         context={
             "demos": demos,
             "categories": categories,
+            "version": APP_VERSION,
         },
     )
 

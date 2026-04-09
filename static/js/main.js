@@ -4829,10 +4829,13 @@ class DemoApp {
             params.image_registry = credentials.image_registry;
         }
 
-        // Warn if any network policy is in Discover mode for attack/connectivity demos
-        if (this.currentDemoType === 'attack' || this.currentDemoType === 'connectivity') {
-            const srcMode = document.getElementById('viz-src-policy-mode')?.value;
-            const tgtMode = document.getElementById('viz-tgt-policy-mode')?.value;
+        // Warn if any network policy is in Discover mode for attack/connectivity/dlp demos
+        if (this.currentDemoType === 'attack' || this.currentDemoType === 'connectivity' || this.currentDemoType === 'dlp') {
+            const srcSelect = document.getElementById('viz-src-policy-mode');
+            const tgtSelect = document.getElementById('viz-tgt-policy-mode');
+            const srcMode = srcSelect?.value;
+            const tgtMode = tgtSelect?.value;
+            console.log(`[WARN CHECK] demoType=${this.currentDemoType} srcMode=${srcMode} tgtMode=${tgtMode} srcEl=${!!srcSelect} tgtEl=${!!tgtSelect}`);
             if (srcMode === 'Discover' || tgtMode === 'Discover') {
                 if (!confirm(t('warning.discoverMode'))) {
                     return;
