@@ -1096,6 +1096,7 @@ class DemoApp {
     constructor() {
         this.currentDemo = null;
         this.isRunning = false;
+        this.isSyncing = false;
         this.console = null;
         this.vizState = 'pending';
         this.vizContainer = null;
@@ -3583,20 +3584,19 @@ class DemoApp {
                     const profileSelect = document.getElementById(`${prefix}-profile-mode`);
                     this.updateModeIcons(target, policySelect?.value || 'Discover', profileSelect?.value || 'Discover');
                 }
-                // Verify by reloading status and process rules after a short delay
-                setTimeout(() => {
-                    this.updateVizPodInfo(target, podName);
-                }, 500);
+                selectElement.disabled = false;
+                // Wait for NeuVector to propagate the change
+                await this.waitForSync(target, podName, field, value);
             } else {
                 console.error('Failed to update setting:', result.message);
+                selectElement.disabled = false;
                 // Revert on error
                 this.updateVizPodInfo(target, podName);
             }
         } catch (error) {
             console.error('Failed to update setting:', error);
+            selectElement.disabled = false;
         }
-
-        selectElement.disabled = false;
     }
 
     /**
@@ -4194,7 +4194,7 @@ class DemoApp {
      * Run admission action
      */
     runAdmissionAction(action) {
-        if (this.isRunning || !wsManager.isConnected()) return;
+        if (this.isRunning || this.isSyncing || !wsManager.isConnected()) return;
 
         // Update hidden action field
         const hiddenAction = document.getElementById('param-action');
@@ -4387,6 +4387,58 @@ class DemoApp {
     /**
      * Remove visualization
      */
+    /**
+     * Wait for NeuVector to propagate a setting change, polling until confirmed
+     */
+    async waitForSync(target, podName, field, expectedValue) {
+        this.isSyncing = true;
+        this.updateSyncingUI(true);
+
+        const groupName = `nv.${podName.replace(/-test$/, '')}.neuvector-demo`;
+        const maxRetries = 10;
+
+        for (let i = 0; i < maxRetries; i++) {
+            await new Promise(r => setTimeout(r, 1000));
+            const result = await settingsManager.getPodInfo(groupName);
+            if (result) {
+                const actual = result[field] || '';
+                if (actual === expectedValue) {
+                    // Synchronized
+                    this.updateVizPodInfo(target, podName);
+                    break;
+                }
+            }
+        }
+
+        this.isSyncing = false;
+        this.updateSyncingUI(false);
+    }
+
+    /**
+     * Update UI to reflect syncing state (disable run buttons, show status)
+     */
+    updateSyncingUI(syncing) {
+        // Disable/enable all run buttons
+        document.querySelectorAll('.btn-cmd, .btn-run-demo, .btn-admission, #run-demo-btn').forEach(
+            btn => btn.disabled = syncing
+        );
+
+        // Update viz status
+        const statusText = document.querySelector('#viz-status .viz-status-text');
+        const statusEl = document.getElementById('viz-status');
+        if (syncing) {
+            if (statusText) statusText.textContent = t('status.syncing');
+            if (statusEl) statusEl.className = 'viz-status syncing';
+        } else {
+            if (statusText) statusText.textContent = t('viz.ready');
+            if (statusEl) statusEl.className = 'viz-status pending';
+        }
+
+        // Visual feedback on viz container
+        const viz = document.getElementById('demo-visualization');
+        if (viz) viz.classList.toggle('syncing', syncing);
+    }
+
     removeVisualization() {
         // Clear live clock interval
         if (this.liveClockInterval) {
@@ -4750,7 +4802,7 @@ class DemoApp {
      * Run current demo
      */
     runCurrentDemo() {
-        if (this.isRunning || !wsManager.isConnected() || !this.currentDemo) return;
+        if (this.isRunning || this.isSyncing || !wsManager.isConnected() || !this.currentDemo) return;
 
         // Reset detected result for new run
         this.detectedResult = null;

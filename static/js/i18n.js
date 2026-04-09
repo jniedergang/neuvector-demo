@@ -191,6 +191,7 @@ const translations = {
 
         // Warnings
         'warning.discoverMode': '[WARNING] Network Policy is in Discover mode — attacks will NOT be blocked. Switch to Protect to demonstrate blocking.',
+        'status.syncing': 'Synchronizing with NeuVector...',
 
         // Admission
         'admission.controlTest': 'Admission Control Test',
@@ -424,6 +425,7 @@ const translations = {
         'network.both': 'LES 2',
 
         'warning.discoverMode': '[WARNING] La politique réseau est en mode Discover — les attaques ne seront PAS bloquées. Passez en mode Protect pour démontrer le blocage.',
+        'status.syncing': 'Synchronisation avec NeuVector...',
 
         'admission.controlTest': 'Test de contrôle d\'admission',
         'admission.targetNamespace': 'Namespace cible',
@@ -650,6 +652,7 @@ const translations = {
         'network.both': 'BEIDE',
 
         'warning.discoverMode': '[WARNING] Netzwerkrichtlinie ist im Discover-Modus — Angriffe werden NICHT blockiert. Wechseln Sie zu Protect, um die Blockierung zu demonstrieren.',
+        'status.syncing': 'Synchronisierung mit NeuVector...',
 
         'admission.controlTest': 'Zugangs-Kontroll-Test',
         'admission.targetNamespace': 'Ziel-Namespace',
@@ -876,6 +879,7 @@ const translations = {
         'network.both': 'AMBOS',
 
         'warning.discoverMode': '[WARNING] La política de red está en modo Discover — los ataques NO serán bloqueados. Cambie a Protect para demostrar el bloqueo.',
+        'status.syncing': 'Sincronizando con NeuVector...',
 
         'admission.controlTest': 'Prueba de control de admisión',
         'admission.targetNamespace': 'Namespace destino',

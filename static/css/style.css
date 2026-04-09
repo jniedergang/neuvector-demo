@@ -1863,6 +1863,31 @@ select.form-control {
     box-shadow: 0 0 8px rgba(254, 80, 0, 0.3);
 }
 
+/* Syncing state */
+.demo-visualization.syncing {
+    opacity: 0.7;
+}
+
+.demo-visualization.syncing .btn-cmd,
+.demo-visualization.syncing .btn-run-demo,
+.demo-visualization.syncing .btn-admission {
+    pointer-events: none;
+}
+
+.viz-status.syncing {
+    background: var(--warning-color) !important;
+    color: white !important;
+}
+
+@keyframes syncing-pulse {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
+}
+
+.demo-visualization.syncing .viz-status {
+    animation: syncing-pulse 1.5s ease-in-out infinite;
+}
+
 .viz-network-rules.has-learned-protect {
     border-color: var(--warning-color);
 }
