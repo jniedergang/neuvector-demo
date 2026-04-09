@@ -155,6 +155,18 @@ class SettingsManager {
             this.headerLogo.style.height = savedLogoSize + 'px';
         }
 
+        // Dark mode
+        const darkToggle = document.getElementById('settings-dark-mode');
+        const savedDark = localStorage.getItem('neuvector_dark_mode') === 'true';
+        if (savedDark) document.body.classList.add('dark-mode');
+        if (darkToggle) {
+            darkToggle.checked = savedDark;
+            darkToggle.addEventListener('change', () => {
+                document.body.classList.toggle('dark-mode', darkToggle.checked);
+                localStorage.setItem('neuvector_dark_mode', darkToggle.checked);
+            });
+        }
+
         // Apply i18n translations on load
         i18n.applyTranslations();
 
@@ -1807,7 +1819,7 @@ class DemoApp {
 
         this.showConsole();
         this.clearConsole();
-        this.appendOutput(`Starting ${action}...`, 'info');
+        this.appendOutput(t('console.startingAction').replace('{action}', action), 'info');
         this.appendOutput('');
 
         // For prepare action, pass NeuVector credentials and image registry
@@ -1876,7 +1888,7 @@ class DemoApp {
             this.demoTitleIcon.textContent = demo.icon || '';
         }
         if (this.demoTitleText) {
-            this.demoTitleText.textContent = demo.name || 'Unknown Demo';
+            this.demoTitleText.textContent = t(`demo.${demo.id}`) || demo.name || t('sidebar.unknownDemo');
             this.demoTitleText.classList.remove('placeholder');
         }
 
@@ -2220,7 +2232,7 @@ class DemoApp {
                 list.innerHTML = t('process.noRules');
                 list.className = 'process-rules-list empty';
             } else {
-                list.innerHTML = result.message || 'Failed to load';
+                list.innerHTML = result.message || t('status.failedToLoad');
                 list.className = 'process-rules-list empty';
             }
         } catch (error) {
@@ -3678,7 +3690,7 @@ class DemoApp {
 
         if (targetType === 'pod') {
             const podSelect = document.getElementById('param-target_pod');
-            return podSelect ? podSelect.options[podSelect.selectedIndex]?.text || 'Pod' : 'Pod';
+            return podSelect ? podSelect.options[podSelect.selectedIndex]?.text || t('viz.pod') : t('viz.pod');
         } else if (targetType === 'public') {
             const publicSelect = document.getElementById('param-target_public');
             if (publicSelect) {
@@ -3686,12 +3698,12 @@ class DemoApp {
                 try {
                     return new URL(url).hostname;
                 } catch (e) {
-                    return publicSelect.options[publicSelect.selectedIndex]?.text || 'Website';
+                    return publicSelect.options[publicSelect.selectedIndex]?.text || t('viz.website');
                 }
             }
-            return 'Website';
+            return t('viz.website');
         } else {
-            const custom = document.getElementById('param-target_custom')?.value || 'Custom';
+            const custom = document.getElementById('param-target_custom')?.value || t('viz.custom');
             // Extract hostname from custom value
             try {
                 if (custom.includes('://')) {
@@ -4252,7 +4264,7 @@ class DemoApp {
                 modeEl.className = 'admission-state-value mode-' + mode;
             } else {
                 enabledEl.textContent = t('settings.error');
-                modeEl.textContent = result.message || 'Failed';
+                modeEl.textContent = result.message || t('status.failed');
             }
         } catch (error) {
             console.error('Failed to get admission state:', error);
@@ -4312,7 +4324,7 @@ class DemoApp {
                 listEl.innerHTML = t('admission.noRules');
                 listEl.className = 'admission-rules-list empty';
             } else {
-                listEl.innerHTML = result.message || 'Failed to load';
+                listEl.innerHTML = result.message || t('status.failedToLoad');
                 listEl.className = 'admission-rules-list empty';
             }
         } catch (error) {
@@ -4374,7 +4386,7 @@ class DemoApp {
                 logsList.innerHTML = t('events.noAdmissionEvents');
                 logsList.className = 'nv-logs-list empty';
             } else {
-                logsList.innerHTML = result.message || 'Failed to load events';
+                logsList.innerHTML = result.message || t('events.errorLoading');
                 logsList.className = 'nv-logs-list empty';
             }
         } catch (error) {
@@ -4463,7 +4475,7 @@ class DemoApp {
         const targetIcon = document.querySelector('#viz-target .viz-icon');
 
         if (podSelect && sourceLabel) {
-            sourceLabel.textContent = podSelect.options[podSelect.selectedIndex]?.text || 'Source';
+            sourceLabel.textContent = podSelect.options[podSelect.selectedIndex]?.text || t('viz.source');
         }
 
         if (targetLabelEl) {
@@ -4675,7 +4687,7 @@ class DemoApp {
                 logsList.className = 'nv-logs-list empty';
             } else {
                 console.error('[NV Events] API error:', result.message);
-                logsList.innerHTML = result.message || 'Failed to load events';
+                logsList.innerHTML = result.message || t('events.errorLoading');
                 logsList.className = 'nv-logs-list empty';
             }
         } catch (error) {
@@ -4840,7 +4852,7 @@ class DemoApp {
         }
 
         this.clearConsole();
-        this.appendOutput(`Running demo: ${this.currentDemo.name}`, 'info');
+        this.appendOutput(t('console.runningDemo').replace('{name}', this.currentDemo.name), 'info');
         this.appendOutput('');
 
         // Reset visualization to pending then running

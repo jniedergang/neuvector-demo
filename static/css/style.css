@@ -3358,3 +3358,422 @@ select.form-control {
     min-width: 36px;
     text-align: right;
 }
+
+/* Dark mode toggle */
+.dark-mode-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.toggle-slider-sm {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 22px;
+    background: #ccc;
+    border-radius: 11px;
+    transition: background 0.3s;
+    flex-shrink: 0;
+}
+
+.toggle-slider-sm::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 16px;
+    height: 16px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.3s;
+}
+
+.dark-mode-toggle input:checked + .toggle-slider-sm {
+    background: var(--primary-light);
+}
+
+.dark-mode-toggle input:checked + .toggle-slider-sm::after {
+    transform: translateX(18px);
+}
+
+.dark-mode-toggle input {
+    display: none;
+}
+
+/* ============================================
+   DARK MODE
+   ============================================ */
+body.dark-mode {
+    --bg-color: #0f1923;
+    --card-bg: #1a2736;
+    --primary-dark: #0a1220;
+    --border-color: #2a3a50;
+    --text-color: #e0e8f0;
+    --text-secondary: #8899aa;
+    --text-primary: #e0e8f0;
+    --console-bg: #0a1018;
+    --console-text: #d0d8e0;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+    color: var(--text-color);
+    background: var(--bg-color);
+}
+
+/* Header */
+body.dark-mode .header {
+    background: linear-gradient(135deg, #0a1220 0%, #152238 100%);
+    border-bottom-color: #2a3a50;
+}
+
+/* Sidebar */
+body.dark-mode .sidebar {
+    background: #0f1923;
+    border-right-color: #2a3a50;
+}
+
+body.dark-mode .sidebar-header {
+    border-bottom-color: #2a3a50;
+}
+
+body.dark-mode .demo-item {
+    color: #c0cad8;
+}
+
+body.dark-mode .demo-item:hover {
+    background: rgba(72, 169, 197, 0.1);
+}
+
+body.dark-mode .demo-item.active {
+    background: rgba(0, 119, 200, 0.2);
+    border-color: var(--primary-light);
+}
+
+body.dark-mode .demo-item .category {
+    color: #6080a0;
+}
+
+body.dark-mode .sidebar-section h3 {
+    color: #8899aa;
+}
+
+/* Cards */
+body.dark-mode .card {
+    background: var(--card-bg);
+    border-color: var(--border-color);
+}
+
+body.dark-mode .card-header {
+    background: #152238;
+    border-bottom-color: var(--border-color);
+    color: var(--text-color);
+}
+
+/* Modal */
+body.dark-mode .modal {
+    background: #1a2736;
+    border-color: var(--border-color);
+}
+
+body.dark-mode .modal-header {
+    background: #152238;
+    border-bottom-color: var(--border-color);
+    color: var(--text-color);
+}
+
+body.dark-mode .modal-footer {
+    background: #152238;
+    border-top-color: var(--border-color);
+}
+
+body.dark-mode .modal-body {
+    color: var(--text-color);
+}
+
+/* Settings tabs */
+body.dark-mode .settings-tab {
+    color: #8899aa;
+    border-bottom-color: var(--border-color);
+}
+
+body.dark-mode .settings-tab.active {
+    color: var(--primary-light);
+    border-bottom-color: var(--primary-light);
+}
+
+body.dark-mode .settings-tab:hover {
+    color: var(--text-color);
+}
+
+body.dark-mode .settings-section {
+    border-color: var(--border-color);
+}
+
+body.dark-mode .settings-section-title {
+    color: #8899aa;
+}
+
+/* Form controls */
+body.dark-mode .form-control,
+body.dark-mode select,
+body.dark-mode input[type="text"],
+body.dark-mode input[type="password"],
+body.dark-mode input[type="number"] {
+    background: #0f1923;
+    border-color: #2a3a50;
+    color: var(--text-color);
+}
+
+body.dark-mode .form-control:focus {
+    border-color: var(--primary-light);
+}
+
+body.dark-mode label {
+    color: #a0b0c0;
+}
+
+body.dark-mode .help-text {
+    color: #6080a0;
+}
+
+/* Buttons */
+body.dark-mode .btn-outline {
+    border-color: #3a4a60;
+    color: #a0b0c0;
+}
+
+body.dark-mode .btn-outline:hover {
+    background: rgba(72, 169, 197, 0.1);
+    border-color: var(--primary-light);
+    color: var(--text-color);
+}
+
+/* Status boxes */
+body.dark-mode .header-status-box {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: #2a3a50;
+}
+
+body.dark-mode .status {
+    color: #8899aa;
+}
+
+/* Console */
+body.dark-mode .console-modal {
+    background: var(--console-bg);
+    border-color: #2a3a50;
+}
+
+body.dark-mode .console-header {
+    background: #0a1220;
+    border-bottom-color: #2a3a50;
+}
+
+/* Viz boxes */
+body.dark-mode .viz-box {
+    background: #1a2736;
+    border-color: #2a3a50;
+}
+
+body.dark-mode .viz-box-header {
+    background: #152238;
+}
+
+body.dark-mode .viz-select {
+    background: #0f1923;
+    border-color: #2a3a50;
+    color: var(--text-color);
+}
+
+body.dark-mode .viz-setting-select {
+    background: #0f1923;
+    border-color: #2a3a50;
+    color: var(--text-color);
+}
+
+body.dark-mode .viz-pod-settings {
+    background: #152238;
+    border-color: #2a3a50;
+}
+
+body.dark-mode .viz-setting-label {
+    color: #8899aa;
+}
+
+body.dark-mode .viz-status {
+    background: #152238;
+    border-color: #2a3a50;
+}
+
+/* Process and network rule lists */
+body.dark-mode .viz-process-list,
+body.dark-mode .viz-network-rules {
+    background: #152238;
+    border-color: #2a3a50;
+}
+
+body.dark-mode .viz-process-items,
+body.dark-mode .viz-network-items {
+    background: #1a2736;
+}
+
+body.dark-mode .viz-process-item,
+body.dark-mode .viz-network-item {
+    background: #0f1923;
+    border-color: #2a3a50;
+    color: var(--text-color);
+}
+
+body.dark-mode .viz-process-name,
+body.dark-mode .viz-network-peer {
+    color: #c0d0e0;
+}
+
+/* Events panel */
+body.dark-mode .nv-logs-container {
+    background: #1a2736;
+    border-color: #2a3a50;
+}
+
+body.dark-mode .nv-logs-header {
+    background: #152238;
+    border-bottom-color: #2a3a50;
+}
+
+body.dark-mode .nv-log-item {
+    background: #0f1923;
+    border-color: #2a3a50;
+}
+
+body.dark-mode .nv-logs-list.empty,
+body.dark-mode .nv-logs-list.loading {
+    color: #6080a0;
+}
+
+/* Diagnostics */
+body.dark-mode .diagnostic-item {
+    background: #0f1923;
+    border-color: #2a3a50;
+}
+
+body.dark-mode .diagnostics-category-header {
+    color: #8899aa;
+}
+
+/* Version info */
+body.dark-mode .version-info {
+    color: #8899aa;
+}
+
+body.dark-mode .version-label {
+    color: #6080a0;
+}
+
+/* Admission */
+body.dark-mode .admission-panel {
+    background: #1a2736;
+}
+
+body.dark-mode .admission-section {
+    border-color: #2a3a50;
+}
+
+body.dark-mode .admission-header {
+    color: var(--text-color);
+}
+
+body.dark-mode .admission-label {
+    color: #8899aa;
+}
+
+body.dark-mode .admission-state-label {
+    color: #6080a0;
+}
+
+body.dark-mode .admission-rules-list {
+    background: #0f1923;
+}
+
+body.dark-mode .admission-rule-item {
+    background: #152238;
+    border-color: #2a3a50;
+}
+
+/* Attack description */
+body.dark-mode .attack-description {
+    background: #152238;
+    border-color: #2a3a50;
+    color: #a0b0c0;
+}
+
+body.dark-mode .attack-description code {
+    background: #0f1923;
+    color: var(--accent-light);
+}
+
+/* DLP */
+body.dark-mode .viz-dlp-settings,
+body.dark-mode .viz-dlp-sensors {
+    background: #152238;
+    border-color: #2a3a50;
+}
+
+body.dark-mode .viz-dlp-sensor-row {
+    border-color: #2a3a50;
+}
+
+body.dark-mode .viz-dlp-sensor-name {
+    color: #c0d0e0;
+}
+
+/* Tooltip */
+body.dark-mode .custom-tooltip {
+    background: #2a3a50;
+    color: #e0e8f0;
+}
+
+/* Logo placeholder */
+body.dark-mode .logo-preview {
+    background: #0f1923;
+    border-color: #2a3a50;
+}
+
+/* Sidebar backdrop */
+body.dark-mode .sidebar-backdrop.visible {
+    background: rgba(0, 0, 0, 0.6);
+}
+
+/* Lifecycle buttons area */
+body.dark-mode .lifecycle-actions .btn {
+    border-color: #3a4a60;
+}
+
+/* Settings status */
+body.dark-mode .settings-status {
+    color: #8899aa;
+}
+
+/* DLP action toggle */
+body.dark-mode .viz-action-btn {
+    background: #0f1923;
+    border-color: #2a3a50;
+    color: #8899aa;
+}
+
+body.dark-mode .viz-action-btn.active {
+    background: var(--primary-light);
+    color: white;
+}
+
+/* Range slider */
+body.dark-mode .form-range {
+    background: #2a3a50;
+}
+
+body.dark-mode .form-row-inline label,
+body.dark-mode .form-row-inline span {
+    color: #6080a0;
+}

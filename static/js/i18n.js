@@ -192,6 +192,31 @@ const translations = {
         // Warnings
         'warning.discoverMode': 'Network Policy is in Discover mode — attacks will NOT be blocked.\n\nSwitch to Protect to demonstrate blocking.\n\nContinue anyway?',
         'status.syncing': 'Synchronizing with NeuVector...',
+        'status.failedToLoad': 'Failed to load',
+        'status.failed': 'Failed',
+
+        // Console
+        'console.startingAction': 'Starting {action}...',
+        'console.runningDemo': 'Running demo: {name}',
+
+        // Demo names and categories (sidebar)
+        'demo.dlp': 'DLP Detection Test',
+        'demo.admission': 'Admission Control',
+        'demo.attack': 'Attack Simulation',
+        'category.DLP': 'DLP',
+        'category.Admission': 'Admission',
+        'category.Security Testing': 'Security Testing',
+
+        // Extra viz labels
+        'sidebar.unknownDemo': 'Unknown Demo',
+        'viz.pod': 'Pod',
+        'viz.website': 'Website',
+        'viz.custom': 'Custom',
+
+        // Settings extras
+        'settings.size': 'Size',
+        'settings.theme': 'Theme',
+        'settings.darkMode': 'Dark Mode',
 
         // Admission
         'admission.controlTest': 'Admission Control Test',
@@ -426,6 +451,23 @@ const translations = {
 
         'warning.discoverMode': 'La politique réseau est en mode Discover — les attaques ne seront PAS bloquées.\n\nPassez en mode Protect pour démontrer le blocage.\n\nContinuer quand même ?',
         'status.syncing': 'Synchronisation avec NeuVector...',
+        'status.failedToLoad': 'Échec du chargement',
+        'status.failed': 'Échec',
+        'console.startingAction': 'Démarrage de {action}...',
+        'console.runningDemo': 'Exécution : {name}',
+        'demo.dlp': 'Test de détection DLP',
+        'demo.admission': 'Contrôle d\'admission',
+        'demo.attack': 'Simulation d\'attaque',
+        'category.DLP': 'DLP',
+        'category.Admission': 'Admission',
+        'category.Security Testing': 'Tests de sécurité',
+        'sidebar.unknownDemo': 'Démo inconnue',
+        'viz.pod': 'Pod',
+        'viz.website': 'Site web',
+        'viz.custom': 'Personnalisé',
+        'settings.size': 'Taille',
+        'settings.theme': 'Thème',
+        'settings.darkMode': 'Mode sombre',
 
         'admission.controlTest': 'Test de contrôle d\'admission',
         'admission.targetNamespace': 'Namespace cible',
@@ -653,6 +695,23 @@ const translations = {
 
         'warning.discoverMode': 'Netzwerkrichtlinie ist im Discover-Modus — Angriffe werden NICHT blockiert.\n\nWechseln Sie zu Protect, um die Blockierung zu demonstrieren.\n\nTrotzdem fortfahren?',
         'status.syncing': 'Synchronisierung mit NeuVector...',
+        'status.failedToLoad': 'Laden fehlgeschlagen',
+        'status.failed': 'Fehlgeschlagen',
+        'console.startingAction': '{action} wird gestartet...',
+        'console.runningDemo': 'Demo: {name}',
+        'demo.dlp': 'DLP-Erkennungstest',
+        'demo.admission': 'Zugangskontrolle',
+        'demo.attack': 'Angriffssimulation',
+        'category.DLP': 'DLP',
+        'category.Admission': 'Admission',
+        'category.Security Testing': 'Sicherheitstests',
+        'sidebar.unknownDemo': 'Unbekannte Demo',
+        'viz.pod': 'Pod',
+        'viz.website': 'Webseite',
+        'viz.custom': 'Benutzerdefiniert',
+        'settings.size': 'Größe',
+        'settings.theme': 'Design',
+        'settings.darkMode': 'Dunkler Modus',
 
         'admission.controlTest': 'Zugangs-Kontroll-Test',
         'admission.targetNamespace': 'Ziel-Namespace',
@@ -880,6 +939,23 @@ const translations = {
 
         'warning.discoverMode': 'La política de red está en modo Discover — los ataques NO serán bloqueados.\n\nCambie a Protect para demostrar el bloqueo.\n\n¿Continuar de todos modos?',
         'status.syncing': 'Sincronizando con NeuVector...',
+        'status.failedToLoad': 'Error al cargar',
+        'status.failed': 'Fallido',
+        'console.startingAction': 'Iniciando {action}...',
+        'console.runningDemo': 'Ejecutando: {name}',
+        'demo.dlp': 'Prueba de detección DLP',
+        'demo.admission': 'Control de admisión',
+        'demo.attack': 'Simulación de ataque',
+        'category.DLP': 'DLP',
+        'category.Admission': 'Admisión',
+        'category.Security Testing': 'Pruebas de seguridad',
+        'sidebar.unknownDemo': 'Demo desconocida',
+        'viz.pod': 'Pod',
+        'viz.website': 'Sitio web',
+        'viz.custom': 'Personalizado',
+        'settings.size': 'Tamaño',
+        'settings.theme': 'Tema',
+        'settings.darkMode': 'Modo oscuro',
 
         'admission.controlTest': 'Prueba de control de admisión',
         'admission.targetNamespace': 'Namespace destino',
@@ -1018,6 +1094,30 @@ class I18n {
 
         // Update HTML lang attribute
         document.documentElement.lang = this.currentLang;
+
+        // Translate demo list in sidebar (names and categories from Python backend)
+        document.querySelectorAll('.demo-item').forEach(item => {
+            const demoId = item.dataset.demoId;
+            if (demoId) {
+                const nameEl = item.querySelector('.name');
+                const catEl = item.querySelector('.category');
+                const demoKey = `demo.${demoId}`;
+                const translated = this.t(demoKey);
+                if (nameEl && translated !== demoKey) nameEl.textContent = translated;
+                if (catEl) {
+                    const catKey = `category.${catEl.textContent.trim()}`;
+                    const catTranslated = this.t(catKey);
+                    if (catTranslated !== catKey) catEl.textContent = catTranslated;
+                }
+            }
+        });
+
+        // Translate sidebar section headers (category titles)
+        document.querySelectorAll('.sidebar-section h3').forEach(h3 => {
+            const catKey = `category.${h3.textContent.trim()}`;
+            const translated = this.t(catKey);
+            if (translated !== catKey) h3.textContent = translated;
+        });
     }
 
     /**
