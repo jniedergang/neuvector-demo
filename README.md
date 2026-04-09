@@ -2,7 +2,7 @@
 
 Application web interactive pour exécuter des démonstrations NeuVector sur un cluster Kubernetes.
 
-**Version actuelle : 1.8.1**
+**Version actuelle : 1.8.3**
 
 ## Fonctionnalités
 
@@ -279,6 +279,13 @@ podman build -t demo-web1:latest images/web1/
 | `/api/neuvector/admission-events` | POST | Événements d'admission |
 
 ## Changelog
+
+### Version 1.8.3
+- Le warning Discover ne s'affiche plus quand les deux pods sont en Discover (uniquement quand un seul l'est)
+
+### Version 1.8.2
+- Les network rules se rafraîchissent automatiquement après chaque exécution de démo
+- Ajout d'un bouton refresh (↻) dans le header de la section Network Rules
 
 ### Version 1.8.1
 - Rechargement de la page au changement de langue pour traduire tout le contenu dynamique
