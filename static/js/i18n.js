@@ -1059,7 +1059,8 @@ class I18n {
         if (!translations[lang]) return;
         this.currentLang = lang;
         localStorage.setItem(I18N_STORAGE_KEY, lang);
-        this.applyTranslations();
+        // Reload page to apply translations to all dynamic content
+        window.location.reload();
     }
 
     /**
