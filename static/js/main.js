@@ -4862,7 +4862,7 @@ class DemoApp {
         if (this.currentDemoType === 'attack' || this.currentDemoType === 'connectivity' || this.currentDemoType === 'dlp') {
             const srcMode = document.getElementById('viz-src-policy-mode')?.value;
             const tgtMode = document.getElementById('viz-tgt-policy-mode')?.value;
-            if (srcMode === 'Discover' || tgtMode === 'Discover') {
+            if ((srcMode === 'Discover' || tgtMode === 'Discover') && !(srcMode === 'Discover' && tgtMode === 'Discover')) {
                 if (!confirm(t('warning.discoverMode'))) {
                     return;
                 }
