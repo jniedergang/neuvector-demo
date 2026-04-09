@@ -5,7 +5,7 @@ import subprocess
 from pathlib import Path
 
 # Application version
-APP_VERSION = "1.8.1"
+APP_VERSION = "1.8.2"
 
 def _get_git_info():
     """Get git commit hash and branch if available."""

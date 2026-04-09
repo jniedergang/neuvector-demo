@@ -1307,6 +1307,19 @@ class DemoApp {
 
         // Listen for hash changes (browser back/forward)
         window.addEventListener('hashchange', () => this.restoreFromHash());
+
+        // Event delegation for network rules refresh buttons (dynamically created)
+        document.addEventListener('click', (e) => {
+            const btn = e.target.closest('.viz-network-refresh');
+            if (!btn) return;
+            const target = btn.dataset.target;
+            const podSelect = target === 'source'
+                ? document.getElementById('viz-source-select')
+                : (document.getElementById('viz-target-pod') || document.getElementById('viz-dlp-target') || document.getElementById('viz-attack-target'));
+            if (podSelect) {
+                this.updateVizPodInfo(target, podSelect.value);
+            }
+        });
     }
 
     /**
@@ -1784,16 +1797,16 @@ class DemoApp {
                 // For connectivity/DLP demos, fetch general events
                 setTimeout(() => this.fetchNeuVectorEvents(), 1000);
                 setTimeout(() => this.fetchNeuVectorEvents(), 3000);
-                // Refresh process rules (new processes may have been learned)
-                setTimeout(() => this.refreshAllProcessRules(), 2000);
+                // Refresh pod info (process rules + network rules may have changed)
+                setTimeout(() => this.refreshAllPodInfo(), 2000);
             }
         }
     }
 
     /**
-     * Refresh all visible process rule lists
+     * Refresh all visible pod info (process rules + network rules)
      */
-    refreshAllProcessRules() {
+    refreshAllPodInfo() {
         const srcSelect = document.getElementById('viz-source-select');
         const tgtPod = document.getElementById('viz-target-pod');
         const tgtType = document.getElementById('viz-target-type');
@@ -1801,13 +1814,13 @@ class DemoApp {
         if (srcSelect) {
             const srcPod = srcSelect.value;
             if (srcPod) {
-                this.updateVizProcessRules('source', srcPod);
+                this.updateVizPodInfo('source', srcPod);
             }
         }
 
-        // Refresh target process rules if target is a pod
+        // Refresh target if target is a pod
         if (tgtType && tgtType.value === 'pod' && tgtPod && tgtPod.value) {
-            this.updateVizProcessRules('target', tgtPod.value);
+            this.updateVizPodInfo('target', tgtPod.value);
         }
     }
 
@@ -2487,6 +2500,7 @@ class DemoApp {
                     <div class="viz-network-header" id="viz-tgt-network-header">
                         <span>${t('viz.networkRules')}</span>
                         <span id="viz-tgt-network-count"></span>
+                        <button type="button" class="viz-refresh-btn viz-network-refresh" data-target="target" title="↻">↻</button>
                     </div>
                     <div class="viz-network-items loading" id="viz-tgt-network-items">${t('events.loading')}</div>
                 </div>
@@ -2544,6 +2558,7 @@ class DemoApp {
                     <div class="viz-network-header" id="viz-tgt-network-header">
                         <span>${t('viz.networkRules')}</span>
                         <span id="viz-tgt-network-count"></span>
+                        <button type="button" class="viz-refresh-btn viz-network-refresh" data-target="target" title="↻">↻</button>
                     </div>
                     <div class="viz-network-items loading" id="viz-tgt-network-items">${t('events.loading')}</div>
                 </div>
@@ -2611,6 +2626,7 @@ class DemoApp {
                                 <div class="viz-network-header" id="viz-src-network-header">
                                     <span>${t('viz.networkRules')}</span>
                                     <span id="viz-src-network-count"></span>
+                                    <button type="button" class="viz-refresh-btn viz-network-refresh" data-target="source" title="↻">↻</button>
                                 </div>
                                 <div class="viz-network-items loading" id="viz-src-network-items">${t('events.loading')}</div>
                             </div>
@@ -3784,6 +3800,7 @@ class DemoApp {
                                 <div class="viz-network-header" id="viz-src-network-header">
                                     <span>${t('viz.networkRules')}</span>
                                     <span id="viz-src-network-count"></span>
+                                    <button type="button" class="viz-refresh-btn viz-network-refresh" data-target="source" title="↻">↻</button>
                                 </div>
                                 <div class="viz-network-items loading" id="viz-src-network-items">${t('events.loading')}</div>
                             </div>
@@ -3827,6 +3844,7 @@ class DemoApp {
                                 <div class="viz-network-header" id="viz-tgt-network-header">
                                     <span>${t('viz.networkRules')}</span>
                                     <span id="viz-tgt-network-count"></span>
+                                    <button type="button" class="viz-refresh-btn viz-network-refresh" data-target="target" title="↻">↻</button>
                                 </div>
                                 <div class="viz-network-items loading" id="viz-tgt-network-items">${t('events.loading')}</div>
                             </div>
