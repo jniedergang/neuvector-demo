@@ -192,10 +192,7 @@ class SigstoreDemo(DemoModule):
 
         # Delete existing pod if any
         try:
-            async for _ in kubectl.run(
-                ["kubectl", "delete", "pod", pod_name, "-n", namespace, "--grace-period=0", "--ignore-not-found"],
-                namespace=namespace,
-            ):
+            async for _ in kubectl.delete_pod(pod_name, namespace=namespace):
                 pass
         except Exception:
             pass
@@ -203,21 +200,26 @@ class SigstoreDemo(DemoModule):
         # Create the pod
         yield f"[STEP 2/2] Creating pod '{pod_name}'..."
         success = False
-        async for line in kubectl.run(
-            [
-                "kubectl", "run", pod_name,
+        try:
+            async for line in kubectl.run_streaming(
+                "run", pod_name,
                 f"--image={image_ref}",
-                f"--namespace={namespace}",
                 "--restart=Never",
                 "--command", "--", "sleep", "300",
-            ],
-            namespace=namespace,
-        ):
-            yield line
-            if "created" in line.lower():
-                success = True
-            if "denied" in line.lower() or "admission" in line.lower() or "error" in line.lower():
+                namespace=namespace,
+            ):
+                yield line
+                if "created" in line.lower():
+                    success = True
+                if "denied" in line.lower() or "admission" in line.lower():
+                    success = False
+        except Exception as e:
+            err_msg = str(e).lower()
+            if "denied" in err_msg or "admission" in err_msg:
                 success = False
+                yield f"[BLOCKED] {e}"
+            else:
+                yield f"[ERROR] {e}"
 
         yield ""
         if signed:
@@ -236,15 +238,13 @@ class SigstoreDemo(DemoModule):
         from app.core.neuvector_api import NeuVectorAPI
         from app.config import NEUVECTOR_API_URL
 
-        yield "[STEP 1/3] Deleting test pod..."
-        try:
-            async for line in kubectl.run(
-                ["kubectl", "delete", "pod", pod_name, "-n", namespace, "--grace-period=0", "--ignore-not-found"],
-                namespace=namespace,
-            ):
-                yield line
-        except Exception:
-            yield "[INFO] No test pod to delete"
+        yield "[STEP 1/3] Deleting test pods..."
+        for pname in [pod_name, f"{pod_name}-unsigned"]:
+            try:
+                async for line in kubectl.delete_pod(pname, namespace=namespace):
+                    yield line
+            except Exception:
+                pass
 
         yield "[STEP 2/3] Removing Sigstore configuration..."
         api = NeuVectorAPI(base_url=NEUVECTOR_API_URL, username=username, password=password)

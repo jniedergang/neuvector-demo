@@ -805,12 +805,10 @@ class NeuVectorAPI:
         client = await self._get_client()
         try:
             payload = {
-                "root_of_trust": {
-                    "name": name,
-                    "is_private": is_private,
-                    "rootless_keypairs_only": rootless_keypairs_only,
-                    "comment": comment,
-                }
+                "name": name,
+                "is_private": is_private,
+                "rootless_keypairs_only": rootless_keypairs_only,
+                "comment": comment,
             }
             response = await client.post(
                 "/v1/scan/sigstore/root_of_trust",
@@ -863,12 +861,10 @@ class NeuVectorAPI:
         client = await self._get_client()
         try:
             payload = {
-                "verifier": {
-                    "name": name,
-                    "verifier_type": verifier_type,
-                    "public_key": public_key,
-                    "comment": comment,
-                }
+                "name": name,
+                "verifier_type": verifier_type,
+                "public_key": public_key,
+                "comment": comment,
             }
             response = await client.post(
                 f"/v1/scan/sigstore/root_of_trust/{root_name}/verifier",
@@ -1120,9 +1116,6 @@ class NeuVectorAPI:
                 json=payload,
                 headers=self._auth_headers(),
             )
-
-            print(f"[DEBUG] Response status: {response.status_code}")
-            print(f"[DEBUG] Response body: {response.text}")
 
             if response.status_code not in (200, 201):
                 error_msg = f"Failed to create admission rule: {response.status_code}"

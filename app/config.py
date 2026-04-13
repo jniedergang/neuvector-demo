@@ -68,6 +68,7 @@ ALLOWED_KUBECTL_COMMANDS = {
     "apply",
     "delete",
     "create",
+    "run",
     "exec",
     "wait",
     "describe",
