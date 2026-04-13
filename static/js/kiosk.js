@@ -515,41 +515,123 @@ function getDefaultScenario() {
     return {
         name: 'Default Demo Scenario',
         steps: [
-            // --- Attack demo: SCP in Discover (passes) ---
+            // ========== INTRO ==========
             { type: 'select_demo', demoId: 'attack' },
             { type: 'wait', duration: 3 },
             { type: 'show_bubble', textKey: 'kiosk.bubble.welcome', targetSelector: '.header', position: 'bottom' },
             { type: 'wait', duration: 6 },
             { type: 'show_bubble', textKey: 'kiosk.bubble.discoverExplain', targetSelector: '#viz-source', position: 'right' },
             { type: 'wait', duration: 5 },
+
+            // ========== ATTACK 1: SCP Transfer (Network Policy) ==========
+            { type: 'show_bubble', textKey: 'kiosk.bubble.scpExplain', targetSelector: '#viz-arrow', position: 'bottom' },
+            { type: 'wait', duration: 5 },
             { type: 'hide_bubbles' },
             { type: 'run_attack', attackType: 'scp_transfer' },
             { type: 'wait_complete' },
             { type: 'wait', duration: 2 },
-            { type: 'show_bubble', textKey: 'kiosk.bubble.attackSuccess', targetSelector: '#viz-status', position: 'top' },
-            { type: 'wait', duration: 6 },
+            { type: 'show_bubble', textKey: 'kiosk.bubble.scpSuccess', targetSelector: '#viz-status', position: 'top' },
+            { type: 'wait', duration: 5 },
 
-            // --- Switch to Protect and retry ---
-            { type: 'hide_bubbles' },
+            // Switch to Protect and retry SCP
             { type: 'show_bubble', textKey: 'kiosk.bubble.switchProtect', targetSelector: '#viz-src-policy-mode', position: 'bottom' },
             { type: 'wait', duration: 3 },
             { type: 'set_mode', target: 'source', field: 'policy_mode', value: 'Protect' },
-            { type: 'wait', duration: 4 },
-            { type: 'hide_bubbles' },
+            { type: 'wait', duration: 3 },
             { type: 'show_bubble', textKey: 'kiosk.bubble.retryAttack', targetSelector: '#viz-arrow', position: 'bottom' },
             { type: 'wait', duration: 3 },
             { type: 'hide_bubbles' },
             { type: 'run_attack', attackType: 'scp_transfer' },
             { type: 'wait_complete' },
             { type: 'wait', duration: 2 },
-            { type: 'show_bubble', textKey: 'kiosk.bubble.attackBlocked', targetSelector: '#viz-status', position: 'top' },
-            { type: 'wait', duration: 8 },
+            { type: 'show_bubble', textKey: 'kiosk.bubble.scpBlocked', targetSelector: '#viz-status', position: 'top' },
+            { type: 'wait', duration: 6 },
 
-            // --- Reset and end ---
+            // ========== ATTACK 2: DoS Ping Flood (Network Policy) ==========
+            { type: 'show_bubble', textKey: 'kiosk.bubble.nextAttack', targetSelector: '#viz-commands', position: 'top' },
+            { type: 'wait', duration: 3 },
+            // Reset to Discover first
+            { type: 'set_mode', target: 'source', field: 'policy_mode', value: 'Discover' },
+            { type: 'wait', duration: 2 },
+            { type: 'show_bubble', textKey: 'kiosk.bubble.floodExplain', targetSelector: '#viz-arrow', position: 'bottom' },
+            { type: 'wait', duration: 5 },
+            { type: 'hide_bubbles' },
+            { type: 'run_attack', attackType: 'dos_ping' },
+            { type: 'wait_complete' },
+            { type: 'wait', duration: 2 },
+            { type: 'show_bubble', textKey: 'kiosk.bubble.floodSuccess', targetSelector: '#viz-status', position: 'top' },
+            { type: 'wait', duration: 4 },
+
+            // Switch to Protect and retry flood
+            { type: 'set_mode', target: 'source', field: 'policy_mode', value: 'Protect' },
+            { type: 'wait', duration: 3 },
+            { type: 'hide_bubbles' },
+            { type: 'run_attack', attackType: 'dos_ping' },
+            { type: 'wait_complete' },
+            { type: 'wait', duration: 2 },
+            { type: 'show_bubble', textKey: 'kiosk.bubble.floodBlocked', targetSelector: '#viz-status', position: 'top' },
+            { type: 'wait', duration: 6 },
+
+            // ========== ATTACK 3: NC Backdoor (Process Profile) ==========
+            { type: 'show_bubble', textKey: 'kiosk.bubble.nextAttack', targetSelector: '#viz-commands', position: 'top' },
+            { type: 'wait', duration: 3 },
+            // Reset network to Discover, switch process profile to Protect
+            { type: 'set_mode', target: 'source', field: 'policy_mode', value: 'Discover' },
+            { type: 'wait', duration: 2 },
+            { type: 'show_bubble', textKey: 'kiosk.bubble.processProtect', targetSelector: '#viz-src-profile-mode', position: 'bottom' },
+            { type: 'wait', duration: 4 },
+            { type: 'show_bubble', textKey: 'kiosk.bubble.backdoorExplain', targetSelector: '#viz-arrow', position: 'bottom' },
+            { type: 'wait', duration: 5 },
+
+            // Run in Discover first (process profile still Discover)
+            { type: 'hide_bubbles' },
+            { type: 'run_attack', attackType: 'nc_backdoor' },
+            { type: 'wait_complete' },
+            { type: 'wait', duration: 2 },
+            { type: 'show_bubble', textKey: 'kiosk.bubble.backdoorSuccess', targetSelector: '#viz-status', position: 'top' },
+            { type: 'wait', duration: 5 },
+
+            // Switch process profile to Protect and retry
+            { type: 'set_mode', target: 'source', field: 'profile_mode', value: 'Protect' },
+            { type: 'wait', duration: 3 },
+            { type: 'hide_bubbles' },
+            { type: 'run_attack', attackType: 'nc_backdoor' },
+            { type: 'wait_complete' },
+            { type: 'wait', duration: 2 },
+            { type: 'show_bubble', textKey: 'kiosk.bubble.backdoorBlocked', targetSelector: '#viz-status', position: 'top' },
+            { type: 'wait', duration: 6 },
+
+            // ========== ATTACK 4: Reverse Shell (Process Profile) ==========
+            { type: 'show_bubble', textKey: 'kiosk.bubble.nextAttack', targetSelector: '#viz-commands', position: 'top' },
+            { type: 'wait', duration: 3 },
+            // Reset process to Discover
+            { type: 'set_mode', target: 'source', field: 'profile_mode', value: 'Discover' },
+            { type: 'wait', duration: 2 },
+            { type: 'show_bubble', textKey: 'kiosk.bubble.shellExplain', targetSelector: '#viz-arrow', position: 'bottom' },
+            { type: 'wait', duration: 5 },
+            { type: 'hide_bubbles' },
+            { type: 'run_attack', attackType: 'reverse_shell' },
+            { type: 'wait_complete' },
+            { type: 'wait', duration: 2 },
+            { type: 'show_bubble', textKey: 'kiosk.bubble.shellSuccess', targetSelector: '#viz-status', position: 'top' },
+            { type: 'wait', duration: 5 },
+
+            // Switch process profile to Protect and retry
+            { type: 'set_mode', target: 'source', field: 'profile_mode', value: 'Protect' },
+            { type: 'wait', duration: 3 },
+            { type: 'hide_bubbles' },
+            { type: 'run_attack', attackType: 'reverse_shell' },
+            { type: 'wait_complete' },
+            { type: 'wait', duration: 2 },
+            { type: 'show_bubble', textKey: 'kiosk.bubble.shellBlocked', targetSelector: '#viz-status', position: 'top' },
+            { type: 'wait', duration: 6 },
+
+            // ========== CLEANUP & END ==========
             { type: 'hide_bubbles' },
             { type: 'set_mode', target: 'source', field: 'policy_mode', value: 'Discover' },
+            { type: 'set_mode', target: 'source', field: 'profile_mode', value: 'Discover' },
             { type: 'show_bubble', textKey: 'kiosk.bubble.demoEnd', targetSelector: '.header', position: 'bottom' },
-            { type: 'wait', duration: 5 },
+            { type: 'wait', duration: 8 },
             { type: 'hide_bubbles' },
         ]
     };
