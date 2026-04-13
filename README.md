@@ -316,7 +316,9 @@ Le mode kiosk exécute automatiquement des scénarios de démo avec des bulles e
   - Setup automatisé : Root of Trust, Verifier keypair, règle admission
   - Deploy Signed Image (autorisé) vs Deploy Unsigned Image (bloqué)
   - Cleanup des ressources Sigstore
-- Registre Docker Distribution (`registry:2`) déployé dans le cluster (NodePort 30500)
+- Registre Zot HTTPS (OCI-native) déployé dans le cluster (NodePort 30500)
+- Nécessite le scanner Prime (`registry.suse.com/rancher/mirrored-neuvector-scanner:latest`)
+- TLS verification doit être désactivée dans NeuVector pour le registre self-signed
 - API NeuVector Sigstore : roots of trust, verifiers (CRUD)
 - Endpoint `/api/neuvector/sigstore-status` pour l'état des verifiers
 - 263 clés i18n synchronisées (en/fr/de/es)

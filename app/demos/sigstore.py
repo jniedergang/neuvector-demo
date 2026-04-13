@@ -20,7 +20,7 @@ from app.demos.base import DemoModule, DemoParameter
 from app.demos.registry import DemoRegistry
 
 
-REGISTRY_URL = "localhost:30500"
+REGISTRY_URL = "172.16.3.21:30500"
 ROOT_OF_TRUST_NAME = "demo-root"
 VERIFIER_NAME = "cosign-demo"
 
