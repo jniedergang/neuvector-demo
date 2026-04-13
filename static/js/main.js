@@ -982,6 +982,25 @@ document.addEventListener('DOMContentLoaded', () => {
     settingsManager.init();
     settingsManager.initDiagnostics();
 
+    // Kiosk mode
+    kioskPlayer.init(app);
+    // Editor modal events
+    document.getElementById('btn-close-kiosk-editor')?.addEventListener('click', () => scenarioEditor.close());
+    document.getElementById('btn-kiosk-save')?.addEventListener('click', () => scenarioEditor.save());
+    document.getElementById('btn-kiosk-load-default')?.addEventListener('click', () => scenarioEditor.loadDefault());
+    document.getElementById('kiosk-editor-modal')?.addEventListener('click', (e) => {
+        if (e.target.id === 'kiosk-editor-modal') scenarioEditor.close();
+    });
+    // Palette: click to add step
+    document.querySelectorAll('.kiosk-palette-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const type = item.dataset.stepType;
+            if (type && scenarioEditor.scenario) {
+                scenarioEditor.addStep(type);
+            }
+        });
+    });
+
     // Sidebar toggle functionality
     const sidebar = document.getElementById('sidebar');
     const backdrop = document.getElementById('sidebar-backdrop');

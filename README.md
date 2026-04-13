@@ -2,7 +2,7 @@
 
 Application web interactive pour exécuter des démonstrations NeuVector sur un cluster Kubernetes.
 
-**Version actuelle : 1.8.3**
+**Version actuelle : 1.9.0**
 
 ## Fonctionnalités
 
@@ -279,6 +279,16 @@ podman build -t demo-web1:latest images/web1/
 | `/api/neuvector/admission-events` | POST | Événements d'admission |
 
 ## Changelog
+
+### Version 1.9.0
+- Mode Kiosk : exécution automatique de scénarios de démo avec bulles contextuelles
+- Éditeur de scénario drag & drop pour composer les étapes
+- Boutons ▶ (play/stop) et ✏️ (éditeur) dans le header
+- Scénario par défaut : démonstration SCP en Discover puis Protect
+- Bulles contextuelles pointant vers les éléments de l'interface
+- Barre de progression dans le header pendant l'exécution
+- 241 clés i18n synchronisées (en/fr/de/es)
+- Support dark mode pour tous les composants kiosk
 
 ### Version 1.8.3
 - Le warning Discover ne s'affiche plus quand les deux pods sont en Discover (uniquement quand un seul l'est)

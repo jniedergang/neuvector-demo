@@ -3777,3 +3777,302 @@ body.dark-mode .form-row-inline label,
 body.dark-mode .form-row-inline span {
     color: #6080a0;
 }
+
+/* ============================================
+   KIOSK MODE
+   ============================================ */
+
+/* Kiosk header button */
+.btn-kiosk {
+    color: white;
+    opacity: 0.8;
+    transition: all 0.2s;
+}
+
+.btn-kiosk:hover {
+    opacity: 1;
+}
+
+.btn-kiosk.playing {
+    color: var(--accent-light);
+    animation: kiosk-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes kiosk-pulse {
+    0%, 100% { opacity: 0.8; }
+    50% { opacity: 1; transform: scale(1.1); }
+}
+
+/* Kiosk progress bar */
+.kiosk-bar {
+    display: none;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0 0.75rem;
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.kiosk-progress {
+    width: 120px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.kiosk-progress-fill {
+    height: 100%;
+    background: var(--accent-light);
+    border-radius: 2px;
+    transition: width 0.5s ease;
+    width: 0;
+}
+
+/* Contextual bubbles */
+#kiosk-bubbles {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    z-index: 10000;
+    pointer-events: none;
+}
+
+.kiosk-bubble {
+    position: fixed;
+    max-width: 380px;
+    min-width: 200px;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.3s, transform 0.3s;
+    pointer-events: auto;
+    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));
+}
+
+.kiosk-bubble.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.kiosk-bubble-content {
+    background: var(--primary-color);
+    color: #ffffff;
+    padding: 1rem 1.25rem;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.kiosk-bubble-content p {
+    margin: 0;
+}
+
+.kiosk-bubble-step {
+    font-size: 0.7rem;
+    opacity: 0.6;
+    margin-top: 0.5rem;
+    text-align: right;
+}
+
+/* Bubble arrows */
+.kiosk-bubble-arrow {
+    position: absolute;
+    width: 0;
+    height: 0;
+    border: 8px solid transparent;
+}
+
+.kiosk-bubble-bottom .kiosk-bubble-arrow {
+    top: -16px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-bottom-color: var(--primary-color);
+}
+
+.kiosk-bubble-top .kiosk-bubble-arrow {
+    bottom: -16px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-top-color: var(--primary-color);
+}
+
+.kiosk-bubble-left .kiosk-bubble-arrow {
+    right: -16px;
+    top: 50%;
+    transform: translateY(-50%);
+    border-left-color: var(--primary-color);
+}
+
+.kiosk-bubble-right .kiosk-bubble-arrow {
+    left: -16px;
+    top: 50%;
+    transform: translateY(-50%);
+    border-right-color: var(--primary-color);
+}
+
+/* Scenario Editor Modal */
+.kiosk-editor {
+    display: flex;
+    gap: 1rem;
+    min-height: 400px;
+}
+
+.kiosk-editor-palette {
+    width: 180px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.kiosk-palette-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.2s;
+}
+
+.kiosk-palette-item:hover {
+    border-color: var(--primary-light);
+    background: rgba(0, 119, 200, 0.05);
+}
+
+.kiosk-editor-timeline {
+    flex: 1;
+    border: 2px dashed var(--border-color);
+    border-radius: 8px;
+    padding: 0.5rem;
+    min-height: 300px;
+    overflow-y: auto;
+    max-height: 500px;
+}
+
+.kiosk-step-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    margin-bottom: 0.4rem;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 0.8rem;
+    cursor: grab;
+    transition: all 0.2s;
+}
+
+.kiosk-step-item:hover {
+    border-color: var(--primary-light);
+}
+
+.kiosk-step-item.dragging {
+    opacity: 0.4;
+}
+
+.kiosk-step-item.drag-over {
+    border-color: var(--accent-color);
+    border-style: dashed;
+    background: rgba(72, 169, 197, 0.05);
+}
+
+.kiosk-step-handle {
+    cursor: grab;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+.kiosk-step-icon {
+    flex-shrink: 0;
+    font-size: 1rem;
+}
+
+.kiosk-step-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.kiosk-step-title {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    color: var(--text-color);
+}
+
+.kiosk-step-info select,
+.kiosk-step-info input {
+    padding: 0.15rem 0.3rem;
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    font-size: 0.75rem;
+    background: var(--bg-color);
+    margin: 0.1rem;
+    max-width: 130px;
+}
+
+.kiosk-step-delete {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 0 0.3rem;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.kiosk-step-item:hover .kiosk-step-delete {
+    opacity: 1;
+}
+
+.kiosk-step-delete:hover {
+    color: var(--error-color);
+}
+
+/* Editor footer */
+.kiosk-editor-footer {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-color);
+}
+
+/* Dark mode overrides for kiosk */
+body.dark-mode .kiosk-bubble-content {
+    background: #2a3a50;
+}
+
+body.dark-mode .kiosk-bubble-bottom .kiosk-bubble-arrow { border-bottom-color: #2a3a50; }
+body.dark-mode .kiosk-bubble-top .kiosk-bubble-arrow { border-top-color: #2a3a50; }
+body.dark-mode .kiosk-bubble-left .kiosk-bubble-arrow { border-left-color: #2a3a50; }
+body.dark-mode .kiosk-bubble-right .kiosk-bubble-arrow { border-right-color: #2a3a50; }
+
+body.dark-mode .kiosk-step-item {
+    background: #1a2736;
+    border-color: #2a3a50;
+}
+
+body.dark-mode .kiosk-editor-timeline {
+    border-color: #2a3a50;
+}
+
+body.dark-mode .kiosk-palette-item {
+    background: #1a2736;
+    border-color: #2a3a50;
+    color: var(--text-color);
+}
+
+body.dark-mode .kiosk-step-info select,
+body.dark-mode .kiosk-step-info input {
+    background: #0f1923;
+    border-color: #2a3a50;
+    color: var(--text-color);
+}
