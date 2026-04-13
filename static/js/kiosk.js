@@ -110,6 +110,9 @@ class KioskPlayer {
         this.demoApp = null;
         this.bubbleEngine = new BubbleEngine();
         this.isPlaying = false;
+        this.loopMode = false;
+        this.manualMode = false;
+        this._manualResolve = null;
         this.currentStep = 0;
         this.totalSteps = 0;
         this.scenario = null;
@@ -201,6 +204,10 @@ class KioskPlayer {
                             </label>
                         `).join('')}
                     </div>
+                    <div class="kiosk-options">
+                        <label class="kiosk-option"><input type="checkbox" id="kiosk-opt-loop"> ${t('kiosk.loopInfinite')}</label>
+                        <label class="kiosk-option"><input type="checkbox" id="kiosk-opt-manual"> ${t('kiosk.loopManual')}</label>
+                    </div>
                 </div>
                 <div class="modal-footer" style="display: flex; gap: 0.5rem; justify-content: flex-end;">
                     <button class="btn btn-outline" id="btn-section-cancel">${t('btn.clear')}</button>
@@ -218,17 +225,23 @@ class KioskPlayer {
 
         document.getElementById('btn-section-start')?.addEventListener('click', () => {
             const selected = new Set();
-            picker.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => selected.add(cb.value));
+            picker.querySelectorAll('.kiosk-section-item input[type="checkbox"]:checked').forEach(cb => selected.add(cb.value));
+            const loop = document.getElementById('kiosk-opt-loop')?.checked || false;
+            const manual = document.getElementById('kiosk-opt-manual')?.checked || false;
             picker.remove();
-            this.start(selected);
+            this.start(selected, { loop, manual });
         });
     }
 
     /**
      * Start playing the scenario
      * @param {Set|null} selectedSections - null = all, Set of section IDs to run
+     * @param {Object} options - { loop: bool, manual: bool }
      */
-    async start(selectedSections) {
+    async start(selectedSections, options = {}) {
+        this.loopMode = options.loop || false;
+        this.manualMode = options.manual || false;
+
         // Build the flat step list from selected sections
         const steps = [];
         const sections = this.getSections();
@@ -245,18 +258,27 @@ class KioskPlayer {
         }
 
         this.isPlaying = true;
-        this.currentStep = 0;
         this.totalSteps = steps.length;
         this._abortController = new AbortController();
         this.updateUI();
 
         try {
-            for (let i = 0; i < steps.length; i++) {
-                if (!this.isPlaying) break;
-                this.currentStep = i + 1;
-                this.updateProgress();
-                await this.executeStep(steps[i]);
-            }
+            do {
+                for (let i = 0; i < steps.length; i++) {
+                    if (!this.isPlaying) break;
+                    this.currentStep = i + 1;
+                    this.updateProgress();
+
+                    // In manual mode, wait for user click before each step
+                    if (this.manualMode) {
+                        this.showNextStepButton(steps[i]);
+                        await this.waitForManualNext();
+                        this.hideNextStepButton();
+                    }
+
+                    await this.executeStep(steps[i]);
+                }
+            } while (this.loopMode && this.isPlaying);
         } catch (e) {
             if (e.name !== 'AbortError') {
                 console.error('[Kiosk] Error:', e);
@@ -266,13 +288,57 @@ class KioskPlayer {
         this.stop();
     }
 
+    /**
+     * Show a "Next step" floating button for manual mode
+     */
+    showNextStepButton(step) {
+        let btn = document.getElementById('kiosk-next-btn');
+        if (!btn) {
+            btn = document.createElement('button');
+            btn.id = 'kiosk-next-btn';
+            btn.className = 'kiosk-next-btn';
+            document.body.appendChild(btn);
+        }
+        const icon = scenarioEditor.getStepIcon(step.type);
+        const label = scenarioEditor.getStepLabel(step);
+        btn.innerHTML = `<span class="kiosk-next-label">${t('kiosk.step')} ${this.currentStep}/${this.totalSteps}</span> ${icon} ${label.substring(0, 50)} <span class="kiosk-next-arrow">▶</span>`;
+        btn.style.display = 'flex';
+        btn.onclick = () => {
+            if (this._manualResolve) this._manualResolve();
+        };
+    }
+
+    hideNextStepButton() {
+        const btn = document.getElementById('kiosk-next-btn');
+        if (btn) btn.style.display = 'none';
+    }
+
+    /**
+     * Wait for user to click the "Next" button
+     */
+    waitForManualNext() {
+        return new Promise((resolve, reject) => {
+            this._manualResolve = resolve;
+            if (this._abortController) {
+                this._abortController.signal.addEventListener('abort', () => {
+                    this._manualResolve = null;
+                    reject(new DOMException('Aborted', 'AbortError'));
+                });
+            }
+        });
+    }
+
     stop() {
         this.isPlaying = false;
+        this.loopMode = false;
+        this.manualMode = false;
+        this._manualResolve = null;
         if (this._abortController) {
             this._abortController.abort();
             this._abortController = null;
         }
         this.bubbleEngine.hideAll();
+        this.hideNextStepButton();
         this.updateUI();
     }
 
