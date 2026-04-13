@@ -281,14 +281,14 @@ podman build -t demo-web1:latest images/web1/
 ## Changelog
 
 ### Version 1.9.0
-- Mode Kiosk : exécution automatique de scénarios de démo avec bulles contextuelles
-- Éditeur de scénario drag & drop pour composer les étapes
-- Boutons ▶ (play/stop) et ✏️ (éditeur) dans le header
-- Scénario par défaut : démonstration SCP en Discover puis Protect
-- Bulles contextuelles pointant vers les éléments de l'interface
-- Barre de progression dans le header pendant l'exécution
-- 241 clés i18n synchronisées (en/fr/de/es)
-- Support dark mode pour tous les composants kiosk
+- Mode Kiosk avec sections sélectionnables pour exécuter des scénarios partiels
+- Scénario par défaut avec 3 attaques : SCP Transfer, NC Backdoor, Reverse Shell
+- Chaque section démarre par un reset de la plateforme (modes Discover)
+- Sélecteur de sections dans un popup au lancement du kiosk
+- Éditeur de scénario drag & drop avec types section et reset_platform
+- Bulles contextuelles explicatives pointant vers les éléments de l'interface
+- Le DoS Ping Flood a été retiré du scénario par défaut (ICMP non bloqué par la network policy)
+- 259 clés i18n synchronisées (en/fr/de/es)
 
 ### Version 1.8.3
 - Le warning Discover ne s'affiche plus quand les deux pods sont en Discover (uniquement quand un seul l'est)
