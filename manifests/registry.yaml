@@ -1,0 +1,55 @@
+---
+# Docker Distribution registry for Sigstore demo
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-registry
+  namespace: neuvector-demo
+  labels:
+    app: demo-registry
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo-registry
+  template:
+    metadata:
+      labels:
+        app: demo-registry
+    spec:
+      containers:
+      - name: registry
+        image: registry:2
+        ports:
+        - containerPort: 5000
+        volumeMounts:
+        - name: registry-data
+          mountPath: /var/lib/registry
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+      volumes:
+      - name: registry-data
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo-registry
+  namespace: neuvector-demo
+  labels:
+    app: demo-registry
+spec:
+  selector:
+    app: demo-registry
+  ports:
+  - port: 5000
+    targetPort: 5000
+    nodePort: 30500
+    protocol: TCP
+    name: registry
+  type: NodePort

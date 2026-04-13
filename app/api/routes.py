@@ -1466,6 +1466,72 @@ async def get_admission_events(request: AdmissionEventsRequest):
 
 # ========== Diagnostics Endpoints ==========
 
+class SigstoreStatusRequest(BaseModel):
+    """Request model for Sigstore status."""
+    username: str
+    password: str
+    api_url: Optional[str] = None
+
+
+class SigstoreVerifierInfo(BaseModel):
+    """Verifier info model."""
+    name: str
+    verifier_type: str = ""
+    comment: str = ""
+
+
+class SigstoreStatusResponse(BaseModel):
+    """Response model for Sigstore status."""
+    success: bool
+    roots_of_trust: list[str] = []
+    verifiers: list[SigstoreVerifierInfo] = []
+    message: str = ""
+
+
+@router.post("/neuvector/sigstore-status", response_model=SigstoreStatusResponse)
+async def get_sigstore_status(request: SigstoreStatusRequest):
+    """Get NeuVector Sigstore verifier status."""
+    api = NeuVectorAPI(
+        base_url=get_effective_api_url(request.api_url),
+        username=request.username,
+        password=request.password,
+    )
+
+    try:
+        await api.authenticate()
+        roots = await api.get_roots_of_trust()
+        root_names = [r.get("name", "") for r in roots]
+
+        verifiers = []
+        for root in roots:
+            root_name = root.get("name", "")
+            try:
+                vs = await api.get_verifiers(root_name)
+                for v in vs:
+                    verifiers.append(SigstoreVerifierInfo(
+                        name=f"{root_name}/{v.get('name', '')}",
+                        verifier_type=v.get("verifier_type", ""),
+                        comment=v.get("comment", ""),
+                    ))
+            except Exception:
+                pass
+
+        await api.logout()
+        await api.close()
+
+        return SigstoreStatusResponse(
+            success=True,
+            roots_of_trust=root_names,
+            verifiers=verifiers,
+        )
+    except NeuVectorAPIError as e:
+        await api.close()
+        return SigstoreStatusResponse(success=False, message=str(e))
+    except Exception as e:
+        await api.close()
+        return SigstoreStatusResponse(success=False, message=f"Unexpected error: {str(e)}")
+
+
 class DiagnosticStatus(str, Enum):
     """Status for diagnostic checks."""
     OK = "ok"

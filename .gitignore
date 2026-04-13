@@ -9,3 +9,4 @@ build/
 .vscode/
 
 neuvector-demo-web-image.tar.gz
+sigstore/cosign.key

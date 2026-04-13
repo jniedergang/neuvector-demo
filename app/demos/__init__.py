@@ -6,5 +6,6 @@ from app.demos.base import DemoModule
 from app.demos import dlp
 from app.demos import admission
 from app.demos import attack
+from app.demos import sigstore
 
 __all__ = ["DemoRegistry", "DemoModule"]

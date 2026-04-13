@@ -2,7 +2,7 @@
 
 Application web interactive pour exécuter des démonstrations NeuVector sur un cluster Kubernetes.
 
-**Version actuelle : 1.9.0**
+**Version actuelle : 2.0.0**
 
 ## Fonctionnalités
 
@@ -13,6 +13,7 @@ Application web interactive pour exécuter des démonstrations NeuVector sur un 
 | **DLP Detection** | Envoi de données sensibles (carte crédit, SSN, passeport) avec détection/blocage DLP |
 | **Attack Simulation** | Simulation d'attaques (DoS Flood, NC Backdoor, SCP Transfer, Reverse Shell) |
 | **Admission Control** | Création de pods dans des namespaces autorisés/interdits |
+| **Image Signature (Sigstore)** | Vérification de signature d'images Cosign — images signées autorisées, non signées bloquées |
 
 ### Interface
 
@@ -308,6 +309,17 @@ Le mode kiosk exécute automatiquement des scénarios de démo avec des bulles e
 | `/api/neuvector/admission-events` | POST | Événements d'admission |
 
 ## Changelog
+
+### Version 2.0.0
+- Nouvelle démo **Sigstore Image Signature Verification** (Supply Chain Security)
+  - Vérification de signature d'images via Cosign/Sigstore
+  - Setup automatisé : Root of Trust, Verifier keypair, règle admission
+  - Deploy Signed Image (autorisé) vs Deploy Unsigned Image (bloqué)
+  - Cleanup des ressources Sigstore
+- Registre Docker Distribution (`registry:2`) déployé dans le cluster (NodePort 30500)
+- API NeuVector Sigstore : roots of trust, verifiers (CRUD)
+- Endpoint `/api/neuvector/sigstore-status` pour l'état des verifiers
+- 263 clés i18n synchronisées (en/fr/de/es)
 
 ### Version 1.9.0
 - Mode Kiosk : exécution automatique de scénarios de démo avec bulles contextuelles

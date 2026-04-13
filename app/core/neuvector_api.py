@@ -784,6 +784,124 @@ class NeuVectorAPI:
         # Update the group with new sensors list
         return await self.update_group_dlp_sensors(group_name, new_sensors)
 
+    # ========== Sigstore API ==========
+
+    async def get_roots_of_trust(self) -> list[dict[str, Any]]:
+        """Get all Sigstore roots of trust."""
+        client = await self._get_client()
+        try:
+            response = await client.get(
+                "/v1/scan/sigstore/root_of_trust",
+                headers=self._auth_headers(),
+            )
+            if response.status_code != 200:
+                raise NeuVectorAPIError(f"Failed to get roots of trust: {response.status_code}")
+            return response.json().get("roots_of_trust", [])
+        except httpx.RequestError as e:
+            raise NeuVectorAPIError(f"Connection error: {str(e)}")
+
+    async def create_root_of_trust(self, name: str, is_private: bool = False, rootless_keypairs_only: bool = True, comment: str = "") -> dict[str, Any]:
+        """Create a Sigstore root of trust."""
+        client = await self._get_client()
+        try:
+            payload = {
+                "root_of_trust": {
+                    "name": name,
+                    "is_private": is_private,
+                    "rootless_keypairs_only": rootless_keypairs_only,
+                    "comment": comment,
+                }
+            }
+            response = await client.post(
+                "/v1/scan/sigstore/root_of_trust",
+                json=payload,
+                headers=self._auth_headers(),
+            )
+            if response.status_code not in (200, 201):
+                error_msg = f"Failed to create root of trust: {response.status_code}"
+                try:
+                    error_data = response.json()
+                    if "error" in error_data:
+                        error_msg += f" - {error_data['error']}"
+                except Exception:
+                    pass
+                raise NeuVectorAPIError(error_msg)
+            return {"success": True, "name": name}
+        except httpx.RequestError as e:
+            raise NeuVectorAPIError(f"Connection error: {str(e)}")
+
+    async def delete_root_of_trust(self, name: str) -> bool:
+        """Delete a Sigstore root of trust."""
+        client = await self._get_client()
+        try:
+            response = await client.delete(
+                f"/v1/scan/sigstore/root_of_trust/{name}",
+                headers=self._auth_headers(),
+            )
+            if response.status_code not in (200, 204):
+                raise NeuVectorAPIError(f"Failed to delete root of trust: {response.status_code}")
+            return True
+        except httpx.RequestError as e:
+            raise NeuVectorAPIError(f"Connection error: {str(e)}")
+
+    async def get_verifiers(self, root_name: str) -> list[dict[str, Any]]:
+        """Get verifiers for a root of trust."""
+        client = await self._get_client()
+        try:
+            response = await client.get(
+                f"/v1/scan/sigstore/root_of_trust/{root_name}/verifier",
+                headers=self._auth_headers(),
+            )
+            if response.status_code != 200:
+                raise NeuVectorAPIError(f"Failed to get verifiers: {response.status_code}")
+            return response.json().get("verifiers", [])
+        except httpx.RequestError as e:
+            raise NeuVectorAPIError(f"Connection error: {str(e)}")
+
+    async def create_verifier(self, root_name: str, name: str, verifier_type: str = "keypair", public_key: str = "", comment: str = "") -> dict[str, Any]:
+        """Create a Sigstore verifier under a root of trust."""
+        client = await self._get_client()
+        try:
+            payload = {
+                "verifier": {
+                    "name": name,
+                    "verifier_type": verifier_type,
+                    "public_key": public_key,
+                    "comment": comment,
+                }
+            }
+            response = await client.post(
+                f"/v1/scan/sigstore/root_of_trust/{root_name}/verifier",
+                json=payload,
+                headers=self._auth_headers(),
+            )
+            if response.status_code not in (200, 201):
+                error_msg = f"Failed to create verifier: {response.status_code}"
+                try:
+                    error_data = response.json()
+                    if "error" in error_data:
+                        error_msg += f" - {error_data['error']}"
+                except Exception:
+                    pass
+                raise NeuVectorAPIError(error_msg)
+            return {"success": True, "name": name}
+        except httpx.RequestError as e:
+            raise NeuVectorAPIError(f"Connection error: {str(e)}")
+
+    async def delete_verifier(self, root_name: str, verifier_name: str) -> bool:
+        """Delete a Sigstore verifier."""
+        client = await self._get_client()
+        try:
+            response = await client.delete(
+                f"/v1/scan/sigstore/root_of_trust/{root_name}/verifier/{verifier_name}",
+                headers=self._auth_headers(),
+            )
+            if response.status_code not in (200, 204):
+                raise NeuVectorAPIError(f"Failed to delete verifier: {response.status_code}")
+            return True
+        except httpx.RequestError as e:
+            raise NeuVectorAPIError(f"Connection error: {str(e)}")
+
     # ========== Network Rules API ==========
 
     async def get_network_rules(self, group_name: str) -> list[dict[str, Any]]:
