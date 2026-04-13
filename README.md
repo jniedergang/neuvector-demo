@@ -222,6 +222,35 @@ podman build -t demo-web1:latest images/web1/
 2. Cliquer **Create Pod** → bloqué par Admission Control
 3. Sélectionner un namespace **Allowed** → pod créé avec succès
 
+### Mode Kiosk
+
+Le mode kiosk exécute automatiquement des scénarios de démo avec des bulles explicatives contextuelles.
+
+**Lancement** : Cliquer ▶ dans le header → sélectionner les sections → options → démarrer
+
+**Options** :
+- **Sections** : cocher/décocher les parties du scénario à exécuter
+- **Boucle** : le scénario redémarre automatiquement quand il se termine
+- **Manuel** : un bouton flottant "Next step" apparaît en bas de l'écran, l'utilisateur valide chaque étape
+
+**Éditeur** : Cliquer ✏️ dans le header pour ouvrir l'éditeur de scénario
+- Palette à gauche : types d'étapes disponibles (cliquer pour ajouter)
+- Timeline à droite : drag & drop pour réordonner, × pour supprimer
+- Charger défaut / Enregistrer
+
+**Types d'étapes** :
+| Type | Description |
+|------|-------------|
+| 📂 Section | Marqueur de section (pour le sélecteur) |
+| 🔃 Reset platform | Remet tous les pods en Discover/zero-drift |
+| 📌 Select demo | Charge une démo spécifique |
+| 🔄 Change mode | Modifie Network Policy ou Process Profile |
+| ⚔️ Run attack | Lance une attaque spécifique |
+| 💬 Show bubble | Affiche une bulle explicative sur un élément |
+| 🚫 Hide bubbles | Masque toutes les bulles |
+| ⏳ Wait completion | Attend la fin de l'exécution en cours |
+| ⏱ Pause | Attend N secondes |
+
 ## Configuration
 
 ### Variables d'Environnement
@@ -281,14 +310,15 @@ podman build -t demo-web1:latest images/web1/
 ## Changelog
 
 ### Version 1.9.0
-- Mode Kiosk avec sections sélectionnables pour exécuter des scénarios partiels
+- Mode Kiosk : exécution automatique de scénarios de démo avec bulles contextuelles
+- Sections sélectionnables : choisir quelles parties du scénario exécuter
+- Mode boucle infinie : le scénario redémarre automatiquement à la fin
+- Mode manuel : chaque étape attend la validation de l'utilisateur (bouton flottant)
+- Éditeur de scénario drag & drop avec types : section, reset_platform, select_demo, set_mode, run_attack, show_bubble, wait
 - Scénario par défaut avec 3 attaques : SCP Transfer, NC Backdoor, Reverse Shell
-- Chaque section démarre par un reset de la plateforme (modes Discover)
-- Sélecteur de sections dans un popup au lancement du kiosk
-- Éditeur de scénario drag & drop avec types section et reset_platform
+- Reset automatique de la plateforme au début du scénario
 - Bulles contextuelles explicatives pointant vers les éléments de l'interface
-- Le DoS Ping Flood a été retiré du scénario par défaut (ICMP non bloqué par la network policy)
-- 259 clés i18n synchronisées (en/fr/de/es)
+- 261 clés i18n synchronisées (en/fr/de/es)
 
 ### Version 1.8.3
 - Le warning Discover ne s'affiche plus quand les deux pods sont en Discover (uniquement quand un seul l'est)
