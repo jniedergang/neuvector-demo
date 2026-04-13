@@ -4878,7 +4878,8 @@ class DemoApp {
         }
 
         // Warn if any network policy is in Discover mode for attack/connectivity/dlp demos
-        if (this.currentDemoType === 'attack' || this.currentDemoType === 'connectivity' || this.currentDemoType === 'dlp') {
+        // Skip warning in kiosk mode (automated execution)
+        if (!kioskPlayer.isPlaying && (this.currentDemoType === 'attack' || this.currentDemoType === 'connectivity' || this.currentDemoType === 'dlp')) {
             const srcMode = document.getElementById('viz-src-policy-mode')?.value;
             const tgtMode = document.getElementById('viz-tgt-policy-mode')?.value;
             if ((srcMode === 'Discover' || tgtMode === 'Discover') && !(srcMode === 'Discover' && tgtMode === 'Discover')) {

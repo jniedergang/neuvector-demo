@@ -205,12 +205,15 @@ class KioskPlayer {
 
             case 'set_mode': {
                 const prefix = step.target === 'source' ? 'viz-src' : 'viz-tgt';
-                const select = document.getElementById(`${prefix}-${step.field}`);
+                const selectId = `${prefix}-${step.field.replace('_', '-')}`;
+                const select = document.getElementById(selectId);
                 if (select) {
                     select.value = step.value;
-                    select.dispatchEvent(new Event('change'));
+                    select.dispatchEvent(new Event('change', { bubbles: true }));
                     // Wait for NeuVector sync
                     await this.waitUntil(() => !this.demoApp.isSyncing, 15000);
+                } else {
+                    console.warn(`[Kiosk] Select not found: ${selectId}`);
                 }
                 await this.sleep(500);
                 break;
