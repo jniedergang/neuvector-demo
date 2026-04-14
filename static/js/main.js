@@ -1808,7 +1808,13 @@ class DemoApp {
 
         // Always fetch events after demo completes
         if (this.vizContainer) {
-            if (this.currentDemoType === 'admission') {
+            if (this.currentDemoType === 'sigstore') {
+                // For sigstore demos, refresh config and images + admission events
+                setTimeout(() => this.loadSigstoreConfig(), 1000);
+                setTimeout(() => this.loadSigstoreImageStatus(), 2000);
+                setTimeout(() => this.fetchAdmissionEvents(), 1000);
+                setTimeout(() => this.fetchAdmissionEvents(), 3000);
+            } else if (this.currentDemoType === 'admission') {
                 // For admission demos, fetch admission events
                 setTimeout(() => this.fetchAdmissionEvents(), 1000);
                 setTimeout(() => this.fetchAdmissionEvents(), 3000);
@@ -1930,23 +1936,26 @@ class DemoApp {
         const isDLPDemo = paramNames.includes('pod_name') && paramNames.includes('data_type') && paramNames.includes('target');
         const isAdmissionDemo = paramNames.includes('action') && paramNames.includes('namespace') && paramNames.includes('pod_name');
         const isAttackDemo = paramNames.includes('pod_name') && paramNames.includes('attack_type') && paramNames.includes('target');
-        const hasVisualization = isConnectivityDemo || isDLPDemo || isAdmissionDemo || isAttackDemo;
+        const isSigstoreDemo = demo.id === 'sigstore';
+        const hasVisualization = isConnectivityDemo || isDLPDemo || isAdmissionDemo || isAttackDemo || isSigstoreDemo;
 
         if (this.demoParams) {
             if (isConnectivityDemo) {
-                // Render compact layout for connectivity demos
                 this.demoParams.innerHTML = this.renderCompactDemoParams(demo);
             } else if (isDLPDemo) {
-                // Render compact layout for DLP demos
                 this.demoParams.innerHTML = this.renderDLPDemoParams(demo);
             } else if (isAdmissionDemo) {
-                // Render compact layout for admission demos
                 this.demoParams.innerHTML = this.renderAdmissionDemoParams(demo);
             } else if (isAttackDemo) {
-                // Render compact layout for attack demos
                 this.demoParams.innerHTML = this.renderAttackDemoParams(demo);
+            } else if (isSigstoreDemo) {
+                // Hidden form fields for sigstore
+                this.demoParams.innerHTML = `
+                    <input type="hidden" name="action" id="param-action" value="deploy_signed">
+                    <input type="hidden" name="namespace" id="param-namespace" value="neuvector-demo">
+                    <input type="hidden" name="pod_name" id="param-pod_name" value="test-sigstore">
+                `;
             } else {
-                // Standard layout for other demos
                 this.demoParams.innerHTML = demo.parameters.map(param => this.renderParameter(param)).join('');
             }
         }
@@ -2379,13 +2388,21 @@ class DemoApp {
         const isAdmissionDemo = paramNames.includes('action') && paramNames.includes('namespace') && paramNames.includes('pod_name');
         const isAttackDemo = paramNames.includes('pod_name') && paramNames.includes('attack_type') && paramNames.includes('target');
 
-        if (!isConnectivityDemo && !isDLPDemo && !isAdmissionDemo && !isAttackDemo) {
+        const isSigstoreDemo = demo.id === 'sigstore';
+
+        if (!isConnectivityDemo && !isDLPDemo && !isAdmissionDemo && !isAttackDemo && !isSigstoreDemo) {
             this.removeVisualization();
             return;
         }
 
         // Store demo type for later use
-        this.currentDemoType = isAdmissionDemo ? 'admission' : (isAttackDemo ? 'attack' : (isDLPDemo ? 'dlp' : 'connectivity'));
+        this.currentDemoType = isSigstoreDemo ? 'sigstore' : (isAdmissionDemo ? 'admission' : (isAttackDemo ? 'attack' : (isDLPDemo ? 'dlp' : 'connectivity')));
+
+        // Handle sigstore demo separately
+        if (isSigstoreDemo) {
+            this.createSigstoreVisualization(demo);
+            return;
+        }
 
         // Handle admission demo separately
         if (isAdmissionDemo) {
@@ -4488,6 +4505,228 @@ class DemoApp {
         if (viz) viz.classList.toggle('syncing', syncing);
     }
 
+    /**
+     * Create visualization for Sigstore demo
+     */
+    createSigstoreVisualization(demo) {
+        const vizHtml = `
+            <div class="demo-viz-row">
+                <div class="demo-visualization sigstore-viz" id="demo-visualization">
+                    <div class="viz-content sigstore-content">
+                        <div class="sigstore-panel">
+                            <!-- Config Section -->
+                            <div class="sigstore-section">
+                                <div class="sigstore-header">
+                                    <span class="sigstore-icon">🔏</span>
+                                    <span>${t('sigstore.config')}</span>
+                                    <div class="sigstore-actions-top">
+                                        <button type="button" class="btn btn-primary btn-sm" id="btn-sigstore-setup">${t('sigstore.setup')}</button>
+                                        <button type="button" class="btn btn-outline btn-sm" id="btn-sigstore-cleanup">${t('sigstore.cleanup')}</button>
+                                    </div>
+                                </div>
+                                <div class="sigstore-config-content" id="sigstore-config-content">
+                                    <div class="sigstore-config-loading">${t('settings.loading')}</div>
+                                </div>
+                            </div>
+
+                            <!-- Images Section -->
+                            <div class="sigstore-section">
+                                <div class="sigstore-header">
+                                    <span class="sigstore-icon">🐳</span>
+                                    <span>${t('sigstore.registryImages')}</span>
+                                    <button type="button" class="btn-refresh" id="btn-sigstore-scan" title="${t('sigstore.scan')}">↻</button>
+                                </div>
+                                <div class="sigstore-images-content" id="sigstore-images-content">
+                                    <div class="sigstore-images-empty">${t('sigstore.noImages')}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="viz-status pending" id="viz-status">
+                        <span class="viz-status-dot"></span>
+                        <span class="viz-status-text">${t('viz.ready')}</span>
+                    </div>
+                </div>
+                <div class="nv-logs-container" id="nv-logs-container">
+                    <div class="nv-logs-header">
+                        <span>${t('events.admissionEvents')}</span>
+                        <button type="button" class="btn-refresh" id="btn-refresh-logs" title="${t('events.refreshEvents')}">↻</button>
+                    </div>
+                    <div class="nv-logs-list empty" id="nv-logs-list">
+                        ${t('events.clickRefresh')}
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const demoParams = document.getElementById('demo-params');
+        if (!demoParams) return;
+
+        this.removeVisualization();
+
+        const vizWrapper = document.createElement('div');
+        vizWrapper.id = 'viz-wrapper';
+        vizWrapper.innerHTML = vizHtml;
+        demoParams.parentNode.insertBefore(vizWrapper, demoParams);
+
+        this.vizContainer = document.getElementById('demo-visualization');
+        this.vizState = 'pending';
+
+        // Setup button handlers
+        document.getElementById('btn-sigstore-setup')?.addEventListener('click', () => this.runSigstoreAction('setup'));
+        document.getElementById('btn-sigstore-cleanup')?.addEventListener('click', () => this.runSigstoreAction('cleanup'));
+        document.getElementById('btn-sigstore-scan')?.addEventListener('click', () => this.loadSigstoreImageStatus());
+        document.getElementById('btn-refresh-logs')?.addEventListener('click', () => this.fetchAdmissionEvents());
+
+        // Load initial state
+        this.loadSigstoreConfig();
+        this.loadSigstoreImageStatus();
+    }
+
+    /**
+     * Run a sigstore action (setup/cleanup/deploy)
+     */
+    runSigstoreAction(action) {
+        const hiddenAction = document.getElementById('param-action');
+        if (hiddenAction) hiddenAction.value = action;
+
+        // Pass NeuVector credentials
+        const credentials = settingsManager.getCredentials();
+        if (this.currentDemo) {
+            // Inject credentials into params
+            this.currentDemo._extraParams = {
+                nv_username: credentials.username,
+                nv_password: credentials.password,
+            };
+        }
+
+        this.runCurrentDemo();
+    }
+
+    /**
+     * Deploy a sigstore image (signed or unsigned)
+     */
+    deploySigstoreImage(signed) {
+        const hiddenAction = document.getElementById('param-action');
+        const hiddenPodName = document.getElementById('param-pod_name');
+        if (hiddenAction) hiddenAction.value = signed ? 'deploy_signed' : 'deploy_unsigned';
+        if (hiddenPodName) hiddenPodName.value = signed ? 'test-sigstore' : 'test-sigstore-unsigned';
+
+        this.runCurrentDemo();
+    }
+
+    /**
+     * Load Sigstore configuration status
+     */
+    async loadSigstoreConfig() {
+        const container = document.getElementById('sigstore-config-content');
+        if (!container) return;
+
+        const credentials = settingsManager.getCredentials();
+        if (!credentials.password) {
+            container.innerHTML = `<div class="sigstore-config-empty">${t('events.configureCredentials')}</div>`;
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/neuvector/sigstore-status', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: credentials.username, password: credentials.password }),
+            });
+            const result = await response.json();
+
+            if (result.success && result.roots_of_trust.length > 0) {
+                const rootsHtml = result.roots_of_trust.map(r => `<span class="sigstore-badge root">${r}</span>`).join('');
+                const verifiersHtml = result.verifiers.map(v =>
+                    `<span class="sigstore-badge verifier">${v.name} (${v.verifier_type})</span>`
+                ).join('');
+                container.innerHTML = `
+                    <div class="sigstore-config-row">
+                        <span class="sigstore-config-label">${t('sigstore.rootOfTrust')}:</span>
+                        ${rootsHtml}
+                    </div>
+                    <div class="sigstore-config-row">
+                        <span class="sigstore-config-label">${t('sigstore.verifier')}:</span>
+                        ${verifiersHtml || '—'}
+                    </div>
+                `;
+            } else {
+                container.innerHTML = `<div class="sigstore-config-empty">${t('sigstore.notConfigured')}</div>`;
+            }
+        } catch (error) {
+            container.innerHTML = `<div class="sigstore-config-empty">${t('settings.error')}</div>`;
+        }
+    }
+
+    /**
+     * Load Sigstore image signature status
+     */
+    async loadSigstoreImageStatus() {
+        const container = document.getElementById('sigstore-images-content');
+        if (!container) return;
+
+        const credentials = settingsManager.getCredentials();
+        if (!credentials.password) {
+            container.innerHTML = `<div class="sigstore-images-empty">${t('events.configureCredentials')}</div>`;
+            return;
+        }
+
+        container.innerHTML = `<div class="sigstore-images-loading">${t('settings.loading')}</div>`;
+
+        try {
+            const response = await fetch('/api/neuvector/sigstore-image-status', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: credentials.username, password: credentials.password }),
+            });
+            const result = await response.json();
+
+            if (result.success && result.images.length > 0) {
+                container.innerHTML = result.images.map(img => {
+                    const signedClass = img.signed ? 'signed' : 'unsigned';
+                    const signedIcon = img.signed ? '🔏' : '❌';
+                    const signedLabel = img.signed ? t('sigstore.signed') : t('sigstore.notSigned');
+                    const verifierInfo = img.verifiers.length > 0 ? `(${img.verifiers.join(', ')})` : '';
+                    const deployAction = img.signed ? 'deploy_signed' : 'deploy_unsigned';
+
+                    return `
+                        <div class="sigstore-image-item ${signedClass}">
+                            <span class="sigstore-image-icon">${signedIcon}</span>
+                            <div class="sigstore-image-info">
+                                <span class="sigstore-image-name">${this.escapeHtml(img.repository)}:${this.escapeHtml(img.tag)}</span>
+                                <span class="sigstore-image-status ${signedClass}">${signedLabel} ${verifierInfo}</span>
+                            </div>
+                            <button type="button" class="btn btn-sm ${img.signed ? 'btn-success' : 'btn-danger'} btn-sigstore-deploy"
+                                data-action="${deployAction}" data-pod="${img.signed ? 'test-sigstore' : 'test-sigstore-unsigned'}">
+                                ▶ Deploy
+                            </button>
+                        </div>
+                    `;
+                }).join('');
+
+                // Attach deploy handlers
+                container.querySelectorAll('.btn-sigstore-deploy').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const action = btn.dataset.action;
+                        const podName = btn.dataset.pod;
+                        const hiddenAction = document.getElementById('param-action');
+                        const hiddenPodName = document.getElementById('param-pod_name');
+                        if (hiddenAction) hiddenAction.value = action;
+                        if (hiddenPodName) hiddenPodName.value = podName;
+                        this.runCurrentDemo();
+                    });
+                });
+            } else if (result.success) {
+                container.innerHTML = `<div class="sigstore-images-empty">${t('sigstore.noImages')}</div>`;
+            } else {
+                container.innerHTML = `<div class="sigstore-images-empty">${result.message || t('settings.error')}</div>`;
+            }
+        } catch (error) {
+            container.innerHTML = `<div class="sigstore-images-empty">${t('settings.error')}</div>`;
+        }
+    }
+
     removeVisualization() {
         // Clear live clock interval
         if (this.liveClockInterval) {
@@ -4875,6 +5114,12 @@ class DemoApp {
         const credentials = settingsManager.getCredentials();
         if (credentials.image_registry) {
             params.image_registry = credentials.image_registry;
+        }
+
+        // Add extra params (e.g., NeuVector credentials for sigstore setup/cleanup)
+        if (this.currentDemo._extraParams) {
+            Object.assign(params, this.currentDemo._extraParams);
+            delete this.currentDemo._extraParams;
         }
 
         // Warn if any network policy is in Discover mode for attack/connectivity/dlp demos

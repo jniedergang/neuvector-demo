@@ -2,7 +2,7 @@
 
 Application web interactive pour exécuter des démonstrations NeuVector sur un cluster Kubernetes.
 
-**Version actuelle : 2.0.0**
+**Version actuelle : 2.1.0**
 
 ## Fonctionnalités
 
@@ -309,6 +309,15 @@ Le mode kiosk exécute automatiquement des scénarios de démo avec des bulles e
 | `/api/neuvector/admission-events` | POST | Événements d'admission |
 
 ## Changelog
+
+### Version 2.1.0
+- Visualisation dédiée pour la démo Sigstore (style panneau comme Admission Control)
+- Panneau Config : Root of Trust, Verifier, avec boutons Setup/Cleanup
+- Panneau Images : liste les images du registre avec statut signé/non signé et bouton Deploy
+- Panneau Events : événements d'admission (autorisé/bloqué)
+- Endpoint `/api/neuvector/sigstore-image-status` (vérifie les signatures individuelles)
+- Règle admission scopée au registre démo uniquement (ne bloque plus l'app elle-même)
+- 277 clés i18n synchronisées (en/fr/de/es)
 
 ### Version 2.0.0
 - Nouvelle démo **Sigstore Image Signature Verification** (Supply Chain Security)

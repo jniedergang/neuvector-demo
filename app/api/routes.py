@@ -1532,6 +1532,96 @@ async def get_sigstore_status(request: SigstoreStatusRequest):
         return SigstoreStatusResponse(success=False, message=f"Unexpected error: {str(e)}")
 
 
+class SigstoreImageInfo(BaseModel):
+    """Image info with signature status."""
+    repository: str
+    tag: str
+    image_id: str = ""
+    signed: bool = False
+    verifiers: list[str] = []
+
+
+class SigstoreImageStatusResponse(BaseModel):
+    """Response model for Sigstore image status."""
+    success: bool
+    images: list[SigstoreImageInfo] = []
+    message: str = ""
+
+
+@router.post("/neuvector/sigstore-image-status", response_model=SigstoreImageStatusResponse)
+async def get_sigstore_image_status(request: SigstoreStatusRequest):
+    """Get signature status for all images in the demo registry."""
+    api = NeuVectorAPI(
+        base_url=get_effective_api_url(request.api_url),
+        username=request.username,
+        password=request.password,
+    )
+
+    try:
+        await api.authenticate()
+        client = await api._get_client()
+
+        # Get images from demo registry
+        resp = await client.get(
+            "/v1/scan/registry/demo-registry/images",
+            headers=api._auth_headers(),
+        )
+
+        if resp.status_code != 200:
+            await api.logout()
+            await api.close()
+            return SigstoreImageStatusResponse(
+                success=False,
+                message=f"Registry not found or not scanned (status {resp.status_code})",
+            )
+
+        images_data = resp.json().get("images", [])
+        images = []
+
+        # For each image, get individual report with signature_data
+        for img in images_data:
+            image_id = img.get("image_id", "")
+            repo = img.get("repository", "")
+            tag = img.get("tag", "")
+
+            verifiers = []
+            signed = False
+
+            if image_id:
+                try:
+                    resp2 = await client.get(
+                        f"/v1/scan/registry/demo-registry/image/{image_id}",
+                        headers=api._auth_headers(),
+                    )
+                    if resp2.status_code == 200:
+                        sig_data = resp2.json().get("report", {}).get("signature_data", {})
+                        if sig_data:
+                            verifiers = sig_data.get("verifiers", [])
+                            signed = len(verifiers) > 0
+                except Exception:
+                    pass
+
+            images.append(SigstoreImageInfo(
+                repository=repo,
+                tag=tag,
+                image_id=image_id,
+                signed=signed,
+                verifiers=verifiers,
+            ))
+
+        await api.logout()
+        await api.close()
+
+        return SigstoreImageStatusResponse(success=True, images=images)
+
+    except NeuVectorAPIError as e:
+        await api.close()
+        return SigstoreImageStatusResponse(success=False, message=str(e))
+    except Exception as e:
+        await api.close()
+        return SigstoreImageStatusResponse(success=False, message=f"Unexpected error: {str(e)}")
+
+
 class DiagnosticStatus(str, Enum):
     """Status for diagnostic checks."""
     OK = "ok"

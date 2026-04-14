@@ -4215,3 +4215,174 @@ body.dark-mode .kiosk-step-info input {
     border-color: #2a3a50;
     color: var(--text-color);
 }
+
+/* ============================================
+   SIGSTORE VISUALIZATION
+   ============================================ */
+
+.sigstore-panel {
+    width: 100%;
+}
+
+.sigstore-section {
+    margin-bottom: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.sigstore-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 0.75rem;
+    background: var(--primary-color);
+    color: white;
+    font-weight: 600;
+    font-size: 0.8rem;
+}
+
+.sigstore-icon {
+    font-size: 1rem;
+}
+
+.sigstore-actions-top {
+    margin-left: auto;
+    display: flex;
+    gap: 0.4rem;
+}
+
+.sigstore-actions-top .btn-sm {
+    padding: 0.2rem 0.6rem;
+    font-size: 0.7rem;
+}
+
+.sigstore-config-content,
+.sigstore-images-content {
+    padding: 0.6rem 0.75rem;
+    background: var(--card-bg);
+}
+
+.sigstore-config-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.35rem;
+    font-size: 0.8rem;
+}
+
+.sigstore-config-label {
+    font-weight: 600;
+    color: var(--text-secondary);
+    min-width: 100px;
+}
+
+.sigstore-badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.sigstore-badge.root {
+    background: var(--primary-light);
+    color: white;
+}
+
+.sigstore-badge.verifier {
+    background: var(--success-color);
+    color: white;
+}
+
+.sigstore-config-empty,
+.sigstore-images-empty,
+.sigstore-images-loading,
+.sigstore-config-loading {
+    text-align: center;
+    padding: 1rem;
+    color: var(--text-secondary);
+    font-style: italic;
+    font-size: 0.8rem;
+}
+
+.sigstore-image-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0.6rem;
+    border-radius: 6px;
+    margin-bottom: 0.35rem;
+    border: 1px solid var(--border-color);
+    background: var(--bg-color);
+    font-size: 0.8rem;
+}
+
+.sigstore-image-item:last-child {
+    margin-bottom: 0;
+}
+
+.sigstore-image-item.signed {
+    border-left: 3px solid var(--success-color);
+}
+
+.sigstore-image-item.unsigned {
+    border-left: 3px solid var(--error-color);
+}
+
+.sigstore-image-icon {
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.sigstore-image-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.sigstore-image-name {
+    display: block;
+    font-family: monospace;
+    font-weight: 600;
+    font-size: 0.8rem;
+}
+
+.sigstore-image-status {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-top: 0.1rem;
+}
+
+.sigstore-image-status.signed {
+    color: var(--success-color);
+}
+
+.sigstore-image-status.unsigned {
+    color: var(--error-color);
+}
+
+.btn-sigstore-deploy {
+    flex-shrink: 0;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.7rem;
+}
+
+/* Dark mode overrides for Sigstore */
+body.dark-mode .sigstore-section {
+    border-color: #2a3a50;
+}
+
+body.dark-mode .sigstore-config-content,
+body.dark-mode .sigstore-images-content {
+    background: #1a2736;
+}
+
+body.dark-mode .sigstore-image-item {
+    background: #0f1923;
+    border-color: #2a3a50;
+}
+
+body.dark-mode .sigstore-image-name {
+    color: #c0d0e0;
+}
