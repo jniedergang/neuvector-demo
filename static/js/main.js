@@ -4138,6 +4138,10 @@ class DemoApp {
                                     <div class="admission-state-row">
                                         <span class="admission-state-label">${t('admission.status')}</span>
                                         <span class="admission-state-value" id="admission-state-enabled">${t('settings.loading')}</span>
+                                        <label class="admission-toggle" title="${t('admission.toggleEnable')}">
+                                            <input type="checkbox" id="admission-toggle-checkbox">
+                                            <span class="toggle-slider-sm"></span>
+                                        </label>
                                     </div>
                                     <div class="admission-state-row">
                                         <span class="admission-state-label">${t('admission.mode')}</span>
@@ -4220,6 +4224,9 @@ class DemoApp {
         // Set up refresh buttons
         document.getElementById('btn-refresh-admission')?.addEventListener('click', () => this.loadAdmissionState());
         document.getElementById('btn-refresh-logs')?.addEventListener('click', () => this.fetchAdmissionEvents());
+
+        // Admission toggle
+        this.setupAdmissionToggle();
 
         // Initial load
         this.loadAdmissionState();
@@ -4316,6 +4323,13 @@ class DemoApp {
                 enabledEl.className = 'admission-state-value ' + (enabled ? 'enabled' : 'disabled');
                 modeEl.textContent = mode.charAt(0).toUpperCase() + mode.slice(1);
                 modeEl.className = 'admission-state-value mode-' + mode;
+
+                // Update toggle checkbox
+                const checkbox = document.getElementById('admission-toggle-checkbox');
+                if (checkbox) {
+                    checkbox.checked = enabled;
+                    checkbox.disabled = false;
+                }
             } else {
                 enabledEl.textContent = t('settings.error');
                 modeEl.textContent = result.message || t('status.failed');
@@ -4324,6 +4338,49 @@ class DemoApp {
             console.error('Failed to get admission state:', error);
             enabledEl.textContent = t('settings.error');
         }
+    }
+
+    /**
+     * Setup admission control toggle checkbox
+     */
+    setupAdmissionToggle() {
+        const checkbox = document.getElementById('admission-toggle-checkbox');
+        if (checkbox) {
+            checkbox.addEventListener('change', () => this.toggleAdmissionState(checkbox.checked));
+        }
+    }
+
+    /**
+     * Toggle admission control enabled/disabled
+     */
+    async toggleAdmissionState(enable) {
+        const checkbox = document.getElementById('admission-toggle-checkbox');
+        if (checkbox) checkbox.disabled = true;
+
+        const credentials = settingsManager.getCredentials();
+        if (!credentials.password) {
+            if (checkbox) checkbox.disabled = false;
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/neuvector/update-admission-state', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: credentials.username,
+                    password: credentials.password,
+                    enable: enable,
+                    mode: 'protect',
+                }),
+            });
+            await response.json();
+        } catch (error) {
+            console.error('Failed to toggle admission state:', error);
+        }
+
+        // Refresh state display
+        setTimeout(() => this.loadAdmissionState(), 500);
     }
 
     /**
@@ -4529,6 +4586,29 @@ class DemoApp {
                                 </div>
                             </div>
 
+                            <!-- Admission State Section -->
+                            <div class="sigstore-section">
+                                <div class="sigstore-header">
+                                    <span class="sigstore-icon">🛡️</span>
+                                    <span>${t('admission.controlState')}</span>
+                                    <button type="button" class="btn-refresh" id="btn-refresh-admission" title="${t('admission.refreshState')}">↻</button>
+                                </div>
+                                <div class="admission-state-content" id="admission-state-content">
+                                    <div class="admission-state-row">
+                                        <span class="admission-state-label">${t('admission.status')}</span>
+                                        <span class="admission-state-value" id="admission-state-enabled">${t('settings.loading')}</span>
+                                        <label class="admission-toggle" title="${t('admission.toggleEnable')}">
+                                            <input type="checkbox" id="admission-toggle-checkbox">
+                                            <span class="toggle-slider-sm"></span>
+                                        </label>
+                                    </div>
+                                    <div class="admission-state-row">
+                                        <span class="admission-state-label">${t('admission.mode')}</span>
+                                        <span class="admission-state-value" id="admission-state-mode">-</span>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Images Section -->
                             <div class="sigstore-section">
                                 <div class="sigstore-header">
@@ -4577,10 +4657,15 @@ class DemoApp {
         document.getElementById('btn-sigstore-cleanup')?.addEventListener('click', () => this.runSigstoreAction('cleanup'));
         document.getElementById('btn-sigstore-scan')?.addEventListener('click', () => this.loadSigstoreImageStatus());
         document.getElementById('btn-refresh-logs')?.addEventListener('click', () => this.fetchAdmissionEvents());
+        document.getElementById('btn-refresh-admission')?.addEventListener('click', () => this.loadAdmissionState());
+
+        // Admission toggle
+        this.setupAdmissionToggle();
 
         // Load initial state
         this.loadSigstoreConfig();
         this.loadSigstoreImageStatus();
+        this.loadAdmissionState();
     }
 
     /**

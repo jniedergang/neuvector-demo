@@ -4368,6 +4368,23 @@ body.dark-mode .kiosk-step-info input {
     font-size: 0.7rem;
 }
 
+/* Admission toggle in state row */
+.admission-toggle {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    margin-left: auto;
+}
+
+.admission-toggle input {
+    display: none;
+}
+
+.admission-state-row {
+    display: flex;
+    align-items: center;
+}
+
 /* Dark mode overrides for Sigstore */
 body.dark-mode .sigstore-section {
     border-color: #2a3a50;

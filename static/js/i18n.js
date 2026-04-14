@@ -207,6 +207,8 @@ const translations = {
         'category.Supply Chain': 'Supply Chain',
 
         // Sigstore visualization
+        'admission.toggleEnable': 'Enable/Disable Admission Control',
+
         'sigstore.config': 'Sigstore Configuration',
         'sigstore.rootOfTrust': 'Root of Trust',
         'sigstore.verifier': 'Verifier',
@@ -524,6 +526,8 @@ const translations = {
         'demo.attack': 'Simulation d\'attaque',
         'demo.sigstore': 'Vérification de signature d\'images',
         'category.Supply Chain': 'Chaîne d\'approvisionnement',
+        'admission.toggleEnable': 'Activer/Désactiver le contrôle d\'admission',
+
         'sigstore.config': 'Configuration Sigstore',
         'sigstore.rootOfTrust': 'Racine de confiance',
         'sigstore.verifier': 'Vérificateur',
@@ -829,6 +833,8 @@ const translations = {
         'demo.attack': 'Angriffssimulation',
         'demo.sigstore': 'Image-Signaturverifizierung',
         'category.Supply Chain': 'Lieferkette',
+        'admission.toggleEnable': 'Zugangs-Kontrolle aktivieren/deaktivieren',
+
         'sigstore.config': 'Sigstore-Konfiguration',
         'sigstore.rootOfTrust': 'Vertrauensstamm',
         'sigstore.verifier': 'Verifizierer',
@@ -1134,6 +1140,8 @@ const translations = {
         'demo.attack': 'Simulación de ataque',
         'demo.sigstore': 'Verificación de firma de imágenes',
         'category.Supply Chain': 'Cadena de suministro',
+        'admission.toggleEnable': 'Activar/Desactivar control de admisión',
+
         'sigstore.config': 'Configuración Sigstore',
         'sigstore.rootOfTrust': 'Raíz de confianza',
         'sigstore.verifier': 'Verificador',
