@@ -150,16 +150,21 @@ class SigstoreDemo(DemoModule):
                 verifier_path = f"{ROOT_OF_TRUST_NAME}/{VERIFIER_NAME}"
                 await api.create_admission_rule(
                     rule_type="deny",
-                    comment=f"[Demo] Deny images not signed by {verifier_path}",
+                    comment=f"[Demo] Deny unsigned images from {REGISTRY_URL} (verifier: {verifier_path})",
                     criteria=[
+                        {
+                            "name": "imageRegistry",
+                            "op": "containsAny",
+                            "value": REGISTRY_URL,
+                        },
                         {
                             "name": "imageSigned",
                             "op": "=",
                             "value": "false",
-                        }
+                        },
                     ],
                 )
-                yield "[OK] Admission rule created: deny unsigned images"
+                yield f"[OK] Admission rule created: deny unsigned images from {REGISTRY_URL}"
             except Exception as e:
                 yield f"[WARNING] Admission rule may already exist: {e}"
 
