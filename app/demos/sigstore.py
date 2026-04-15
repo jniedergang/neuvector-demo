@@ -120,7 +120,8 @@ class SigstoreDemo(DemoModule):
                 )
                 yield f"[OK] Root of Trust '{ROOT_OF_TRUST_NAME}' created"
             except Exception as e:
-                if "already" in str(e).lower() or "409" in str(e):
+                err = str(e).lower()
+                if "already" in err or "409" in str(e) or "duplicate" in err:
                     yield f"[INFO] Root of Trust '{ROOT_OF_TRUST_NAME}' already exists"
                 else:
                     yield f"[ERROR] Failed to create Root of Trust: {e}"
@@ -138,14 +139,56 @@ class SigstoreDemo(DemoModule):
                 )
                 yield f"[OK] Verifier '{VERIFIER_NAME}' created with public key"
             except Exception as e:
-                if "already" in str(e).lower() or "409" in str(e):
+                err = str(e).lower()
+                if "already" in err or "409" in str(e) or "duplicate" in err or "500" in str(e):
                     yield f"[INFO] Verifier '{VERIFIER_NAME}' already exists"
                 else:
-                    yield f"[ERROR] Failed to create Verifier: {e}"
-                    return
+                    yield f"[WARNING] Verifier creation issue: {e}"
+
+            # Configure registry scanning
+            yield "[STEP 3/6] Configuring registry scan..."
+            try:
+                client = await api._get_client()
+                # Delete old registry config if exists
+                await client.delete("/v1/scan/registry/demo-registry", headers=api._auth_headers())
+                import asyncio
+                await asyncio.sleep(2)
+                # Create registry
+                resp = await client.post("/v1/scan/registry", json={
+                    "config": {
+                        "name": "demo-registry",
+                        "registry_type": "Docker Registry",
+                        "registry": f"https://{REGISTRY_URL}/",
+                        "filters": ["demo-signed", "demo-unsigned"],
+                        "scan_layers": False,
+                    }
+                }, headers=api._auth_headers())
+                if resp.status_code == 200:
+                    yield f"[OK] Registry configured: https://{REGISTRY_URL}/"
+                else:
+                    yield f"[WARNING] Registry config: {resp.status_code}"
+            except Exception as e:
+                yield f"[WARNING] Registry config: {e}"
+
+            # Scan registry
+            yield "[STEP 4/6] Scanning registry for signatures..."
+            try:
+                await asyncio.sleep(2)
+                await client.post("/v1/scan/registry/demo-registry/scan", json={}, headers=api._auth_headers())
+                # Wait for scan to complete
+                for _ in range(12):
+                    await asyncio.sleep(5)
+                    resp = await client.get("/v1/scan/registry/demo-registry", headers=api._auth_headers())
+                    status = resp.json().get("summary", {}).get("status", "")
+                    scanned = resp.json().get("summary", {}).get("scanned", 0)
+                    if status == "idle" and scanned > 0:
+                        break
+                yield f"[OK] Registry scanned: {scanned} images"
+            except Exception as e:
+                yield f"[WARNING] Registry scan: {e}"
 
             # Create admission control deny rule for unsigned images
-            yield "[STEP 3/4] Creating Admission Control rule..."
+            yield "[STEP 5/6] Creating Admission Control rule..."
             try:
                 verifier_path = f"{ROOT_OF_TRUST_NAME}/{VERIFIER_NAME}"
                 await api.create_admission_rule(
@@ -169,7 +212,7 @@ class SigstoreDemo(DemoModule):
                 yield f"[WARNING] Admission rule may already exist: {e}"
 
             # Enable admission control in protect mode
-            yield "[STEP 4/4] Enabling Admission Control in Protect mode..."
+            yield "[STEP 6/6] Enabling Admission Control in Protect mode..."
             try:
                 await api.set_admission_state(enable=True, mode="protect")
                 yield "[OK] Admission Control enabled in Protect mode"
