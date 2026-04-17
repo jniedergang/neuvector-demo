@@ -1833,8 +1833,6 @@ class DemoApp {
      */
     refreshAllPodInfo() {
         const srcSelect = document.getElementById('viz-source-select');
-        const tgtPod = document.getElementById('viz-target-pod');
-        const tgtType = document.getElementById('viz-target-type');
 
         if (srcSelect) {
             const srcPod = srcSelect.value;
@@ -1843,9 +1841,17 @@ class DemoApp {
             }
         }
 
-        // Refresh target if target is a pod
+        // Refresh target — check all possible target select IDs
+        const tgtType = document.getElementById('viz-target-type');
+        const tgtPod = document.getElementById('viz-target-pod');
+        const tgtAttack = document.getElementById('viz-attack-target');
+
         if (tgtType && tgtType.value === 'pod' && tgtPod && tgtPod.value) {
+            // Connectivity/DLP demos
             this.updateVizPodInfo('target', tgtPod.value);
+        } else if (tgtAttack && tgtAttack.value === 'cible1') {
+            // Attack demo — refresh target only if it's the internal pod
+            this.updateVizPodInfo('target', 'cible1');
         }
     }
 
@@ -3229,6 +3235,14 @@ class DemoApp {
      * - Logging out once instead of twice
      */
     async updateVizPodInfo(target, podName) {
+        // Guard against concurrent calls for the same target — skip if already loading
+        const guardKey = `_updatingPodInfo_${target}`;
+        if (this[guardKey]) {
+            console.log(`updateVizPodInfo(${target}) skipped — already in progress`);
+            return;
+        }
+        this[guardKey] = true;
+
         const prefix = target === 'source' ? 'viz-src' : 'viz-tgt';
 
         // Get DOM elements for status
@@ -3248,23 +3262,31 @@ class DemoApp {
         const netItems = document.getElementById(`${prefix}-network-items`);
         const netCount = document.getElementById(`${prefix}-network-count`);
 
-        // Show loading states
+        // Disable settings selects during load, but do NOT clear existing list content.
+        // Only show loading state if the lists are currently empty or already loading.
         if (policyMode) policyMode.disabled = true;
         if (profileMode) profileMode.disabled = true;
         if (baseline) baseline.disabled = true;
-        if (list) {
+        const isListEmpty = !list || list.classList.contains('empty') || list.classList.contains('loading');
+        if (isListEmpty && list) {
             list.innerHTML = t('events.loading');
             list.className = 'viz-process-items loading';
         }
-        if (count) count.textContent = '';
-        if (netItems) {
+        if (isListEmpty && count) count.textContent = '';
+        const isNetEmpty = !netItems || netItems.classList.contains('empty') || netItems.classList.contains('loading');
+        if (isNetEmpty && netItems) {
             netItems.innerHTML = t('events.loading');
             netItems.className = 'viz-network-items loading';
         }
-        if (netCount) netCount.textContent = '';
+        if (isNetEmpty && netCount) netCount.textContent = '';
 
         // Fetch combined pod info
-        const result = await settingsManager.getPodInfo(groupName);
+        let result;
+        try {
+            result = await settingsManager.getPodInfo(groupName);
+        } finally {
+            this[guardKey] = false;
+        }
 
         if (result) {
             // Update status selects
@@ -3337,13 +3359,22 @@ class DemoApp {
             // Update network rules list
             this.updateVizNetworkRules(target, podName, groupName, result.network_rules || [], result.policy_mode || 'Discover');
         } else {
-            // Error or not configured
-            if (list) {
+            // Error or not configured — only overwrite if the lists don't already
+            // contain valid data (prevents intermittent API failures from wiping
+            // a previously successful load).
+            const listHasData = list && !list.classList.contains('empty') && !list.classList.contains('loading');
+            const netHasData = netItems && !netItems.classList.contains('empty') && !netItems.classList.contains('loading');
+            if (!listHasData && list) {
                 list.innerHTML = t('process.notConfigured');
                 list.className = 'viz-process-items empty';
             }
-            // Clear network rules
-            this.updateVizNetworkRules(target, podName, '', [], 'Discover');
+            if (!netHasData) {
+                this.updateVizNetworkRules(target, podName, '', [], 'Discover');
+            }
+            // Re-enable selects even on error
+            if (policyMode) policyMode.disabled = false;
+            if (profileMode) profileMode.disabled = false;
+            if (baseline) baseline.disabled = false;
         }
     }
 
