@@ -2,7 +2,7 @@
 
 Application web interactive pour exécuter des démonstrations NeuVector sur un cluster Kubernetes.
 
-**Version actuelle : 2.1.0**
+**Version actuelle : 2.1.1**
 
 ## Fonctionnalités
 
@@ -118,6 +118,7 @@ neuvector-demo-web/
 │   │   ├── dlp.py           # Démo DLP
 │   │   ├── attack.py        # Démo Attack Simulation
 │   │   ├── admission.py     # Démo Admission Control
+│   │   ├── sigstore.py      # Démo Sigstore Image Signature
 │   │   └── registry.py      # Auto-registration
 │   └── lifecycle/           # Actions prepare/reset/status
 │       ├── prepare.py
@@ -132,9 +133,13 @@ neuvector-demo-web/
 │       └── websocket.js     # Client WebSocket
 ├── templates/
 │   └── index.html           # Interface SPA avec cache-busting
+├── sigstore/
+│   ├── cosign.key           # Clé privée Cosign (gitignored)
+│   └── cosign.pub           # Clé publique Cosign (embarquée dans l'image)
 ├── manifests/
 │   ├── deployment.yaml
 │   ├── deployment-registry.yaml
+│   ├── registry.yaml        # Registre OCI pour la démo Sigstore (NodePort 30500)
 │   ├── rbac.yaml
 │   └── demo-pods.yaml       # Pods de test (espion1, cible1) avec services (ports 80, 22)
 ├── scripts/
@@ -223,6 +228,60 @@ podman build -t demo-web1:latest images/web1/
 2. Cliquer **Create Pod** → bloqué par Admission Control
 3. Sélectionner un namespace **Allowed** → pod créé avec succès
 
+### Démo Sigstore (Image Signature Verification)
+
+Vérifie les signatures d'images conteneur avec Cosign/Sigstore. Les images signées sont autorisées, les non signées sont bloquées par Admission Control.
+
+#### Prérequis
+
+1. **Cosign** installé sur la machine de build :
+   ```bash
+   # openSUSE / SLES
+   zypper install cosign
+   # ou téléchargement direct
+   curl -LO https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64
+   install cosign-linux-amd64 /usr/local/bin/cosign
+   ```
+
+2. **Registre OCI** déployé dans le cluster :
+   ```bash
+   kubectl apply -f manifests/registry.yaml
+   # Vérifie que le registre est accessible sur NodePort 30500
+   curl -k https://<NODE_IP>:30500/v2/
+   ```
+
+3. **Images de démo** construites, poussées et signées :
+   ```bash
+   NODE_IP=172.16.3.21
+
+   # Construire une image de test
+   echo "FROM alpine:latest" | podman build -t demo-signed:latest -
+   echo "FROM alpine:latest" | podman build -t demo-unsigned:latest -
+
+   # Pousser vers le registre
+   podman push --tls-verify=false demo-signed:latest ${NODE_IP}:30500/demo-signed:latest
+   podman push --tls-verify=false demo-unsigned:latest ${NODE_IP}:30500/demo-unsigned:latest
+
+   # Générer un keypair Cosign (si pas déjà fait)
+   cosign generate-key-pair  # produit cosign.key + cosign.pub
+
+   # Signer l'image signée uniquement
+   cosign sign --key cosign.key --tls-verify=false ${NODE_IP}:30500/demo-signed:latest
+   ```
+
+4. **Scanner NeuVector Prime** : le scanner doit être l'image Prime (`registry.suse.com/rancher/mirrored-neuvector-scanner:latest`) pour supporter la vérification de signature.
+
+5. **TLS** : si le registre est self-signed, désactiver la vérification TLS dans NeuVector (Admin → Settings).
+
+#### Utilisation
+
+1. Sélectionner la démo **Image Signature Verification**
+2. Cliquer **Setup** → crée Root of Trust, Verifier keypair, configure le scan registre, crée la règle admission deny pour images non signées
+3. Attendre le scan du registre → les images apparaissent avec leur statut (SIGNED / NOT SIGNED)
+4. Cliquer **Deploy** sur l'image signée → pod créé avec succès
+5. Cliquer **Deploy** sur l'image non signée → bloqué par Admission Control
+6. Cliquer **Cleanup** → supprime les ressources Sigstore
+
 ### Mode Kiosk
 
 Le mode kiosk exécute automatiquement des scénarios de démo avec des bulles explicatives contextuelles.
@@ -305,10 +364,21 @@ Le mode kiosk exécute automatiquement des scénarios de démo avec des bulles e
 | `/api/neuvector/dlp-config` | POST | Configuration DLP |
 | `/api/neuvector/update-dlp-sensor` | POST | Activer/désactiver un sensor DLP |
 | `/api/neuvector/admission-state` | POST | État Admission Control |
+| `/api/neuvector/update-admission-state` | POST | Activer/désactiver Admission Control |
 | `/api/neuvector/admission-rules` | POST | Règles d'admission |
+| `/api/neuvector/create-admission-rule` | POST | Créer une règle d'admission |
+| `/api/neuvector/delete-admission-rule` | POST | Supprimer une règle d'admission |
 | `/api/neuvector/admission-events` | POST | Événements d'admission |
+| `/api/neuvector/sigstore-status` | POST | État Sigstore (Root of Trust, Verifiers) |
+| `/api/neuvector/sigstore-image-status` | POST | Statut de signature des images du registre |
 
 ## Changelog
+
+### Version 2.1.1
+- Fix : les listes "Allowed Processes" et "Network Rules" ne disparaissent plus par intermittence
+- Guard de concurrence dans `updateVizPodInfo` pour éviter les appels simultanés
+- Préservation du contenu existant en cas d'erreur API (ne remplace plus par "not configured")
+- Fix `refreshAllPodInfo` pour rafraîchir aussi le target de la démo Attack
 
 ### Version 2.1.0
 - Visualisation dédiée pour la démo Sigstore (style panneau comme Admission Control)
