@@ -134,7 +134,7 @@ neuvector-demo-web/
 ├── templates/
 │   └── index.html           # Interface SPA avec cache-busting
 ├── sigstore/
-│   ├── cosign.key           # Clé privée Cosign (gitignored)
+│   ├── cosign.key           # Clé privée Cosign (démo uniquement)
 │   └── cosign.pub           # Clé publique Cosign (embarquée dans l'image)
 ├── manifests/
 │   ├── deployment.yaml
@@ -262,11 +262,8 @@ Vérifie les signatures d'images conteneur avec Cosign/Sigstore. Les images sign
    podman push --tls-verify=false demo-signed:latest ${NODE_IP}:30500/demo-signed:latest
    podman push --tls-verify=false demo-unsigned:latest ${NODE_IP}:30500/demo-unsigned:latest
 
-   # Générer un keypair Cosign (si pas déjà fait)
-   cosign generate-key-pair  # produit cosign.key + cosign.pub
-
-   # Signer l'image signée uniquement
-   cosign sign --key cosign.key --tls-verify=false ${NODE_IP}:30500/demo-signed:latest
+   # Signer l'image avec le keypair inclus dans le repo (sigstore/)
+   cosign sign --key sigstore/cosign.key --tls-verify=false ${NODE_IP}:30500/demo-signed:latest
    ```
 
 4. **Scanner NeuVector Prime** : le scanner doit être l'image Prime (`registry.suse.com/rancher/mirrored-neuvector-scanner:latest`) pour supporter la vérification de signature.

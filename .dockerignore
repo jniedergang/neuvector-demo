@@ -1,4 +1,3 @@
-sigstore/cosign.key
 __pycache__
 *.pyc
 .git
