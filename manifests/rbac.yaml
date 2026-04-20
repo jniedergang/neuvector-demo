@@ -32,10 +32,10 @@ kind: ClusterRole
 metadata:
   name: demo-web-clusterrole
 rules:
-# Namespace management
+# Namespace management (patch/update required for `kubectl apply` on existing namespaces)
 - apiGroups: [""]
   resources: ["namespaces"]
-  verbs: ["get", "list", "watch", "create", "delete"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
 # Node information (read-only)
 - apiGroups: [""]
   resources: ["nodes"]

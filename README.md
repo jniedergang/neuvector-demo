@@ -371,6 +371,11 @@ Le mode kiosk exécute automatiquement des scénarios de démo avec des bulles e
 
 ## Changelog
 
+### Version 2.1.2
+- Fix : ajout des verbs `patch` et `update` sur `namespaces` dans le RBAC ClusterRole (nécessaire pour `kubectl apply` sur un namespace existant)
+- Fix : ajout des polices emoji en fallback dans le font-family (`Apple Color Emoji`, `Segoe UI Emoji`, `Noto Color Emoji`) pour assurer le rendu des icônes sur Chromium/Chrome Linux
+- Note : sur Linux, installer `noto-coloremoji-fonts` (openSUSE/SLES) ou équivalent si les icônes ne s'affichent pas
+
 ### Version 2.1.1
 - Fix : les listes "Allowed Processes" et "Network Rules" ne disparaissent plus par intermittence
 - Guard de concurrence dans `updateVizPodInfo` pour éviter les appels simultanés
