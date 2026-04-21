@@ -341,6 +341,8 @@ const translations = {
         'attack.ncBackdoor': 'NC Backdoor (netcat listener)',
         'attack.fileTransfer': 'File Transfer (scp)',
         'attack.reverseShell': 'Reverse Shell',
+        'attack.play': 'PLAY',
+        'attack.runAttack': 'Run the selected attack',
 
         // Languages
         'lang.en': 'English',
@@ -649,6 +651,8 @@ const translations = {
         'attack.ncBackdoor': 'NC Backdoor (écouteur netcat)',
         'attack.fileTransfer': 'Transfert de fichier (scp)',
         'attack.reverseShell': 'Reverse Shell',
+        'attack.play': 'LANCER',
+        'attack.runAttack': 'Lancer l\'attaque sélectionnée',
 
         'lang.en': 'English',
         'lang.fr': 'Français',
@@ -956,6 +960,8 @@ const translations = {
         'attack.ncBackdoor': 'NC Backdoor (Netcat-Listener)',
         'attack.fileTransfer': 'Dateitransfer (scp)',
         'attack.reverseShell': 'Reverse Shell',
+        'attack.play': 'START',
+        'attack.runAttack': 'Ausgewählten Angriff ausführen',
 
         'lang.en': 'English',
         'lang.fr': 'Français',
@@ -1263,6 +1269,8 @@ const translations = {
         'attack.ncBackdoor': 'NC Backdoor (listener netcat)',
         'attack.fileTransfer': 'Transferencia de archivo (scp)',
         'attack.reverseShell': 'Reverse Shell',
+        'attack.play': 'EJECUTAR',
+        'attack.runAttack': 'Ejecutar el ataque seleccionado',
 
         'lang.en': 'English',
         'lang.fr': 'Français',

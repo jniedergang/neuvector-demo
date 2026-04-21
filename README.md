@@ -2,7 +2,7 @@
 
 Application web interactive pour exécuter des démonstrations NeuVector sur un cluster Kubernetes.
 
-**Version actuelle : 2.1.1**
+**Version actuelle : 2.1.3**
 
 ## Fonctionnalités
 
@@ -370,6 +370,12 @@ Le mode kiosk exécute automatiquement des scénarios de démo avec des bulles e
 | `/api/neuvector/sigstore-image-status` | POST | Statut de signature des images du registre |
 
 ## Changelog
+
+### Version 2.1.3
+- Démo Attack : découplage sélection et exécution — un clic sur FLOOD/BACKDOOR/SCP/SHELL sélectionne l'attaque sans la lancer
+- Démo Attack : nouveau bouton PLAY circulaire au centre de la flèche entre l'attaquant et la cible pour lancer l'attaque sélectionnée
+- Démos Admission Control et Sigstore : horloge temps réel et bouton 🗑 pour purger les logs dans le panneau d'événements (cohérence avec les autres démos)
+- i18n : ajout des clés `attack.play` / `attack.runAttack` (en/fr/de/es)
 
 ### Version 2.1.2
 - Fix : ajout des verbs `patch` et `update` sur `namespaces` dans le RBAC ClusterRole (nécessaire pour `kubectl apply` sur un namespace existant)

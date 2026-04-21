@@ -3874,6 +3874,10 @@ class DemoApp {
                         </div>
                         <div class="viz-arrow attack-arrow pending" id="viz-arrow">
                             <div class="viz-arrow-line"></div>
+                            <button type="button" class="viz-play-btn" id="viz-attack-play" title="${t('attack.runAttack')}">
+                                <span class="viz-play-icon">▶</span>
+                                <span class="viz-play-label">${t('attack.play')}</span>
+                            </button>
                             <div class="viz-arrow-label" id="viz-arrow-label">🔥 FLOOD</div>
                         </div>
                         <div class="viz-box viz-target pending" id="viz-target">
@@ -4067,11 +4071,15 @@ class DemoApp {
                     const descFn = attackDescriptions[attack];
                     attackDescriptionDiv.innerHTML = descFn ? descFn() : '';
                 }
-
-                // Run the attack
-                this.runCurrentDemo();
+                // Attack selection only — user must click PLAY to launch
             });
         });
+
+        // Set up PLAY button to launch the selected attack
+        const playBtn = document.getElementById('viz-attack-play');
+        if (playBtn) {
+            playBtn.addEventListener('click', () => this.runCurrentDemo());
+        }
 
         // Set up refresh and clear buttons for events
         const refreshBtn = document.getElementById('btn-refresh-logs');
@@ -4200,6 +4208,8 @@ class DemoApp {
                 <div class="nv-logs-container" id="nv-logs-container">
                     <div class="nv-logs-header">
                         <span>${t('events.admissionEvents')}</span>
+                        <span class="nv-logs-time" id="nv-logs-time"></span>
+                        <button type="button" class="btn-clear-logs" id="btn-clear-logs" title="${t('events.clearEvents')}">🗑</button>
                         <button type="button" class="btn-refresh" id="btn-refresh-logs" title="${t('events.refreshEvents')}">↻</button>
                     </div>
                     <div class="nv-logs-list empty" id="nv-logs-list">
@@ -4252,12 +4262,16 @@ class DemoApp {
             });
         });
 
-        // Set up refresh buttons
+        // Set up refresh and clear buttons
         document.getElementById('btn-refresh-admission')?.addEventListener('click', () => this.loadAdmissionState());
         document.getElementById('btn-refresh-logs')?.addEventListener('click', () => this.fetchAdmissionEvents());
+        document.getElementById('btn-clear-logs')?.addEventListener('click', () => this.clearEvents());
 
         // Admission toggle
         this.setupAdmissionToggle();
+
+        // Start live clock
+        this.startLiveClock();
 
         // Initial load
         this.loadAdmissionState();
@@ -4661,6 +4675,8 @@ class DemoApp {
                 <div class="nv-logs-container" id="nv-logs-container">
                     <div class="nv-logs-header">
                         <span>${t('events.admissionEvents')}</span>
+                        <span class="nv-logs-time" id="nv-logs-time"></span>
+                        <button type="button" class="btn-clear-logs" id="btn-clear-logs" title="${t('events.clearEvents')}">🗑</button>
                         <button type="button" class="btn-refresh" id="btn-refresh-logs" title="${t('events.refreshEvents')}">↻</button>
                     </div>
                     <div class="nv-logs-list empty" id="nv-logs-list">
@@ -4688,10 +4704,14 @@ class DemoApp {
         document.getElementById('btn-sigstore-cleanup')?.addEventListener('click', () => this.runSigstoreAction('cleanup'));
         document.getElementById('btn-sigstore-scan')?.addEventListener('click', () => this.loadSigstoreImageStatus());
         document.getElementById('btn-refresh-logs')?.addEventListener('click', () => this.fetchAdmissionEvents());
+        document.getElementById('btn-clear-logs')?.addEventListener('click', () => this.clearEvents());
         document.getElementById('btn-refresh-admission')?.addEventListener('click', () => this.loadAdmissionState());
 
         // Admission toggle
         this.setupAdmissionToggle();
+
+        // Start live clock
+        this.startLiveClock();
 
         // Load initial state
         this.loadSigstoreConfig();
