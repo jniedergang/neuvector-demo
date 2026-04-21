@@ -3085,13 +3085,14 @@ select.form-control {
     min-width: 160px;
 }
 
-/* PLAY button — launches the selected attack */
+/* PLAY button — launches the selected attack. Placed above the arrow so
+   it does not overlap the arrow label. SUSE green. */
 .viz-play-btn {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background: var(--error-color, #e4002b);
+    background: var(--success-color, #009f4d);
     color: white;
     border: 3px solid white;
     border-radius: 50%;
@@ -3099,24 +3100,22 @@ select.form-control {
     height: 80px;
     cursor: pointer;
     font-weight: 700;
-    box-shadow: 0 4px 16px rgba(228, 0, 43, 0.45);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 10;
+    box-shadow: 0 4px 16px rgba(0, 159, 77, 0.45);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    order: -1;
+    margin-bottom: 0.75rem;
     padding: 0;
     font-family: inherit;
 }
 
 .viz-play-btn:hover:not(:disabled) {
-    transform: translate(-50%, -50%) scale(1.08);
-    box-shadow: 0 6px 22px rgba(228, 0, 43, 0.6);
+    transform: scale(1.08);
+    box-shadow: 0 6px 22px rgba(0, 159, 77, 0.6);
+    background: #00b359;
 }
 
 .viz-play-btn:active:not(:disabled) {
-    transform: translate(-50%, -50%) scale(0.95);
+    transform: scale(0.95);
 }
 
 .viz-play-btn:disabled {
