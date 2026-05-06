@@ -52,7 +52,7 @@ NEUVECTOR_NAMESPACE = os.environ.get("NEUVECTOR_NAMESPACE", "neuvector")
 # URL for NeuVector REST API on controller (port 10443)
 NEUVECTOR_API_URL = os.environ.get(
     "NEUVECTOR_API_URL",
-    "https://neuvector-svc-controller.neuvector:10443"
+    f"https://neuvector-svc-controller.{NEUVECTOR_NAMESPACE}:10443"
 )
 
 # Server configuration
